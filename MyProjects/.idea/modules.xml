@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/../FileRenamer/.idea/FileRenamer.iml" filepath="$PROJECT_DIR$/../FileRenamer/.idea/FileRenamer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/MyProjects.iml" filepath="$PROJECT_DIR$/.idea/MyProjects.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../Sandbox/.idea/Sandbox.iml" filepath="$PROJECT_DIR$/../Sandbox/.idea/Sandbox.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../TopCoder/.idea/TopCoder.iml" filepath="$PROJECT_DIR$/../TopCoder/.idea/TopCoder.iml" />
+    </modules>
+  </component>
+</project>

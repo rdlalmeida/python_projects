@@ -1,0 +1,30 @@
+import math
+
+class MapRecoloring:
+    def recolor(self, H, regions, oldColors):
+        # number of regions = max element in regions + 1
+        reg = max(regions) + 1
+        ret = []
+        for i in range(reg):
+            ret.append(i)
+        return ret
+
+# -------8<------- end of solution submitted to the website -------8<-------
+
+import sys
+H = int(raw_input())
+S = int(raw_input())
+regions = []
+for i in range(S):
+    regions.append(int(raw_input()))
+R = int(raw_input())
+oldColors = []
+for i in range(R):
+    oldColors.append(int(raw_input()))
+
+mr = MapRecoloring()
+ret = mr.recolor(H, regions, oldColors)
+print len(ret)
+for num in ret:
+    print num
+sys.stdout.flush()

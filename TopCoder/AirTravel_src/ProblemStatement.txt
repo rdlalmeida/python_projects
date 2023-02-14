@@ -1,0 +1,70 @@
+Problem Statement
+You are working for a shipping company, TopShipper, that specializes in shipping products by air. Your cargo jets transport items between a set of airports. From each airport, you can travel directly to some subset of the other airports. (Some airports may be too far, or may not have a safe passageway.) The ability to travel from one airport to another does not guarantee the ability to travel directly in the opposite direction.
+
+You are about to send out a cargo plane on a trip to pick up a large shipment of a certain product. Unfortunately, only one other airport has this product for pickup, and you aren't guaranteed that there is a safe, direct route to the other airport. You may have to travel through one or more other airports to get to your final destination. Nonetheless, you wish to ultimately end up at the airport that has your desired product, and which you can get to by travelling the shortest possible distance.
+
+You are to return a double indicating the number of miles travelled by the cargo plane along the optimal route from the origin to the destination. If no such route exists, return -1.
+
+Given two coordinates, (lat1, lon1) and (lat2, lon2), the shortest distance between them is across an arc known as a great circle. The arclength along a great circle, between two points on the earth can be calculated as:
+
+radius * acos(sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(lon1 - lon2))
+For purposes of this problem, the radius of the earth is 4000 miles.
+
+You are given the latitude and longitude coordinates of each airport in latitude and longitude. The i-th element of latitude corresponds to the i-th element of longitude. You are also given canTravel. The i-th element of canTravel is a space-delimited list of the 0-based indices of the airports that can be reached from airport i. Finally, you are given origin and destination, the indices of the airports at which you start and end your trip.
+
+Definition
+Class: AirTravel
+Method: shortestTrip
+Parameters: tuple (integer), tuple (integer), tuple (string), integer, integer
+Returns: float
+Method signature: def shortestTrip(self, latitude, longitude, canTravel, origin, destination):
+Limits
+Time limit (s): 840.000
+Memory limit (MB): 64
+Constraints
+- latitude, longitude, and canTravel will contain between 1 and 20 elements, inclusive.
+- latitude, longitude, and canTravel will each contain the same number of elements.
+- Each element of latitude will be between -89 and 89, inclusive.
+- Each element of longitude will be between -179 and 179, inclusive.
+- Each element of canTravel will be a space-delimited list of integers, with no leading zeroes.
+- Each integer represented in each element of canTravel will be between 0 and n - 1, where n is the number of elements in latitude.
+- origin and destination will be between 0 and n - 1, inclusive, where n is the number of elements in latitude.
+- No two airports will reside at the same latitude and longitude.
+Examples
+0)
+{0, 0, 70}
+{90, 0, 45}
+{"2", "0 2", "0 1"}
+0
+1
+Returns: 10612.237799994255
+Here, we are looking to travel from airport 0 to airport 1.
+
+Using the given formula, we calculate that the distance from 0 to 1 is 6283, from 0 to 2 is 5306, and from 1 to 2 is 5306.
+
+A direct route from airport 0 to 1 would be fastest, if such a route were allowed. Since it is not, we have to travel through airport 2.
+
+1)
+{0, 0, 70}
+{90, 0, 45}
+{"1 2", "0 2", "0 1"}
+0
+1
+Returns: 6283.185307179586
+Here, we have the same three airports, and there is a safe route between any two. Thus, we take the direct route, which is quickest.
+2)
+{0, 30, 60}
+{25, -130, 78}
+{"1 2", "0 2", "1 2"}
+0
+0
+Returns: 0.0
+We are free to travel as we wish, but since our destination is the same as our point of origin, we don't have much travel to do.
+3)
+{0, 20, 55}
+{-20, 85, 42}
+{"1", "0", "0"}
+0
+2
+Returns: -1.0
+Notice here that we could go from airport 2 to airport 0, but not from 0 to 2. Given the available routes, there is no way we can get from airport 0 to airport 2.

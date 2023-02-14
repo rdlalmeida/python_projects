@@ -1,0 +1,4 @@
+DEBUG:root:This message should go in the log file.
+INFO:root:So should this.
+WARNING:root:And this, too.
+ERROR:root:This is the error, my only friend the error.

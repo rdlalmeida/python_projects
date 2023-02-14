@@ -1,0 +1,112 @@
+Problem: SameColorPairs
+
+Problem Statement
+You are given a rectangular board of H x W cells. Each cell contains a tile of one of C colors. In one move, you can remove two tiles of the same color if their bounding rectangle doesn't contain any tiles of other colors (it can contain only empty cells and tiles of the same color as the ones being removed). The bounding rectangle of tiles in cells (r1, c1) and (r2, c2) contains all cells (r, c) for which min(r1, r2) ≤ r ≤ max(r1, r2) and min(c1, c2) ≤ c ≤ max(c1, c2).
+
+Your goal is to remove from the board as many tiles as you can.
+Implementation
+Your code should implement a single method removePairs(tuple (string) board). board[r][c] gives the color of the tile in row r and column c.
+
+The method should return a tuple (string) containing a list of pairs you want to remove, in the order in which they will be removed. If you want to remove N pairs, the return should contain N elements. Each element describes a pair of tiles to remove and must be formatted as "R1 C1 R2 C2", where (R1, C1) and (R2, C2) are 0-based coordinates of the tiles. Both tiles must be still present on the board, they must be of the same color, and their bounding rectangle must contain no tiles of other colors.
+
+An animated solution for example 0 is available.
+Scoring
+Your score for an individual test case will be the number of tiles you have removed, divided by H * W. If your return was invalid (was formatted incorrectly, attempted to perform an invalid removal, etc.), the score for this test case will be -1.
+
+Your overall score will be calculated in the following way: for each test case where your score is not -1, you get 1 point for each competitor you beat on this test case (i.e., your score on a test case is greater than this competitor's score) and 0.5 points for each competitor you tie with (a tie with yourself is not counted); finally, the sum of points is divided by (the number of competitors - 1), then multiplied by 1,000,000 and divided by the number of test cases.
+Tools
+An offline tester is available here. You can use it to test/debug your solution locally. You can also check its source code for exact implementation of test case generation and score calculation. That page also contains links to useful information and sample solutions in several languages.
+
+Definition
+
+Class:	SameColorPairs
+Method:	removePairs
+Parameters:	tuple (string)
+Returns:	tuple (string)
+Method signature:	def removePairs(self, board):
+(be sure your method is public)
+
+
+Notes
+-	The time limit is 10 seconds per test case (this includes only the time spent in your code). The memory limit is 1024 megabytes.
+-	There is no explicit code size limit. The implicit source code size limit is around 1 MB (it is not advisable to submit codes of size close to that or larger). Once your code is compiled, the binary size should not exceed 1 MB.
+-	The compilation time limit is 30 seconds. You can find information about compilers that we use and compilation options here.
+-	There are 10 example test cases and 100 full submission (provisional) test cases. There will be 2000 test cases in the final testing.
+-	The match is rated.
+-	This match has prizes for the participants; for the details see the announcement.
+
+Constraints
+-	Both dimensions of the board H and W will be between 10 and 100, inclusive. At least one of them will be even.
+-	The number of colors on the board will be between 2 and 6, inclusive. The number of tiles of each color will be even.
+
+Examples
+0)
+
+seed = 1
+H = 10
+W = 10
+C = 2
+0000011101
+1011111010
+1110101000
+0011011001
+1010011110
+0000010100
+0110010100
+1000010000
+1100000001
+1110011111
+1)
+
+seed = 2
+H = 30
+W = 30
+C = 4
+2)
+
+seed = 3
+H = 100
+W = 100
+C = 6
+3)
+
+seed = 4
+H = 52
+W = 83
+C = 6
+4)
+
+seed = 5
+H = 83
+W = 60
+C = 4
+5)
+
+seed = 6
+H = 34
+W = 36
+C = 4
+6)
+
+seed = 7
+H = 98
+W = 54
+C = 3
+7)
+
+seed = 8
+H = 49
+W = 30
+C = 4
+8)
+
+seed = 9
+H = 55
+W = 74
+C = 3
+9)
+
+seed = 10
+H = 84
+W = 41
+C = 2

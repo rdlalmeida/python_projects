@@ -1,0 +1,65 @@
+Problem Statement
+Acronyms are commonly used to make documents more concise. Your task in this problem is to develop a program that automates the conversion of sequences of words into acronyms in a , document. A sequence of words must meet all of the following criteria before it can be converted to an acronym:
+The words in the sequence must all be within one sentence.
+The sequence must not include the first word in a sentence.
+At least two words in the sequence must begin with uppercase letters.
+The first and last words in the sequence must begin with uppercase letters.
+There may not be two adjacent words that do not begin with uppercase letters in the sequence.
+The sequence must be as long as possible. It may not be a subsequence of any longer sequence meeting the five criteria above.
+A word is defined as a sequence of characters surrounded on both sides by spaces or edges of the element of document. Note that a word may include non-letter characters. A new sentence, in this problem, always starts at the beginning of the input and after two consecutive spaces, where a new line (new element of document) counts as one space.
+
+For each sequence of words meeting the criteria as defined above, you should convert it to an acronym by replacing the whole sequence of words with all the uppercase letters in the words that start with uppercase letters (in order). The only caveat to this is that if there are non-letter characters at the end of the last word in the sequence, you should not replace them.
+
+For example, "TopCoder, Inc." would become "TCI.". Note that the '.' at the end of "Inc." remains in the acronym but the ',' at the end of "TopCoder," is removed. Also, "United States of America" would be converted to "USA"; there is no 'o' because "of" does not start with an uppercase letter.
+
+After inserting the acronyms, you should return a representing the entire document. A new line in the input always counts as one space, and this should be represented in the output.
+Definition
+Class: Acronyms
+Method: acronize
+Parameters: tuple (string)
+Returns: string
+Method signature: def acronize(self, document):
+Limits
+Time limit (s): 840.000
+Memory limit (MB): 64
+Notes
+- Since new lines count as spaces, the input is identical in function to a single that is the concatenation of all the elements of document with single spaces inserted between them.
+Constraints
+- document will contain between 1 and 50 elements, inclusive.
+- Each element of document will contain between 1 and 50 characters, inclusive.
+- Each character in document will have ASCII values between 32 and 122 inclusive.
+- No element of document will have leading spaces.
+- No element of document will have more than one trailing space.
+- The last element of document will not have trailing spaces.
+- There will not be two adjacent non-letter characters other than spaces.
+- There will never be more than 2 consecutive spaces in document
+Examples
+0)
+{"We the people of the United States of America."}
+Returns: "We the people of the USA."
+"of" is not include in the acronym since it starts with a lowercase letter.
+1)
+{"Don't","worry.","Be","Happy!"}
+Returns: "Don't worry. BH!"
+Even though there is a period, there is only one sentence according to the rules of this problem.
+2)
+{"Entering contests at TopCoder, Inc.", "is a good way to develop your skills."}
+Returns: "Entering contests at TCI. is a good way to develop your skills."
+Be sure to include the period after "TCI" in your return.
+3)
+{"Working at the United States Postal Service", "in the United States of America", "is a satisfying experience."}
+Returns: "Working at the USPS in the USA is a satisfying experience."
+4)
+{"a A & a & a B"}
+Returns: "a A & a & a B"
+5)
+{"The First word can't be included. In","A sequence, that is."}
+Returns: "The First word can't be included. In A sequence, that is."
+"The" and "In" are both the first words in sentences.
+6)
+{"A Test & Test & & TEst"}
+Returns: "A TT & & TEst"
+Note that "&" counts as a word.
+7)
+{"This is a TEST tEST Test. ", ".Go Test"}
+Returns: "This is a TESTT. .Go Test"
