@@ -1,7 +1,7 @@
 import os
 import re
 import processor
-import subtitle_title_renamer
+import file_title_renamer
 
 
 def cleanup_filename(files_path, file_extension, tokens_to_remove):

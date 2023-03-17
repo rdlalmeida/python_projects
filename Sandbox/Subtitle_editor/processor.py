@@ -1,5 +1,4 @@
-
-import subtitle_title_renamer
+import file_title_renamer
 import Subtitle_cleaner_WIN
 import Subtitle_cleaner_UNIX
 import title_swapper

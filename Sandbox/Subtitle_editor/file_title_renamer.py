@@ -219,8 +219,8 @@ if __name__ == "__main__":
     # if len(sys.argv) != 6:
     #     raise Exception("ERROR: Invalid number of arguments!")
 
-    main_title = "The Night Of"
-    season_number = 1
+    main_title = "Marvels Daredevil"
+    season_number = 3
 
     video_files_path = "D:\\Downloads\\FinishedDownloads\\" + main_title + "\\" + main_title + " Season "
     main_title = main_title + " ["
@@ -234,6 +234,8 @@ if __name__ == "__main__":
     video_extension = ".mkv"
     episode_list_format = "S\\d\\dE\\d\\d"
     tokens_to_remove = ""
+    
+    print("Processing " + main_title + " ...")
 
     video_file_renamer(video_files_path, video_extension, main_title, episode_list_format, tokens_to_remove)
 
