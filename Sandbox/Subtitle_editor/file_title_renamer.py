@@ -219,8 +219,8 @@ if __name__ == "__main__":
     # if len(sys.argv) != 6:
     #     raise Exception("ERROR: Invalid number of arguments!")
 
-    main_title = "Marvels Daredevil"
-    season_number = 3
+    main_title = "Agents of S.H.I.E.L.D"
+    season_number = 1
 
     video_files_path = "D:\\Downloads\\FinishedDownloads\\" + main_title + "\\" + main_title + " Season "
     main_title = main_title + " ["
@@ -231,9 +231,9 @@ if __name__ == "__main__":
         video_files_path += str(season_number)
         main_title += str(season_number) + "x"
 
-    video_extension = ".mkv"
+    video_extension = ".srt"
     episode_list_format = "S\\d\\dE\\d\\d"
-    tokens_to_remove = ""
+    tokens_to_remove = "720p,WEB,DL,x265,AAC"
     
     print("Processing " + main_title + " ...")
 

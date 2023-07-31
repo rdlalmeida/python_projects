@@ -36,8 +36,8 @@ def cleanup_filename(files_path, file_extension, tokens_to_remove):
 
 
 if __name__ == "__main__":
-    main_title = "Narcos"
-    season_numbers = [3]
+    main_title = "Agents of S.H.I.E.L.D"
+    season_numbers = [1]
     files_extension = ".mkv"
     tokens_to_remove = ["1080p", "10bit", "BluRay", "AAC5", "1", "HEVC", "Vyndros"]
 
