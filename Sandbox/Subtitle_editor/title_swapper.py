@@ -106,7 +106,7 @@ if __name__ == "__main__":
     #     raise Exception("ERROR: Wrong number of input arguments. USAGE: title_swapper.py [PATH_TO_FOLDER] [ORIGIN EXTENSION] [DESTINATION EXTENSION]")
 
     main_title = "Silicon Valley"
-    season_number = 1
+    season_number = 2
     # title_swapper_WIN(sys.argv[1], sys.argv[2], sys.argv[3])
     base_path = "D:\\Downloads\\FinishedDownloads\\" + main_title + "\\" + main_title + " Season "
     # base_path = "D:\\Series\\" + main_title + "\\" + main_title + " Season "

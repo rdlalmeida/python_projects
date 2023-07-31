@@ -36,10 +36,10 @@ def cleanup_filename(files_path, file_extension, tokens_to_remove):
 
 
 if __name__ == "__main__":
-    main_title = "Agents of S.H.I.E.L.D"
-    season_numbers = [1]
+    main_title = "Silicon Valley"
+    season_numbers = [5]
     files_extension = ".mkv"
-    tokens_to_remove = ["1080p", "10bit", "BluRay", "AAC5", "1", "HEVC", "Vyndros"]
+    tokens_to_remove = ["720p", "AMZN", "WEB", "DL", "MkvCage"]
 
     for season_number in season_numbers:
         files_path = "D:\\Downloads\\FinishedDownloads\\" + main_title + "\\" + main_title + " Season 0" + str(season_number)
