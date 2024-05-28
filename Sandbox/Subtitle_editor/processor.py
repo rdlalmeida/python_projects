@@ -14,7 +14,7 @@ main_title = main_title + " [" + \
              "x"
 episode_token_regex = "S\\d\\dE\\d\\d"
 tokens_to_remove = "720p,WEB,DL,HEVC,x265,sharpysword"
-main_regex_spliter = r"[^ ._-]+"
+main_regex_spliter = r"[^ ._]+"
 # main_regex_spliter = r"[^ ._]+"
 alt_regex_spliter = r"[^_-]+"
 

@@ -96,7 +96,7 @@ def video_file_renamer(video_files_path, video_extension, main_title, episode_li
     # Filter for just the ones that we want to rename
     video_files = list(filter(lambda video_file: video_file[-4:] == video_extension, video_files))
 
-    # The inputed argument is a string, as it is defaulted. The next line converts it into a list
+    # The input argument is a string, as it is defaulted. The next line converts it into a list
     tokens_to_remove = tokens_to_remove.split(",")
 
     # Now go through each one of them
@@ -155,7 +155,7 @@ def video_file_renamer(video_files_path, video_extension, main_title, episode_li
         final_title = final_title + video_extension
 
         # With the final title all nice and clean, its now time to rename the files
-        #file_renamer_UNIX(video_files_path, video_files[i], final_title)
+        # file_renamer_UNIX(video_files_path, video_files[i], final_title)
         file_renamer_WIN(video_files_path, video_files[i], final_title)
 
 
@@ -219,10 +219,12 @@ if __name__ == "__main__":
     # if len(sys.argv) != 6:
     #     raise Exception("ERROR: Invalid number of arguments!")
 
-    main_title = "Silicon Valley"
-    season_number = 5
+    main_title = "Herman Enciclopédia"
+    season_number = 2
 
-    video_files_path = "D:\\Downloads\\FinishedDownloads\\" + main_title + "\\" + main_title + " Season "
+    # video_files_path = "D:\\Downloads\\FinishedDownloads\\" + main_title + "\\" + main_title + " Season "
+    video_files_path = "D:\\Series\\" + main_title + "\\" + main_title + " Season "
+    
     main_title = main_title + " ["
     if (str(season_number).__len__() == 1):
         video_files_path += "0" + str(season_number)
@@ -233,8 +235,11 @@ if __name__ == "__main__":
 
     video_extension = ".mkv"
     episode_list_format = "S\\d\\dE\\d\\d"
-    tokens_to_remove = "720p,WEB,DL,AMZN,MkvCage"
+    # episode_list_format = "\\d\\d\\d\\d-\\d\\d-\\d\\d"
     
+    tokens_to_remove = "720p,WEB,DL,AMZN,MkvCage"
+    # tokens_to_remove = "-"
+
     print("Processing " + main_title + " ...")
 
     video_file_renamer(video_files_path, video_extension, main_title, episode_list_format, tokens_to_remove)

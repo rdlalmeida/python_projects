@@ -105,17 +105,17 @@ if __name__ == "__main__":
     # if len(sys.argv) != 4:
     #     raise Exception("ERROR: Wrong number of input arguments. USAGE: title_swapper.py [PATH_TO_FOLDER] [ORIGIN EXTENSION] [DESTINATION EXTENSION]")
 
-    main_title = "Silicon Valley"
-    season_number = 2
+    main_title = "Vikings"
+    season_number = 6
     # title_swapper_WIN(sys.argv[1], sys.argv[2], sys.argv[3])
-    base_path = "D:\\Downloads\\FinishedDownloads\\" + main_title + "\\" + main_title + " Season "
-    # base_path = "D:\\Series\\" + main_title + "\\" + main_title + " Season "
+    # base_path = "D:\\Downloads\\FinishedDownloads\\" + main_title + "\\" + main_title + " Season "
+    base_path = "D:\\Series\\" + main_title + "\\" + main_title + " Season "
     if (str(season_number).__len__() == 1):
         base_path += "0" + str(season_number)
     else:
         base_path += str(season_number)
 
-    origin = ".mkv"
+    origin = ".mp4"
     destin = ".srt"
     # episode_list_format = "S\\d\\dE\\d\\d"
     episode_list_format = ""

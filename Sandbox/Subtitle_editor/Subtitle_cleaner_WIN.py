@@ -190,8 +190,8 @@ if __name__ == "__main__":
     # if len(sys.argv) != 3:
     #     raise Exception("ERROR: Wrong number of input arguments")
 
-    main_title = "Hannibal"
-    season_number = 1
+    main_title = "House of Cards"
+    season_number = 3
     # subtitle_path = "D:\\Downloads\\FinishedDownloads\\" + main_title + "\\" + main_title + " Season ";
     subtitle_path = "D:\\Series\\" + main_title + "\\" + main_title + " Season "
     if (str(season_number).__len__() == 1):
