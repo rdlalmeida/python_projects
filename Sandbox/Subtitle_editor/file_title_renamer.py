@@ -219,8 +219,8 @@ if __name__ == "__main__":
     # if len(sys.argv) != 6:
     #     raise Exception("ERROR: Invalid number of arguments!")
 
-    main_title = "Herman Enciclopédia"
-    season_number = 2
+    main_title = "The Punisher"
+    season_number = 1
 
     # video_files_path = "D:\\Downloads\\FinishedDownloads\\" + main_title + "\\" + main_title + " Season "
     video_files_path = "D:\\Series\\" + main_title + "\\" + main_title + " Season "
@@ -234,11 +234,12 @@ if __name__ == "__main__":
         main_title += str(season_number) + "x"
 
     video_extension = ".mkv"
-    episode_list_format = "S\\d\\dE\\d\\d"
+    # episode_list_format = "S\\d\\dE\\d\\d"
+    episode_list_format = "\\[\\d\\dx\\d\\d\\]"
     # episode_list_format = "\\d\\d\\d\\d-\\d\\d-\\d\\d"
     
-    tokens_to_remove = "720p,WEB,DL,AMZN,MkvCage"
-    # tokens_to_remove = "-"
+    # tokens_to_remove = "720p,WEB,DL,AMZN,MkvCage"
+    tokens_to_remove = "(1)"
 
     print("Processing " + main_title + " ...")
 

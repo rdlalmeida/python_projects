@@ -36,12 +36,20 @@ def cleanup_filename(files_path, file_extension, tokens_to_remove):
 
 
 if __name__ == "__main__":
-    main_title = "Silicon Valley"
-    season_numbers = [5]
+    main_title = "The Punisher"
+    season_numbers = [1]
     files_extension = ".mkv"
-    tokens_to_remove = ["720p", "AMZN", "WEB", "DL", "MkvCage"]
+    # tokens_to_remove = ["720p", "AMZN", "WEB", "DL", "MkvCage"]
+    tokens_to_remove = ["(1)"]
 
     for season_number in season_numbers:
-        files_path = "D:\\Downloads\\FinishedDownloads\\" + main_title + "\\" + main_title + " Season 0" + str(season_number)
+        # files_path = "D:\\Downloads\\FinishedDownloads\\" + main_title + "\\" + main_title + " Season 0" + str(season_number)
 
+        files_path = "D:\\Series\\" + main_title + "\\" + main_title + " Season "
+        if (str(season_number).__len__() == 1):
+            files_path += "0" + str(season_number)
+        else:
+            files_path += str(season_number)
+        
+        
         cleanup_filename(files_path=files_path, file_extension=files_extension, tokens_to_remove=tokens_to_remove)
