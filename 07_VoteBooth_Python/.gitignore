@@ -1,0 +1,12 @@
+# flow
+*.pkey
+imports
+.env
+keys/
+./keys/account01.pkey
+./keys/account02.pkey
+./keys/account03.pkey
+./keys/account04.pkey
+./keys/account05.pkey
+node_modules
+virtualenv
