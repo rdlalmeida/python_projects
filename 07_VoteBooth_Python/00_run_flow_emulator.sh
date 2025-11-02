@@ -11,7 +11,7 @@ then
 else
     while read -r LINE;
     do
-        if [[ $LINE == *'='* ]] && [[ $LINE != '#'* ]]; then
+        if [[ $LINE == *"="* ]] && [[ $LINE != "#"* ]]; then
             ENV_VAR="$(echo $LINE | envsubst)"
             eval "declare ${ENV_VAR}"
         fi

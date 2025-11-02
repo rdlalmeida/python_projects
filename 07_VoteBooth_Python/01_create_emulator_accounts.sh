@@ -136,7 +136,7 @@ do
     # NOTE: This process depends heavily in the 'jq' command, which allows the bash shell to manipulate JSON objects. If needed, install this command with "sudo apt-get install jq"
 
     # Create the JSON account element in a separate variable given the jq itself is not that good at replacing values in the expression..
-    JSON_ACCOUNT="{\"$ACCOUNT_NAME\": { \"address\": \"$ACCOUNT_ADDRESS\", \"key\": { \"type\": \"file\", \"location\": \"$ACCOUNT_FILENAME\" }}}"
+    JSON_ACCOUNT="{\"$ACCOUNT_NAME\": { \"address\": \"$ACCOUNT_ADDRESS\", \"key\": { \"type\": \"file\", \"location\": \"$ACCOUNT_FILENAME\", \"signatureAlgorithm\": \"ECDSA_P256\", \"hashAlgorithm\": \"SHA3_256\"}}}"
 
     FLOW_JSON=$(echo $FLOW_JSON | jq --argjson new_account "$JSON_ACCOUNT" '.accounts += $new_account')
 
