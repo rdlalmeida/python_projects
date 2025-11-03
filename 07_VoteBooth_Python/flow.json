@@ -3,25 +3,29 @@
         "BallotStandard": {
             "source": "cadence/contracts/BallotStandard.cdc",
             "aliases": {
-                "testing": "0000000000000007"
+                "testing": "0000000000000007",
+                "emulator": "f8d6e0586b0a20c7"
             }
         },
         "ElectionStandard": {
             "source": "cadence/contracts/ElectionStandard.cdc",
             "aliases": {
-                "testing": "0000000000000007"
+                "testing": "0000000000000007",
+                "emulator": "f8d6e0586b0a20c7"
             }
         },
         "VoteBooth": {
             "source": "cadence/contracts/VoteBooth.cdc",
             "aliases": {
-                "testing": "0000000000000007"
+                "testing": "0000000000000007",
+                "emulator": "f8d6e0586b0a20c7"
             }
         },
         "VoteBoxStandard": {
             "source": "cadence/contracts/VoteBoxStandard.cdc",
             "aliases": {
-                "testing": "0000000000000007"
+                "testing": "0000000000000007",
+                "emulator": "f8d6e0586b0a20c7"
             }
         }
     },
@@ -55,7 +59,7 @@
             "source": "mainnet://f919ee77447b7497.FlowFees",
             "hash": "d02bc8295c0434cf2b0a96a77d992f49f52e7865debda84e7a21e176e163a680",
             "aliases": {
-                "emulator": "e5a8b7f23e8b548f",
+                "emulator": "f8d6e0586b0a20c7",
                 "mainnet": "f919ee77447b7497",
                 "testnet": "912d5440f7e3769e"
             }
@@ -82,7 +86,7 @@
             "source": "mainnet://1654653399040a61.FlowToken",
             "hash": "cefb25fd19d9fc80ce02896267eb6157a6b0df7b1935caa8641421fe34c0e67a",
             "aliases": {
-                "emulator": "0ae53cb6e3f42a79",
+                "emulator": "f8d6e0586b0a20c7",
                 "mainnet": "1654653399040a61",
                 "testnet": "7e60df042a9c0868"
             }
@@ -91,7 +95,7 @@
             "source": "mainnet://f233dcee88fe0abe.FungibleToken",
             "hash": "23c1159cf99b2b039b6b868d782d57ae39b8d784045d81597f100a4782f0285b",
             "aliases": {
-                "emulator": "ee82856bf20e2aa6",
+                "emulator": "f8d6e0586b0a20c7",
                 "mainnet": "f233dcee88fe0abe",
                 "testnet": "9a0766d93b6608b7"
             }
@@ -100,7 +104,7 @@
             "source": "mainnet://f233dcee88fe0abe.FungibleTokenMetadataViews",
             "hash": "dff704a6e3da83997ed48bcd244aaa3eac0733156759a37c76a58ab08863016a",
             "aliases": {
-                "emulator": "ee82856bf20e2aa6",
+                "emulator": "f8d6e0586b0a20c7",
                 "mainnet": "f233dcee88fe0abe",
                 "testnet": "9a0766d93b6608b7"
             }

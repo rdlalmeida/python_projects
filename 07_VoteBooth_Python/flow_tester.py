@@ -1,7 +1,7 @@
 import flow_py_sdk
 import configparser
 import asyncio
-from common.account_config import Config
+from common.account_config import AccountConfig
 from pathlib import Path
 
 async def getLatestBlock():
@@ -22,9 +22,11 @@ if __name__ == "__main__":
     flow_json_location = "./flow.json"
     flow_json_path = Path(flow_json_location)
     
-    ctx = Config(flow_json_path)
+    ctx = AccountConfig()
 
     index = 0
+    print("Service Account (", ctx.service_account["name"], ") => ", ctx.service_account["address"])
+
     for account in ctx.accounts:
-        print("Account {index} = ", account["name"], " => ", account["address"])
+        print("Account ",index, " = ", account["name"], " => ", account["address"])
         index+=1

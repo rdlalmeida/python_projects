@@ -10,12 +10,16 @@ from flow_py_sdk.signer import InMemorySigner, HashAlgo, SignAlgo
 
 log = logging.getLogger(__name__)
 
-config = configparser.ConfigParser()
-config.read("./common/config.ini")
-network=config.get("network", "current")
+project_cwd = Path(os.getcwd())
+config_path = project_cwd.joinpath("common", "config.ini")
 
-class Config(object):
-    def __init__(self, flow_json_location: Path) -> None:
+config = configparser.ConfigParser()
+config.read(config_path)
+network=config.get("network", "current")
+flow_json_file=config.get("flow.json", "location")
+
+class AccountConfig(object):
+    def __init__(self) -> None:
         super().__init__()
 
         # Set the account access details at the start of the module
@@ -26,15 +30,17 @@ class Config(object):
 
         # noinspection PyBroadException
         try:
-            # Load the contents of this project's flow.json to a handy variable
-            json_file = open(flow_json_location)
+            # Load the contents of this project's flow.json to a handy variable. Grab the location of the file from the configuration file
+            json_file = open(Path(flow_json_file))
             data = json.load(json_file)
         except Exception:
             log.warning(
-                f"Cannot open {flow_json_location}, using default settings",
+                f"Cannot open {flow_json_file}, using default settings",
                 exc_info=True,
                 stack_info=True,
             )
+
+        index = 1
 
         for account in data["accounts"]:
             # Load the required parameters while testing the formatting of the JSON file
@@ -58,15 +64,39 @@ class Config(object):
             if (private_key[0:2] == "0x"):
                 # Skip the first 2 characters of the key string
                 private_key = private_key[2:]
+            
+            # Repeat the process for the account addresses as well
+            account_address = data["accounts"][account]["address"]
 
-            self.accounts.append(
-                {
+            if (account_address[0:2] == "0x"):
+                account_address = account_address[2:]
+
+            if (account == "emulator-account"):
+                # If the account in question is the emulator account, set this one apart from the rest as the service account
+                self.service_account = {
                     "name": account,
-                    "address": Address.from_hex(data["accounts"][account]["address"]),
+                    "address": Address.from_hex(account_address),
+                    "key_id": 0,
                     "signer": InMemorySigner(
                         hash_algo=hash_algorithm,
                         sign_algo=signature_algorithm,
                         private_key_hex=private_key
                     )
                 }
-            )
+            else: 
+                # Otherwise set it as another "normal" account
+                key_id = index
+                index += 1
+
+                self.accounts.append(
+                    {
+                        "name": account,
+                        "address": Address.from_hex(data["accounts"][account]["address"]),
+                        "key_id": key_id,
+                        "signer": InMemorySigner(
+                            hash_algo=hash_algorithm,
+                            sign_algo=signature_algorithm,
+                            private_key_hex=private_key
+                        )
+                    }
+                )

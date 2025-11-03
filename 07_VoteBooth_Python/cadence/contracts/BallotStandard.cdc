@@ -6,8 +6,8 @@
     @author: Ricardo Lopes Almeida - https://github.com/rdlalmeida
 **/
 
-import "Burner"
-import "Crypto"
+import Burner from 0xf8d6e0586b0a20c7
+import Crypto from 0xf8d6e0586b0a20c7
 
 access(all) contract BallotStandard {
 // CUSTOM ENTITLEMENTS

@@ -6,9 +6,9 @@
     # Author: Ricardo Lopes Almeida - https://github.com/rdlalmeida
 **/
 
-import "Burner"
-import "BallotStandard"
-import "ElectionStandard"
+import Burner from 0xf8d6e0586b0a20c7
+import BallotStandard from 0xf8d6e0586b0a20c7
+import ElectionStandard from 0xf8d6e0586b0a20c7
 
 access(all) contract VoteBoxStandard {
     // CUSTOM PATHS
