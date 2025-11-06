@@ -3,9 +3,9 @@
 
     @param voteboxAddress (Address?) The address of the account to retrieve a VoteBox from. If a nil is provided instead, this script loads the ElectionIndex from the deployerAddress from any of the imported contracts.
 **/
-import "VoteBooth"
-import "ElectionStandard"
-import "VoteBoxStandard"
+import ElectionStandard from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0xf8d6e0586b0a20c7
+import VoteBooth from 0xf8d6e0586b0a20c7
 
 access(all) fun main(voteboxAddress: Address?): [UInt64] {
     if (voteboxAddress == nil) {

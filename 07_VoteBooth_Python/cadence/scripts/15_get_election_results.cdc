@@ -4,8 +4,8 @@
     @param electionId (UInt64) The election identifier from which the election results are to be returned.
 **/
 
-import "ElectionStandard"
-import "VoteBooth"
+import ElectionStandard from 0xf8d6e0586b0a20c7
+import VoteBooth from 0xf8d6e0586b0a20c7
 
 access(all) fun main(electionId: UInt64): {String: Int} {
 

@@ -7,9 +7,9 @@
 
     @returns ({String: UInt}?) Returns the ballot totals associated to the Election, if it exists, in a format using the original variable name as key, and the current total as value. Otherwise, the process panics at the offending step.
 **/
-import "VoteBooth"
-import "ElectionStandard"
-import "VoteBoxStandard"
+import ElectionStandard from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0xf8d6e0586b0a20c7
+import VoteBooth from 0xf8d6e0586b0a20c7
 
 access(all) fun main(electionId: UInt64, voteboxAddress: Address?): {String: UInt}? {
     if (voteboxAddress == nil) {

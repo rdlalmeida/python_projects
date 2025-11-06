@@ -3,8 +3,8 @@
 
     @param _electionId (UInt64) The id of the Election to vote. Ballots are internally stored inside VoteBoxes using the associated electionId as key.
 **/
-import "BallotStandard"
-import "VoteBoxStandard"
+import BallotStandard from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0xf8d6e0586b0a20c7
 
 transaction(_electionId: UInt64) {
     let voteBoxRef: auth(BallotStandard.BallotAdmin) &VoteBoxStandard.VoteBox

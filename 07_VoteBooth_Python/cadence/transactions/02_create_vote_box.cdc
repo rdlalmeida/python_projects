@@ -4,9 +4,9 @@
     @param recipientAddress (Address) The address of the voter account where this VoteBox should be stored into.
 **/
 
-import "VoteBoxStandard"
-import "Burner"
-import "VoteBooth"
+import Burner from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0xf8d6e0586b0a20c7
+import VoteBooth from 0xf8d6e0586b0a20c7
 
 transaction() {
     prepare(signer: auth(SaveValue, LoadValue, Capabilities) &Account) {

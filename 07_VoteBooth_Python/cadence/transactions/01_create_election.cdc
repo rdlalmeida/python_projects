@@ -9,8 +9,8 @@
     @param _electionPublicPath (PublicPath) A public path-type element indicating where, in the contract deployer's account, the public interface of the Election resource should be published into.
 **/
 
-import "VoteBooth"
-import "ElectionStandard"
+import ElectionStandard from 0xf8d6e0586b0a20c7
+import VoteBooth from 0xf8d6e0586b0a20c7
 
 transaction(
     _electionName: String, 

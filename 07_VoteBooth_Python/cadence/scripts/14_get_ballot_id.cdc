@@ -6,7 +6,7 @@
 
     @returns UInt64? If a Ballot exists for the VoteBox and electionId provided, this script returns its ballotId. Otherwise it returns nil.
 **/
-import "VoteBoxStandard"
+import VoteBoxStandard from 0xf8d6e0586b0a20c7
 
 access(all) fun main(voteboxAddress: Address, electionId: UInt64): UInt64? {
     let voteboxRef: &{VoteBoxStandard.VoteBoxPublic} = getAccount(voteboxAddress).capabilities.borrow<&{VoteBoxStandard.VoteBoxPublic}>(VoteBoxStandard.voteBoxPublicPath) ??

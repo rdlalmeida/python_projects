@@ -7,7 +7,7 @@
     @return (String?) If a Ballot exists for the electionId provided, this script returns the Ballot option associated.
 **/
 
-import "VoteBoxStandard"
+import VoteBoxStandard from 0xf8d6e0586b0a20c7
 
 access(all) fun main(electionId: UInt64, voteboxAddress: Address): String? {
     let voteboxRef: &{VoteBoxStandard.VoteBoxPublic} = getAccount(voteboxAddress).capabilities.borrow<&{VoteBoxStandard.VoteBoxPublic}>(VoteBoxStandard.voteBoxPublicPath) ?? 

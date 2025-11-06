@@ -7,9 +7,9 @@
 
     @returns (UInt64) Returns the electionId of the Election, straight from the loaded resource, if it exists. Otherwise, the process panics at the offending step.
 **/
-import "VoteBooth"
-import "ElectionStandard"
-import "VoteBoxStandard"
+import ElectionStandard from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0xf8d6e0586b0a20c7
+import VoteBooth from 0xf8d6e0586b0a20c7
 
 access(all) fun main(electionId: UInt64, voteboxAddress: Address?): UInt64? {
     if (voteboxAddress == nil) {

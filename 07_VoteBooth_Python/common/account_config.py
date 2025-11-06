@@ -6,6 +6,7 @@ import os
 
 from flow_py_sdk.cadence import Address
 from flow_py_sdk.signer import InMemorySigner, HashAlgo, SignAlgo
+from flow_py_sdk import flow_client
 
 
 log = logging.getLogger(__name__)
@@ -100,3 +101,19 @@ class AccountConfig(object):
                         )
                     }
                 )
+
+class CreateFlowClient():
+    """
+    Helper to create a Flow network client that can be used to get account information and deploy contracts.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def getFlowClient(self, ctx: AccountConfig) -> flow_client:
+        new_client = flow_client(
+            host=ctx.access_node_host,
+            port=ctx.access_node_port
+        )
+
+        return new_client

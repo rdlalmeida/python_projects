@@ -5,8 +5,8 @@
     @param _newOption (String) The encrypted option to set the Ballot to
 **/
 
-import "BallotStandard"
-import "VoteBoxStandard"
+import BallotStandard from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0xf8d6e0586b0a20c7
 
 transaction(_electionId: UInt64, _newOption: String) {
     let voteBoxRef: auth(BallotStandard.BallotAdmin) &VoteBoxStandard.VoteBox

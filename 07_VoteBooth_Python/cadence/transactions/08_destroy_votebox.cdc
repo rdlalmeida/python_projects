@@ -1,8 +1,8 @@
 /**
     This transaction loads and destroys a VoteBox resource from the transaction signer's storage account.
 **/
-import "VoteBoxStandard"
-import "Burner"
+import Burner from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0xf8d6e0586b0a20c7
 
 transaction() {
     let voteBoxToDestroy: @VoteBoxStandard.VoteBox

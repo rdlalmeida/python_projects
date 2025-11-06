@@ -5,9 +5,9 @@
     @param _voterAddress (Address) The account address of the voter account where this Ballot is to be stored into.
 **/
 
-import "VoteBooth"
-import "ElectionStandard"
-import "VoteBoxStandard"
+import ElectionStandard from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0xf8d6e0586b0a20c7
+import VoteBooth from 0xf8d6e0586b0a20c7
 
 transaction(_linkedElectionId: UInt64, _voterAddress: Address) {
     let voteBoothPrinterAdminRef: &VoteBooth.VoteBoothPrinterAdmin

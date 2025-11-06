@@ -4,9 +4,9 @@
     @param electionId (UInt64) The election identifier for the Election whose tally is to be computed.
 **/
 
-import "ElectionStandard"
-import "VoteBooth"
-import "BallotStandard"
+import BallotStandard from 0xf8d6e0586b0a20c7
+import ElectionStandard from 0xf8d6e0586b0a20c7
+import VoteBooth from 0xf8d6e0586b0a20c7
 
 transaction(electionId: UInt64) {
     let electionIndexRef: &{VoteBooth.ElectionIndexPublic}

@@ -5,8 +5,8 @@
 
     @returns (StoragePath) Returns the storage path for the Election in question, if it exists, as defined in the ElectionIndex. Otherwise, the process panics at the offending step.
 **/
-import "VoteBooth"
-import "ElectionStandard"
+import ElectionStandard from 0xf8d6e0586b0a20c7
+import VoteBooth from 0xf8d6e0586b0a20c7
 
 access(all) fun main(electionId: UInt64): StoragePath {
     let deployerAccount: &Account = getAccount(VoteBooth.deployerAddress)

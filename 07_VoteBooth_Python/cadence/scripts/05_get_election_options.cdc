@@ -7,9 +7,9 @@
 
     @returns ({UInt8: String}?) Returns the set of options for the Election, if it exists. Otherwise, the process panics at the offending step.
 **/
-import "VoteBooth"
-import "ElectionStandard"
-import "VoteBoxStandard"
+import ElectionStandard from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0xf8d6e0586b0a20c7
+import VoteBooth from 0xf8d6e0586b0a20c7
 
 access(all) fun main(electionId: UInt64, voteboxAddress: Address?): {UInt8: String}? {
     if (voteboxAddress == nil) {

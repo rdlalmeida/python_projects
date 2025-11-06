@@ -3,9 +3,9 @@
 
     @param electionId (Uint64) The election identifier for the election to be destroyed
 **/
-import "VoteBooth"
-import "ElectionStandard"
-import "Burner"
+import Burner from 0xf8d6e0586b0a20c7
+import VoteBooth from 0xf8d6e0586b0a20c7
+import ElectionStandard from 0xf8d6e0586b0a20c7
 
 transaction(electionId: UInt64) {
     let electionIndexRef: &{VoteBooth.ElectionIndexPublic}

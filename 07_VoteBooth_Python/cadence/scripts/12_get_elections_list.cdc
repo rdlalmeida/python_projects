@@ -4,8 +4,8 @@
     @returns {UInt64:String} The script returns a dictionary in the {<electionId: UInt64>: <electionName>: String} format
 **/
 
-import "VoteBooth"
-import "ElectionStandard"
+import ElectionStandard from 0xf8d6e0586b0a20c7
+import VoteBooth from 0xf8d6e0586b0a20c7
 
 access(all) fun main(): {UInt64: String} {
     let deployerAccount: &Account = getAccount(VoteBooth.deployerAddress)

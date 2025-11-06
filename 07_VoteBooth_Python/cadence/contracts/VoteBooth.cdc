@@ -610,9 +610,9 @@ access(all) contract VoteBooth {
 
     // ---------------------------------------------------------------- VOTEBOOTH BEGIN ------------------------------------------------------------------------
     // VoteBooth Contract constructor
-    init(_verbose: Bool) {
+    init() {
         // Set the debug flag to true for now
-        self.verbose = _verbose
+        self.verbose = true
         
         self.voteBoothPrinterAdminStoragePath = /storage/VoteBoothPrinterAdmin
         self.electionIndexStoragePath = /storage/ElectionIndex

@@ -111,11 +111,11 @@ class DeployContract():
             # Submit transaction
             try:
                 await client.execute_transaction(transaction)
-                print("Contract ", contract_name, " successfully deployed to network at ", ctx.access_node_host, ":", ctx.access_node_port, " for account ", signer_address)
-            except Exception as ex:
+                print(f"Contract {contract_name} successfully deployed to network at {ctx.access_node_host}:{ctx.access_node_port} for account {signer_address}")
+            except Exception as deploy_ex:
                 # Test if this Exception was due to an existing contract with the same name
-                if (ex.args[0].__contains__("cannot overwrite existing contract")):
-                    print("Contract ", contract_name, " already exists in ", ctx.service_account["address"], " account.")
+                if (deploy_ex.args[0].__contains__("cannot overwrite existing contract")):
+                    print(f"Contract {contract_name} already exists in {ctx.service_account["address"]} account.")
                     # I need to update the proposer before attempting another transaction
                     latest_block = await client.get_latest_block()
                     proposer = await client.get_account_at_latest_block(
@@ -143,8 +143,19 @@ class DeployContract():
                         )
                     )
                     print("Trying an Update instead...")
-                    await client.execute_transaction(transaction)
-                    print("Done!")
+                    try:
+                        await client.execute_transaction(transaction)
+                        print(f"Contract {contract_name} updated successfully to network at {ctx.access_node_host}:{ctx.access_node_port} for account {ctx.service_account["address"]}")
+                    except Exception as update_ex:
+                        print("Unable to update contract '{contract_name}' due to: ")
+                        print(update_ex)
+                        exit(-1 )
+
+                else:
+                    # The Exception was raised because of something else
+                    print(f"Unable to deploy contract '{contract_name}' due to:")
+                    print(deploy_ex)
+                    exit(-1)
 
 
 class DeleteContract():
@@ -187,11 +198,19 @@ class DeleteContract():
                     signer,
                 )
             )
-
-            await client.execute_transaction(transaction)
+            
+            try:
+                await client.execute_transaction(transaction)
+            except Exception as e:
+                print(f"Unable to delete contract '{contract_name}' due to:")
+                print(e)
+                exit(-1)
 
 
 async def deployProjectDependencies():
+    """
+        Function to deploy (or update) all contract dependencies for the current project. The project dependencies are defined in the project_dependencies dictionary. The boolean value in each entry determines if the contract is to be deployed in the current run or not.
+    """
     # Run through the set of contract dependencies and construct the project_dependencies_paths and project_dependencies_source dictionary
     project_dependencies_paths = {}
     project_dependencies_source = {}
@@ -204,43 +223,148 @@ async def deployProjectDependencies():
 
             current_dependency = DeployContract(contract_name=dependency, contract_source=project_dependencies_source[dependency])
 
-            print("Deploying '", dependency, "' dependency contract...")
-            asyncio.run(current_dependency.run(ctx=current_account_config))
+            print(f"Deploying '{dependency}' dependency contract...")
+            await current_dependency.run(ctx=current_account_config)
             print("Done!")
+
 
 async def deployProjectContracts():
-    project_contract_paths = {}
-    project_contract_source = {}
-
-    for contract in project_files:
-        if(project_files[contract]):
-            project_contract_paths[contract] = Path(config.get("project", contract))
-            project_contract_source[contract] = open(project_contract_paths[contract])
-
-            current_contract = DeployContract(contract_name=contract, contract_source=project_contract_source[contract])
-
-            print("Deploying '", contract, "' project contract...")
-            asyncio.run(current_contract.run(ctx=current_account_config))
-            print("Done!")
-
-
-if __name__ == "__main__":
-    print("MAIN: ")
-    contract_name="BallotStandard"
-    contract_path = Path(config.get("project", contract_name))
+    """
+        Function to deploy (or update) all project, i.e., non-dependency, contracts. The project contracts are defined in the project_files dictionary. The boolean value in each entry determines if the contract is to be deployed in the current run or not.
+        NOTE: The project contracts have a rigid dependency structure that requires these to be deployed in the following order:
+            BallotStandard -> ElectionStandard -> VoteBoxStandard -> VoteBooth
+        As such, in order to guarantee this, I cannot deploy them in a for loop or something of the sort and I need to force the deployment order from above.
+    """
+    # 1. Deploy the base contract BallotStandard
+    contract_path = Path(config.get("project", "BallotStandard"))
     contract_source = open(contract_path)
-    deploy_contract = DeployContract(contract_name=contract_name, contract_source=contract_source)
-    delete_contract = DeleteContract(contract_name=contract_name)
 
-    print("Deleting ", contract_name, " contract...")
-    asyncio.run(delete_contract.run(ctx=current_account_config))
-    print("Done!")
+    ballot_standard_contract = DeployContract(contract_name="BallotStandard", contract_source=contract_source)
 
-    # print("Deploying ", contract_name, " contract...")
-    # try:
-    #     asyncio.run(deploy_contract.run(ctx=current_account_config))
-    # except Exception as ex:
-    #     print("WARNING: Contract '", contract_name, "' is already deployed into account ", current_account_config.service_account["address"])
-    #     print(ex)
-    # print("Done!")
-    # asyncio.run(deployProjectDependencies())
+    print("1. Deploying the BallotStandard project contract...")
+    try:
+        await ballot_standard_contract.run(ctx=current_account_config)
+        print("BallotStandard contract deployed successfully!")
+    except Exception as e:
+        print("Unable to deploy the BallotStandard contract: ")
+        print(e)
+        exit(-1)
+
+    # 2. Deploy the base contract ElectionStandard
+    contract_path = Path(config.get("project", "ElectionStandard"))
+    contract_source = open(contract_path)
+
+    election_standard_contract = DeployContract(contract_name="ElectionStandard", contract_source=contract_source)
+
+    print("2. Deploying the ElectionStandard project contract...")
+    try:
+        await election_standard_contract.run(ctx=current_account_config)
+        print("ElectionStandard contract deployed successfully!")
+    except Exception as e:
+        print("Unable to deploy the ElectionStandard contract: ")
+        print(e)
+        exit(-1)
+
+    # 3. Deploy the base contract VoteBoxStandard
+    contract_path = Path(config.get("project", "VoteBoxStandard"))
+    contract_source = open(contract_path)
+
+    votebox_standard_contract = DeployContract(contract_name="VoteBoxStandard", contract_source=contract_source)
+
+    print("3. Deploying the VoteBoxStandard project contract...")
+    try:
+        await votebox_standard_contract.run(ctx=current_account_config)
+        print("VoteBoxStandard contract deployed successfully!")
+    except Exception as e:
+        print("Unable to deploy the VoteBoxStandard contract: ")
+        print(e)
+        exit(-1)
+
+    # 4. Deploy the base contract VoteBooth. This one needs an Bool argument provided to it as well
+    contract_path = Path(config.get("project", "VoteBooth"))
+    contract_source = open(contract_path)
+
+    votebooth_contract = DeployContract(contract_name="VoteBooth", contract_source=contract_source)
+
+    print("4. Deploying the VoteBooth project contract...")
+    try:
+        await votebooth_contract.run(ctx=current_account_config)
+        print("VoteBooth contract deployed successfully!")
+    except Exception as e:
+        print("Unable to deploy the VoteBooth contract: ")
+        print(e)
+        exit(-1)
+
+
+async def deployProject():
+    """
+    This function aggregates the DeployContract and UpdateContract (which I already combined into one) but to deploy all dependencies and all project contracts respective the defined order to produce a network environment ready to be used.
+    """
+    print(f"Deploying all project dependencies for network {current_account_config.access_node_host}:{current_account_config.access_node_port}...")
+    await deployProjectDependencies()
+    print("All project dependencies were deployed successfully!")
+
+    print(f"Deploying all project contracts for network {current_account_config.access_node_host}:{current_account_config.access_node_port}...")
+    await deployProjectContracts()
+    print("All project contracts were deployed successfully!")
+
+
+async def deleteProjectContracts():
+    """
+        Function to deploy all project contracts as defined in the project_files dictionary.
+    """
+    for project_contract in project_files:
+        contract_to_delete = DeleteContract(contract_name=project_contract)
+
+        print(f"Deleting '{project_contract}' from network {current_account_config.access_node_host}:{current_account_config.access_node_port} for account {current_account_config.service_account["address"]}")
+        await contract_to_delete.run(ctx=current_account_config)
+        print(f"Contract '{project_contract}' deleted successfully!")
+
+
+async def deleteProjectDependencies():
+    """
+    Function to deploy all project dependencies as defined in the project_dependencies dictionary
+    """
+    for project_dependency in project_dependencies:
+        dependency_to_delete = DeleteContract(contract_name=project_dependencies)
+
+        print(f"Deleting '{project_dependency}' from network {current_account_config.access_node_host}:{current_account_config.access_node_port} for account {current_account_config.service_account["address"]}")
+
+        await dependency_to_delete.run(ctx=current_account_config)
+        print(f"Dependency '{project_dependency}' deleted successfully!")
+
+
+async def resetNetwork():
+    """
+    This function aggregates the 'deleteProjectContracts' and 'deleteProjectDependencies' function to clear the configured network from all contracts and respective dependencies
+    """
+    print(f"Deleting all project contracts from network {current_account_config.access_node_host}:{current_account_config.access_node_port}...")
+    await deleteProjectContracts()
+    print("All project contracts deleted successfully!")
+
+    # print(f"Deleting all project dependencies from network {current_account_config.access_node_host}:{current_account_config.access_node_port}...")
+    # await deleteProjectDependencies()
+    # print("All project dependencies deleted successfully!")
+
+
+def main():
+    # Grab argv 1 since 0 is the file's path
+    option = sys.argv[1].lower().strip()
+
+    if (option == "deploy"):
+        print(f"Setting up network...")
+        asyncio.run(deployProject())
+        print(f"Project successfully set up!")
+    elif (option == "clear"):
+        print("Clearing up the network...")
+        asyncio.run(resetNetwork())
+        print(f"Project network cleared successfully!")
+    else:
+        if (option == ""):
+            print(f"Missing option", end="")
+        else:
+            print(f"Unknown option: {option}", end="")
+        
+        print("\nUsage: \n$python 01_contract_management.py <deploy|clear>")
+
+main()
