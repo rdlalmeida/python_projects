@@ -3,13 +3,16 @@ import logging
 from pathlib import Path
 import configparser
 import os
+from common import utils
 
 from flow_py_sdk.cadence import Address
 from flow_py_sdk.signer import InMemorySigner, HashAlgo, SignAlgo
 from flow_py_sdk import flow_client
 
+import aiohttp
 
 log = logging.getLogger(__name__)
+utils.configureLogging()
 
 project_cwd = Path(os.getcwd())
 config_path = project_cwd.joinpath("common", "config.ini")
@@ -102,18 +105,95 @@ class AccountConfig(object):
                     }
                 )
 
-class CreateFlowClient():
-    """
-    Helper to create a Flow network client that can be used to get account information and deploy contracts.
-    """
 
-    def __init__(self) -> None:
-        super().__init__()
-
-    def getFlowClient(self, ctx: AccountConfig) -> flow_client:
+    def getFlowClient() -> flow_client:
         new_client = flow_client(
-            host=ctx.access_node_host,
-            port=ctx.access_node_port
+            host=AccountConfig.access_node_host,
+            port=AccountConfig.access_node_port
         )
 
         return new_client
+    
+def getFlowClient(ctx:AccountConfig) -> flow_client:
+    new_client = flow_client(
+        host=ctx.access_node_host, port=ctx.access_node_port
+    )
+
+    return new_client
+
+
+class GetServiceAccountDetails():
+    """
+    Helper to characterise the service account configured. This function logs out the account address, the account balance, deployed contracts, and configured keys.
+    """
+    def __init__(self) -> None:
+        super().__init__()
+        self.ctx = AccountConfig()
+
+    async def run(self):
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port 
+        ) as client:
+
+            service_account = await client.get_account_at_latest_block(
+                address=self.ctx.service_account["address"].hex()
+            )
+
+            log.info(f"Service account address: {service_account.address.hex()}")
+            log.info(f"Service account balance: {service_account.balance} FLOW")
+            log.info(f"Service account deployed has {len(service_account.contracts)} contracts deployed: ")
+            
+            index = 0
+
+            for contract in service_account.contracts:
+                log.info(f"Contract ${index}: {contract}")
+                index += 1
+            
+            log.info(f"Service Account has {len(service_account.keys)} public keys configured: ")
+            index = 0
+            for key in service_account.keys:
+                log.info(f"Public Key #{index}: {key.hex()}")
+                index += 1
+
+
+class GetAccountDetails():
+    """
+    Helper characterise an account whose address is provided as input argument. Like the previous function, this one also prints out the account balance, account address, deployed contracts, and configured keys.
+    """
+    def __init__(self) -> None:
+        super().__init__()
+        self.ctx: AccountConfig = AccountConfig()
+
+        self.user_accounts: list[str] = []
+
+        for account in self.ctx.accounts:
+            self.user_accounts.append(account["address"].hex())
+
+    async def run(self, account_address: str) -> None:
+        if (not self.user_accounts.__contains__(account_address.hex())):
+            raise Exception(f"ERROR: Address provided : {account_address} is not configured in this project!")
+
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            
+            # Get the account
+            current_account = await client.get_account_at_latest_block(
+                address=account_address.hex()
+            )
+
+            log.info(f"Account {account_address} address: {current_account.address.hex()}")
+            log.info(f"Account {account_address} balance: {current_account.balance} FLOW")
+            log.info(f"Account {account_address} deployed has {len(current_account.contracts)} contracts deployed!")
+            index = 0
+
+            for contract in current_account.contracts:
+                log.info(f"Contract ${index}: {contract}")
+                index += 1
+
+            log.info(f"Account {account_address} has {len(current_account.keys)} public keys configured: ")
+
+            index = 0
+            for key in current_account.keys:
+                log.info(f"Public Key #{index}: {key.hex()}")
+                index+=1
