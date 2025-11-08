@@ -8,7 +8,7 @@
 **/
 import VoteBoxStandard from 0xf8d6e0586b0a20c7
 
-access(all) fun main(voteboxAddress: Address, electionId: UInt64): UInt64? {
+access(all) fun main(electionId: UInt64, voteboxAddress: Address): UInt64? {
     let voteboxRef: &{VoteBoxStandard.VoteBoxPublic} = getAccount(voteboxAddress).capabilities.borrow<&{VoteBoxStandard.VoteBoxPublic}>(VoteBoxStandard.voteBoxPublicPath) ??
     panic(
         "Unable to get a valid &{VoteBoxStandard.VoteBoxPublic} at "

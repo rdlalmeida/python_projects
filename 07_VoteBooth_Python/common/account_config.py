@@ -9,7 +9,6 @@ from flow_py_sdk.cadence import Address
 from flow_py_sdk.signer import InMemorySigner, HashAlgo, SignAlgo
 from flow_py_sdk import flow_client
 
-import aiohttp
 
 log = logging.getLogger(__name__)
 utils.configureLogging()

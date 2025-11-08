@@ -6,10 +6,10 @@
     account03: 0xe03daebed8ca0615
 */
 
-import "FlowToken"
-import "FungibleToken"
+import FlowToken from 0xf8d6e0586b0a20c7
+import FungibleToken from 0xf8d6e0586b0a20c7
 
-transaction() {
+transaction(amount_to_transfer: UFix64) {
     let vaultReference: auth(FungibleToken.Withdraw) &FlowToken.Vault
     let receiverRef: [&{FungibleToken.Receiver}]
     let from: Address
@@ -24,7 +24,7 @@ transaction() {
             "Unable to get a reference to the vault for account ".concat(signer.address.toString())
         )
 
-        self.amount = 10.0
+        self.amount = amount_to_transfer
         self.receiverRef = []
         self.to = [0x179b6b1cb6755e31, 0xf3fcd2c1a78f5eee, 0xe03daebed8ca0615]
 

@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 utils.configureLogging()
 
 class ScriptError(Exception):
-    """Custom Exception to be raise when a Flow script was not properly executed.
+    """Custom Exception to be raised when a Flow script was not properly executed.
     Attributes:
         script_name: The name of the script that did not executed.
     """
@@ -46,6 +46,10 @@ class RunScript():
     def getScript(self, script_name: str, script_arguments: list) -> Script:
         """
         Simple function to abstract the logic of reading the config file, grab the script file, read it, and building the Script object
+        @param script_name: str - The name of the script to be retrieved and configured.
+        @param script_arguments: list - A list with the arguments to set in the script object to execute.
+
+        @return Script If successful, this function returns a configured Script object ready to be executed.
         """
         try:
             script_path = pathlib.Path(self.config.get(section="scripts", option=script_name))
@@ -68,6 +72,8 @@ class RunScript():
     async def testContractConsistency(self) -> bool:
         """
         Function to abstract the execution of the '01_test_contract_consistency.cdc' Cadence script
+
+        @return bool This function returns True if all the deployed contracts for this project are consistent, False otherwise.
         """
         name = "01_test_contract_consistency"
 
@@ -244,4 +250,158 @@ class RunScript():
         
         return cadence.Capability(script_result.value)
     
-    # TODO: Finish the rest of the scripts and transactions
+
+    async def getElectionTotals(self, election_id: int, votebox_address: str = None) -> dict[str: int]:
+        """Function to retrieve the ballots totals for the election identified by the id provided as argument.
+
+        @param election_id: int - The election id for the election whose ballot totals are to be retrieved.
+        @param votebox_address: str? - If provided, the script retrieved the ballot totals from the votebox resource. If None is provided, this goes to the votebooth contract.
+
+        @return dict[str: int] This function returns a dictionary in the format {"totalBallotsMinted": <value>, "totalBallotsSubmitted": <value>} regarding the election resource identified by the election id provided.
+        """
+        name = "09_get_election_totals"
+        arguments = [cadence.UInt64(election_id)]
+
+        if (votebox_address):
+            arguments.append(cadence.Address(votebox_address))
+
+        script_object = self.getScript(script_name=name, script_arguments=arguments)
+        script_result = await self.client.execute_script(script=script_object)
+
+        if (not script_result):
+            raise ScriptError(script_name=name)
+        
+        return dict[str: int](script_result)
+
+
+    async def getElectionStoragePath(self, election_id: int) -> cadence.StoragePathKind:
+        """Function to retrieve the storage path for the election identified by the id provided as argument
+
+        @param election_id: int - The election id for the election whose storage path is to be retrieved.
+
+        @return cadence.StoragePathKind I'm hoping this "StoragePathKind" from the cadence module is functionally similar to the StoragePath that I want to retrieve.
+        """
+        name = "10_get_election_storage_path"
+        arguments = [cadence.UInt64(election_id)]
+
+        script_object = self.getScript(script_name=name, script_arguments=arguments)
+        script_result = await self.client.execute_script(script=script_object)
+
+        if (not script_result):
+            raise ScriptError(script_name=name)
+        
+        return cadence.StoragePathKind(script_result.value)
+    
+
+    async def getElectionPublicPath(self, election_id: int) -> cadence.PublicPathKind:
+        """Function to retrieve the public path for the election identified by the id provided as argument.
+
+        @param election_id: int - The election id for the election whose public path is to be retrieved.
+
+        @return cadence.PublicPathKind Hopefully, the variable type provided is somehow compatible with the PublicPath that I wish to return from this function.
+        """
+        name = "11_get_election_public_path"
+        arguments = [cadence.UInt64(election_id)]
+
+        script_object = self.getScript(script_name=name, script_arguments=arguments)
+        script_result = await self.client.execute_script(script=script_object)
+
+        if (not script_result):
+            raise ScriptError(script_name=name)
+        
+        return cadence.PublicPathKind(script_result.value)
+
+
+    async def getElectionsList(self) -> dict[int: str]:
+        """Function to retrieve the list of active elections directly from the election index resource, therefore this function does not need any additional inputs to execute.
+
+        @return dict[int: str] This function returns the list of currently active elections in a dictionary with the format {<electionId>: <electionName>}
+        """
+        name = "12_get_elections_list"
+        arguments = []
+
+        script_object = self.getScript(script_name=name, script_arguments=arguments)
+        script_result = await self.client.execute_script(script=script_object)
+
+        if (not script_result):
+            raise ScriptError(script_name=name)
+        
+        return dict[int: str](script_result.value)
+
+    
+    async def getBallotOption(self, election_id: int, votebox_address: str) -> str:
+        """Function to retrieve the option string currently set in the votebox in the address provided as input, and submitted under the election id also provided as input.
+
+        @param election_id: int - The election id for the election whose ballot option is to be retrieved.
+        @param votebox_address: str - The address for the account from where the votebox resource reference is to be retrieved.
+
+        @return str - If there's a ballot submitted for the election id provided, in the votebox for the address provided as well, this function returns the option set in it. Otherwise returns None. 
+        """
+        name = "13_get_ballot_option"
+        arguments = [cadence.UInt64(election_id), cadence.Address(votebox_address)]
+
+        script_object = self.getScript(script_name=name, script_arguments=arguments)
+        script_result = await self.client.execute_script(script=script_object)
+
+        if (not script_result):
+            raise ScriptError(script_name=name)
+        
+        return str(script_result.value)
+
+    
+    async def getBallotId(self, election_id: int, votebox_address: str) -> int:
+        """Function to retrieve the ballot identifier for a ballot set in the votebox inside the address provided, and under the election id provided as well.
+
+        @param election_id: int - The election id for the election whose ballot id is to be retrieved.
+        @param votebox_address: str - The account address from where the votebox resource reference is to be retrieved
+
+        @return int This function returns the ballot identifiers number for the Ballot stored under the election id inside the votebox resource retrieved from the input argument.
+        """
+        name = "14_get_ballot_id"
+        arguments = [cadence.UInt64(election_id), cadence.Address(votebox_address)]
+
+        script_object = self.getScript(script_name=name, script_arguments=arguments)
+        script_result = await self.client.execute_script(script=script_object)
+
+        if (not script_result):
+            raise ScriptError(script_name=name)
+        
+        return int(script_result.value)
+    
+
+    async def getElectionResults(self, election_id: int) -> dict[str: int]:
+        """Function to retrieve the results for the election identified by the election id provided as input in this function.
+
+        @param election_id: int - The election id for the election whose results are to be retrieved.
+
+        @return dict[str: int] If the election identified by the id provided as argument is finalised, this function returns its results in the form of a dictionary, using the format {<electionBallotOptions>: <votesCounted>}. If the election is still ongoing, this function returns None.
+        """
+        name = "15_get_election_results"
+        arguments = [cadence.UInt64(election_id)]
+
+        script_object = self.getScript(script_name=name, script_arguments=arguments)
+        script_result = await self.client.execute_script(script=script_object)
+
+        if (not script_result):
+            raise ScriptError(script_name=name)
+        
+        return dict[str: int](script_result.value)
+
+    
+    async def isElectionFinished(self, election_id: int) -> bool:
+        """Function to retrieve the running state for the election resource identified by the election id provided as argument.
+
+        @param election_id: int - The election id for the election whose status is to be retrieved.
+
+        @return bool This function returns True if the election has been tallied already, False otherwise.        
+        """
+        name = "16_is_election_finished"
+        arguments = [cadence.UInt64(election_id)]
+
+        script_object = self.getScript(script_name=name, script_arguments=arguments)
+        script_result = await self.client.execute_script(script=script_object)
+
+        if (not script_result):
+            raise ScriptError(script_name=name)
+        
+        return bool(script_result.value)
