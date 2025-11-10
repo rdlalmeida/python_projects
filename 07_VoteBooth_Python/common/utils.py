@@ -8,6 +8,9 @@ config = configparser.ConfigParser()
 config.read(config_path)
 
 def configureLogging() -> None: 
+    """
+    Configurator for the logging module
+    """
     log_level = config.get("logging", "level")
     log_date = config.get("logging", "datefmt")
     log_format = config.get("logging", "format")

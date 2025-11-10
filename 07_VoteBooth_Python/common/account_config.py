@@ -113,6 +113,23 @@ class AccountConfig(object):
 
         return new_client
     
+
+    def getAccounts(self) -> dict[str:str]:
+        """
+        Simple function to return a digested version of the accounts configured for the current active network
+
+        @return dict[str:str] This function returns a simple dictionary in the format {<accountName>: <accountAddress>}
+        """
+
+        network_accounts = {}
+
+        network_accounts["emulator-account"] = self.service_account["address"].hex()
+
+        for account in self.accounts:
+            network_accounts[account["name"]] = account["address"].hex()
+        
+        return network_accounts
+    
 def getFlowClient(ctx:AccountConfig) -> flow_client:
     new_client = flow_client(
         host=ctx.access_node_host, port=ctx.access_node_port

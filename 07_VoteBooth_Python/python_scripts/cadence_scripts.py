@@ -30,7 +30,7 @@ class ScriptError(Exception):
 
         super().__init__(self.message)
 
-class RunScript():
+class ScriptRunner():
     def __init__(self) -> None:
         super().__init__()
         self.ctx = account_config.AccountConfig()

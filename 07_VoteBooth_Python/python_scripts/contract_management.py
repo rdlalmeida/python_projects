@@ -3,7 +3,7 @@ from flow_py_sdk import(
     cadence,
     Tx,
     TransactionTemplates,
-    ProposalKey,
+    ProposalKey
 )
 
 import configparser
@@ -41,30 +41,31 @@ project_files = {
 project_dependencies = {
     "Crypto": True,
     "Burner": True,
-    "MetadataViews": False,
-    "NonFungibleToken": False,
-    "ViewResolver": False,
-    "FlowToken": False,
-    "FlowServiceAccount": False,
-    "FlowStorageFees": False,
+    "ViewResolver": True,
+    "FungibleToken": True,
+    "NonFungibleToken": True,
+    "MetadataViews": True,
+    "FungibleTokenMetadataViews": True,
+    "FlowToken": True,
     "RandomBeaconHistory": False,
-    "FungibleToken": False,
-    "FungibleTokenMetadataViews": False,
     "FlowExecutionParameters": False,
-    "FlowFees": False
+    "FlowStorageFees": False,
+    "FlowFees": False,
+    "FlowServiceAccount": False,
 }
 
 def test_stuff():
     log.info("Testing...")
 
 class DeployContract():
-    def __init__(self, contract_name: str, contract_source: str) -> None:
+    def __init__(self, contract_name: str, contract_source: str, update: bool) -> None:
         super().__init__()
         
         # Allow only contract in the project files or dependencies to proceed
         if (project_files.__contains__(contract_name) or project_dependencies.__contains__(contract_name)):
             self.contract_name = contract_name
             self.contract_source = contract_source
+            self.update = update
         else:
             raise Exception("ERROR: Contract ", contract_name, " not found in this project!")
 
@@ -124,41 +125,45 @@ class DeployContract():
                 # Test if this Exception was due to an existing contract with the same name
                 if (deploy_ex.args[0].__contains__("cannot overwrite existing contract")):
                     log.warning(f"Contract {contract_name} already exists in {ctx.service_account["address"]} account.")
-                    # I need to update the proposer before attempting another transaction
-                    latest_block = await client.get_latest_block()
-                    proposer = await client.get_account_at_latest_block(
-                        address=signer_address.bytes
-                    )
-
-                    transaction = (
-                        Tx(
-                            code=TransactionTemplates.updateAccountContractTemplate,
-                            reference_block_id=latest_block.id,
-                            payer=signer_address,
-                            proposal_key=ProposalKey(
-                                key_address=signer_address,
-                                key_id=signer_key_id,
-                                key_sequence_number=proposer.keys[0].sequence_number
-                            ),
+                    # Check if the contract is set for update. Proceed if that is the case
+                    if (self.update):
+                        # I need to update the proposer before attempting another transaction
+                        latest_block = await client.get_latest_block()
+                        proposer = await client.get_account_at_latest_block(
+                            address=signer_address.bytes
                         )
-                        .add_arguments(contract_name)
-                        .add_arguments(contract_code)
-                        .add_authorizers(signer_address)
-                        .with_envelope_signature(
-                            signer_address,
-                            signer_key_id,
-                            signer
-                        )
-                    )
-                    log.info("Trying an Update instead...")
-                    try:
-                        await client.execute_transaction(transaction)
-                        log.info(f"Contract {contract_name} updated successfully to network at {ctx.access_node_host}:{ctx.access_node_port} for account {ctx.service_account["address"]}")
-                    except Exception as update_ex:
-                        log.error("Unable to update contract '{contract_name}' due to: ")
-                        log.error(update_ex)
-                        exit(-1 )
 
+                        transaction = (
+                            Tx(
+                                code=TransactionTemplates.updateAccountContractTemplate,
+                                reference_block_id=latest_block.id,
+                                payer=signer_address,
+                                proposal_key=ProposalKey(
+                                    key_address=signer_address,
+                                    key_id=signer_key_id,
+                                    key_sequence_number=proposer.keys[0].sequence_number
+                                ),
+                            )
+                            .add_arguments(contract_name)
+                            .add_arguments(contract_code)
+                            .add_authorizers(signer_address)
+                            .with_envelope_signature(
+                                signer_address,
+                                signer_key_id,
+                                signer
+                            )
+                        )
+                        log.info("Trying an Update instead...")
+                        try:
+                            await client.execute_transaction(transaction)
+                            log.info(f"Contract {contract_name} updated successfully to network at {ctx.access_node_host}:{ctx.access_node_port} for account {ctx.service_account["address"]}")
+                        except Exception as update_ex:
+                            log.error(f"Unable to update contract '{contract_name}' due to: ")
+                            log.error(update_ex)
+                            exit(-1 )
+                    else:
+                        # The contract already exists in the network and it is not supposed to be updated
+                        log.info("Nothing else to do.")
                 else:
                     # The Exception was raised because of something else
                     log.error(f"Unable to deploy contract '{contract_name}' due to:")
@@ -224,12 +229,14 @@ async def deployProjectDependencies():
     project_dependencies_source = {}
 
     for dependency in project_dependencies:
-        # If the contract flag is set to True, proceed with the rest
+        # If the contract flag is set to True, proceed with the rest. All dependencies can be processed through the same process, except for the FlowToken
+        # contract. This one requires constructor arguments to be provided and that requires a special transaction.
         if (project_dependencies[dependency]): 
             project_dependencies_paths[dependency] = Path(config.get("dependencies", dependency))
             project_dependencies_source[dependency] = open(project_dependencies_paths[dependency])
 
-            current_dependency = DeployContract(contract_name=dependency, contract_source=project_dependencies_source[dependency])
+            # If the dependency already exists, don't do anything else. Those are really tricky to update
+            current_dependency = DeployContract(contract_name=dependency, contract_source=project_dependencies_source[dependency], update=False)
 
             log.info(f"Deploying '{dependency}' dependency contract...")
             await current_dependency.run(ctx=current_account_config)
@@ -247,7 +254,7 @@ async def deployProjectContracts():
     contract_path = Path(config.get("project", "BallotStandard"))
     contract_source = open(contract_path)
 
-    ballot_standard_contract = DeployContract(contract_name="BallotStandard", contract_source=contract_source)
+    ballot_standard_contract = DeployContract(contract_name="BallotStandard", contract_source=contract_source, update=True)
 
     log.info("1. Deploying the BallotStandard project contract...")
     try:
@@ -262,7 +269,7 @@ async def deployProjectContracts():
     contract_path = Path(config.get("project", "ElectionStandard"))
     contract_source = open(contract_path)
 
-    election_standard_contract = DeployContract(contract_name="ElectionStandard", contract_source=contract_source)
+    election_standard_contract = DeployContract(contract_name="ElectionStandard", contract_source=contract_source, update=True)
 
     log.info("2. Deploying the ElectionStandard project contract...")
     try:
@@ -277,7 +284,7 @@ async def deployProjectContracts():
     contract_path = Path(config.get("project", "VoteBoxStandard"))
     contract_source = open(contract_path)
 
-    votebox_standard_contract = DeployContract(contract_name="VoteBoxStandard", contract_source=contract_source)
+    votebox_standard_contract = DeployContract(contract_name="VoteBoxStandard", contract_source=contract_source, update=True)
 
     log.info("3. Deploying the VoteBoxStandard project contract...")
     try:
@@ -292,7 +299,7 @@ async def deployProjectContracts():
     contract_path = Path(config.get("project", "VoteBooth"))
     contract_source = open(contract_path)
 
-    votebooth_contract = DeployContract(contract_name="VoteBooth", contract_source=contract_source)
+    votebooth_contract = DeployContract(contract_name="VoteBooth", contract_source=contract_source, update=True)
 
     log.info("4. Deploying the VoteBooth project contract...")
     try:
@@ -308,10 +315,6 @@ async def deployProject():
     """
     This function aggregates the DeployContract and UpdateContract (which I already combined into one) but to deploy all dependencies and all project contracts respective the defined order to produce a network environment ready to be used.
     """
-    log.info(f"Deploying all project dependencies for network {current_account_config.access_node_host}:{current_account_config.access_node_port}...")
-    await deployProjectDependencies()
-    log.info("All project dependencies were deployed successfully!")
-
     log.info(f"Deploying all project contracts for network {current_account_config.access_node_host}:{current_account_config.access_node_port}...")
     await deployProjectContracts()
     log.info("All project contracts were deployed successfully!")
@@ -334,7 +337,7 @@ async def deleteProjectDependencies():
     Function to deploy all project dependencies as defined in the project_dependencies dictionary
     """
     for project_dependency in project_dependencies:
-        dependency_to_delete = DeleteContract(contract_name=project_dependencies)
+        dependency_to_delete = DeleteContract(contract_name=project_dependency)
 
         log.info(f"Deleting '{project_dependency}' from network {current_account_config.access_node_host}:{current_account_config.access_node_port} for account {current_account_config.service_account["address"]}")
 
@@ -350,22 +353,27 @@ async def resetNetwork():
     await deleteProjectContracts()
     log.info("All project contracts deleted successfully!")
 
-    # print(f"Deleting all project dependencies from network {current_account_config.access_node_host}:{current_account_config.access_node_port}...")
-    # await deleteProjectDependencies()
-    # print("All project dependencies deleted successfully!")
+    print(f"Deleting all project dependencies from network {current_account_config.access_node_host}:{current_account_config.access_node_port}...")
+    await deleteProjectDependencies()
+    print("All project dependencies deleted successfully!")
 
 
-def main():
-    # Grab argv 1 since 0 is the file's path
-    option = sys.argv[1].lower().strip()
+
+async def main(op: str = "deploy"):
+    option = op
+    try:
+        # Grab argv 1 since 0 is the file's path
+        option = sys.argv[1].lower().strip()
+    except Exception:
+        log.warning(f"No input arguments detected for this run. Defaulting to '{option}'")
 
     if (option == "deploy"):
         log.info(f"Setting up network...")
-        asyncio.run(deployProject())
+        await deployProject()
         log.info(f"Project successfully set up!")
     elif (option == "clear"):
         log.info("Clearing up the network...")
-        asyncio.run(resetNetwork())
+        await resetNetwork()
         log.info(f"Project network cleared successfully!")
     else:
         if (option == ""):
@@ -375,4 +383,6 @@ def main():
         
         log.warning("\nUsage: \n$python 01_contract_management.py <deploy|clear>")
 
-main()
+
+if __name__ == "__main__":
+    asyncio.run(main())

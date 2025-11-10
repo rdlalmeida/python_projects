@@ -86,7 +86,7 @@
             "source": "mainnet://1654653399040a61.FlowToken",
             "hash": "cefb25fd19d9fc80ce02896267eb6157a6b0df7b1935caa8641421fe34c0e67a",
             "aliases": {
-                "emulator": "f8d6e0586b0a20c7",
+                "emulator": "1654653399040a61",
                 "mainnet": "1654653399040a61",
                 "testnet": "7e60df042a9c0868"
             }
