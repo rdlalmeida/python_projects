@@ -10,6 +10,24 @@ import logging
 log = logging.getLogger(__name__)
 utils.configureLogging()
 
+
+async def createVoteBoxes() -> list[dict[str:str]]:
+    """This function seems redundant, but I need to create this wrapper over the function that runs the transaction that creates a new votebox because I need to run this inside a loop and asyncio has a weird way to do these things...
+    @param tx_signer_address: str - The address for the account that is going to digitally sign the transaction that creates the new votebox resource
+
+    @return list[dict[str:str]] If successful, this function returns a list with the parameters of the VoteBoxCreated event in the format:
+    {
+        "voter_address": str
+    }
+    """
+    votebox_created_events: list[dict[str:str]] = []
+
+    for user_account in ctx.accounts:
+        votebox_created_event: dict[str:str] = await tx_runner.createVoteBox(tx_signer_address=user_account["address"].hex())
+        votebox_created_events.append(votebox_created_event)
+    
+    return votebox_created_events
+
 def sayHello():
     print("Hello Mr. Bad Luck!")
 

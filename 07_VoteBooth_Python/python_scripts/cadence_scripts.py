@@ -40,8 +40,6 @@ class ScriptRunner():
         self.config = configparser.ConfigParser()
         self.config.read(config_path)
 
-        self.client = flow_client(host=self.ctx.access_node_host, port=self.ctx.access_node_port)
-
 
     def getScript(self, script_name: str, script_arguments: list) -> Script:
         """
@@ -69,7 +67,7 @@ class ScriptRunner():
         )
 
     
-    async def testContractConsistency(self) -> bool:
+    async def testContractConsistency(self) -> str:
         """
         Function to abstract the execution of the '01_test_contract_consistency.cdc' Cadence script
 
@@ -80,12 +78,18 @@ class ScriptRunner():
         # Create the script object with the argument array
         script_object = self.getScript(script_name=name, script_arguments=[])
         # Run the script
-        script_result = await self.client.execute_script(script=script_object)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
-        
-        return script_result.value
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            if (script_result.value == None):
+                return ""
+            else:
+                return script_result.value.hex()
     
         
     async def getActiveElections(self, votebox_address: str = None) -> list[int]:
@@ -99,12 +103,15 @@ class ScriptRunner():
         arguments = [cadence.Address(votebox_address)] if votebox_address else []
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
-        script_result = await self.client.execute_script(script=script_object)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
-        
-        return script_result.value
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            return script_result.value
     
     
     async def getElectionName(self, election_id: int, votebox_address: str = None) -> str:
@@ -123,12 +130,16 @@ class ScriptRunner():
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
-        script_result = await self.client.execute_script(script=script_object)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            
+            script_result = await client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
-        
-        return str(script_result.value)
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            return str(script_result.value)
     
     
     async def getElectionBallot(self, election_id: int, votebox_address: str = None) -> str:
@@ -147,12 +158,15 @@ class ScriptRunner():
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
-        script_result = await self.client.execute_script(script=script_object)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
+            if (not script_result):
+                raise ScriptError(script_name=name)
 
-        return str(script_result.value)
+            return str(script_result.value)
     
     
     async def getElectionOptions(self, election_id: int, votebox_address: str = None) -> dict[int: str]:
@@ -171,13 +185,16 @@ class ScriptRunner():
         
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
-        script_result = await self.client.execute_script(script=script_object)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
-        
-        # TODO: I doubt this works as is. Test this please...
-        return dict[int: str](script_result)
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            # TODO: I doubt this works as is. Test this please...
+            return dict[int: str](script_result)
     
 
     async def getElectionId(self, election_id: int, votebox_address: str = None) -> int:
@@ -195,13 +212,15 @@ class ScriptRunner():
             arguments.append(cadence.Address(votebox_address))
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
 
-        script_result = await self.client.execute_script(script=script_object)
-
-        if (not script_result):
-            raise ScriptError(script_name=name)
+            if (not script_result):
+                raise ScriptError(script_name=name)
         
-        return int(script_result.value)
+            return int(script_result.value)
     
     async def getPublicEncryptionKey(self, election_id: int, votebox_address: str = None) -> list[int]:
         """Function to retrieve the public encryption key for the election identified by id provided as argument.
@@ -219,12 +238,15 @@ class ScriptRunner():
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
-        script_result = await self.client.execute_script(script=script_object)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
+            if (not script_result):
+                raise ScriptError(script_name=name)
 
-        return list[int](script_result.value)
+            return list[int](script_result.value)
     
 
     async def getElectionCapability(self, election_id: int, votebox_address: str = None) -> cadence.Capability:
@@ -243,12 +265,15 @@ class ScriptRunner():
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
-        script_result = await self.client.execute_script(script=script_object)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
-        
-        return cadence.Capability(script_result.value)
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            return cadence.Capability(script_result.value)
     
 
     async def getElectionTotals(self, election_id: int, votebox_address: str = None) -> dict[str: int]:
@@ -266,12 +291,16 @@ class ScriptRunner():
             arguments.append(cadence.Address(votebox_address))
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
-        script_result = await self.client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
-        
-        return dict[str: int](script_result)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
+
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            return dict[str: int](script_result)
 
 
     async def getElectionStoragePath(self, election_id: int) -> cadence.StoragePathKind:
@@ -285,12 +314,16 @@ class ScriptRunner():
         arguments = [cadence.UInt64(election_id)]
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
-        script_result = await self.client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
-        
-        return cadence.StoragePathKind(script_result.value)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
+
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            return cadence.StoragePathKind(script_result.value)
     
 
     async def getElectionPublicPath(self, election_id: int) -> cadence.PublicPathKind:
@@ -304,12 +337,15 @@ class ScriptRunner():
         arguments = [cadence.UInt64(election_id)]
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
-        script_result = await self.client.execute_script(script=script_object)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
-        
-        return cadence.PublicPathKind(script_result.value)
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            return cadence.PublicPathKind(script_result.value)
 
 
     async def getElectionsList(self) -> dict[int: str]:
@@ -321,12 +357,16 @@ class ScriptRunner():
         arguments = []
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
-        script_result = await self.client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
-        
-        return dict[int: str](script_result.value)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
+
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            return dict[int: str](script_result.value)
 
     
     async def getBallotOption(self, election_id: int, votebox_address: str) -> str:
@@ -341,12 +381,16 @@ class ScriptRunner():
         arguments = [cadence.UInt64(election_id), cadence.Address(votebox_address)]
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
-        script_result = await self.client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
-        
-        return str(script_result.value)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
+
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            return str(script_result.value)
 
     
     async def getBallotId(self, election_id: int, votebox_address: str) -> int:
@@ -361,12 +405,16 @@ class ScriptRunner():
         arguments = [cadence.UInt64(election_id), cadence.Address(votebox_address)]
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
-        script_result = await self.client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
-        
-        return int(script_result.value)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
+
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            return int(script_result.value)
     
 
     async def getElectionResults(self, election_id: int) -> dict[str: int]:
@@ -380,12 +428,17 @@ class ScriptRunner():
         arguments = [cadence.UInt64(election_id)]
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
-        script_result = await self.client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
-        
-        return dict[str: int](script_result.value)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            
+            script_result = await client.execute_script(script=script_object)
+
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            return dict[str: int](script_result.value)
 
     
     async def isElectionFinished(self, election_id: int) -> bool:
@@ -399,9 +452,13 @@ class ScriptRunner():
         arguments = [cadence.UInt64(election_id)]
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
-        script_result = await self.client.execute_script(script=script_object)
 
-        if (not script_result):
-            raise ScriptError(script_name=name)
-        
-        return bool(script_result.value)
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
+
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            return bool(script_result.value)

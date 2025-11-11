@@ -43,7 +43,7 @@ class AccountConfig(object):
                 stack_info=True,
             )
 
-        index = 1
+        index = 0
 
         for account in data["accounts"]:
             # Load the required parameters while testing the formatting of the JSON file
@@ -87,15 +87,14 @@ class AccountConfig(object):
                     )
                 }
             else: 
-                # Otherwise set it as another "normal" account
-                key_id = index
-                index += 1
-
+                # Otherwise set it as another "normal" account.
+                # NOTE: The key_id field refers to the index of the key in question, given that accounts can have multiple encryption keys stored. But 
+                # the first key, as it is this case, has index = 0.
                 self.accounts.append(
                     {
                         "name": account,
                         "address": Address.from_hex(data["accounts"][account]["address"]),
-                        "key_id": key_id,
+                        "key_id": 0,
                         "signer": InMemorySigner(
                             hash_algo=hash_algorithm,
                             sign_algo=signature_algorithm,

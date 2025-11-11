@@ -59,6 +59,13 @@ class TransactionRunner():
 
         @return Tx If successful, this function returns a configured Tx object ready to execute.
         """
+        # Use this function to set up the self.event_runner object properly. Unfortunately I need to do this in an async function outside
+        # of the class constructor
+        if (self.event_runner.deployer_address == None):
+            # This instruction either sets the event_runner.deployer_address to a proper address string, or raise an Exception if this
+            # address string was not retrievable
+            await self.event_runner.configureDeployerAddress()
+
         try:
             tx_path = pathlib.Path(self.config.get(section="transactions", option=tx_name))
         except configparser.NoOptionError:
@@ -74,7 +81,7 @@ class TransactionRunner():
         signer_key_id = None
         signer = None
 
-        if (tx_signer_address.hex() == self.ctx.service_account["address"].hex()):
+        if (tx_signer_address == self.ctx.service_account["address"].hex()):
             signer_address = self.ctx.service_account["address"]
             signer_key_id = self.ctx.service_account["key_id"]
             signer = self.ctx.service_account["signer"]
@@ -82,7 +89,7 @@ class TransactionRunner():
             # I need to check with every one of the user accounts and see if the provided address matches any of the configured ones
             for account in self.ctx.accounts:
                 # If a match is found, fill out the required parameters
-                if (tx_signer_address.hex() == account["address"].hex()):
+                if (tx_signer_address == account["address"].hex()):
                     signer_address = account["address"]
                     signer_key_id = account["key_id"]
                     signer = account["signer"]
@@ -143,14 +150,14 @@ class TransactionRunner():
             async with flow_client(
                 host=self.ctx.access_node_host, port=self.ctx.access_node_port
             ) as client:
-                await client.execute_transaction(tx=tx_object)
+                await client.execute_transaction(tx=tx_object, wait_for_seal=True)
         except Exception as e:
             log.error(f"Unable to execute transaction from account {tx_object.payer.hex()}: ")
             log.error(e)
             exit(-1)
 
 
-    async def createElection(self, election_name: str, election_ballot: str, election_options: dict[int: str], election_public_key: list[int], election_storage_path: str, election_public_path: str, tx_signer_address: str) -> int:
+    async def createElection(self, election_name: str, election_ballot: str, election_options: dict[int: str], election_public_key: list[int], election_storage_path: str, election_public_path: str, tx_signer_address: str) -> dict:
         """Function to create a new Election in the project environment.
 
         @param election_name: str - The name of election to create
@@ -160,8 +167,13 @@ class TransactionRunner():
         @param election_storage_path: str - The storage path to where the election created should be saved to.
         @param election_public_path: str - The public path to where the public election capability should be published to.
 
-        @return int If successful, this function returns the election id of the Election resource created.
+        @return dict If successful, this function returns a dictionary with the ElectionCreated event parameters:
+        {
+            "election_id": int,
+            "election_name": str
+        }
         """
+        
         tx_name: str = "01_create_election"
         # Prepare the arguments in a format that Cadence expects
         cadence_election_name = cadence.String(election_name)
@@ -212,18 +224,20 @@ class TransactionRunner():
         # Grab only the latest ElectionCreated event
         election_created_events: list[dict] = await self.event_runner.getElectionCreatedEvents(event_num=1)
 
-        election_id: int = election_created_events[0]["election_id"]
-
-        return election_id
+        return election_created_events[0]
     
 
-    async def deleteElection(self, election_id: int, tx_signer_address: str) -> int:
+    async def deleteElection(self, election_id: int, tx_signer_address: str) -> dict[str:int]:
         """Function to delete an election identified by the id provided from the current environment.
 
         @param election_id: int - The identifier for the election to delete
         @param tx_signer_address: str - The account address to use to digitally sign the transaction.
 
-        @return int If the function is successful, it returns back the id from the delete election, as retrieved from a ElectionDestroyed event
+        @return dict[str:int] The function returns the parameters from the ElectionDestroyed event in the format
+        {
+            "election_id": int,
+            "ballots_stored": int
+        }
         """
         tx_name: str = "07_destroy_election"
 
@@ -236,6 +250,128 @@ class TransactionRunner():
 
         election_destroyed_events: list[dict] = await self.event_runner.getElectionDestroyedEvents(event_num=1)
 
-        election_id: int = election_destroyed_events[0]["election_id"]
+        return election_destroyed_events[0]
+    
 
-        return election_id
+    async def createVoteBox(self, tx_signer_address: str) -> dict[str:str]:
+        """Function to create a votebox resource into the the account that is supposed to sign this transaction.
+
+        @param tx_signer_address: str - The address of the account that is going to digitally sign this transaction.
+
+        @return dict[str:str] The function returns the parameters from the VoteBoxCreated event in the format
+        {
+            "voter_address": str
+        }
+        """
+        tx_name: str = "02_create_vote_box"
+        # This transaction needs no arguments to run
+        tx_arguments: list = []
+
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+
+        await self.submitTransaction(tx_object=tx_object)
+        
+        # Grab the VoteBoxCreated event list
+        votebox_created_events: list[dict[str:str]] = await self.event_runner.getVoteBoxCreatedEvents(event_num=1)
+
+        return votebox_created_events[0]
+    
+
+    async def deleteVoteBox(self, tx_signer_address: str) -> dict[str:str]:
+        """Function to delete a votebox resource from the account storage for the user that digitally signs this transaction.
+
+        @param tx_signer_address: str - The address of the account that is going to digitally sign this transaction.
+
+        @return dict[str:str] The function returns the parameters from the VoteBoxDestroyed event in the format
+        {
+            "elections_voted": list[int],
+            "active_ballots": int,
+            "voter_address": str
+        }
+        """
+        tx_name: str = "08_destroy_votebox"
+
+        # No arguments needed for this one as well
+        tx_arguments: list = []
+
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+
+        await self.submitTransaction(tx_object=tx_object)
+
+        votebox_destroyed_event:dict = await self.event_runner.getVoteBoxDestroyedEvents(event_num=1)
+
+        return votebox_destroyed_event
+    
+
+    async def createBallot(self, election_id: int, recipient_address: str, tx_signer_address: str) -> dict[str:int]:
+        """Function to create and deposit a ballot resource into the votebox in the account identified by the recipient address.
+
+        @param election_id: int - The identifier for the Election that this Ballot should be associated to.
+        @param recipient_address: str - The address of the account where the VoteBox where this Ballot should be deposited into.
+        @param tx_signer_address: str - The address of the account that can authorize this transaction with a digital signature.
+
+        @return dict[str:int] The function returns the parameters from the BallotCreated event in the format
+        {
+            "ballot_id": int,
+            "linked_election_id": int
+        }
+        """
+        tx_name: str = "03_create_ballot"
+        tx_arguments: list = [
+            cadence.UInt64(election_id),
+            cadence.Address.from_hex(recipient_address)
+        ]
+
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+
+        await self.submitTransaction(tx_object=tx_object)
+
+        ballot_created_event: dict[str:int] = await self.event_runner.getBallotCreatedEvents(event_num=1)
+
+        return ballot_created_event[0]
+    
+
+    async def castBallot(self, election_id: int, new_option: str, tx_signer_address: str) -> None:
+        """Function to set the option provided as the 'new_option' argument in a Ballot cast for the Election identified with the election_id provided, for a VoteBox in the account that digitally signs this transaction.
+
+        @param election_id: int - The election identifier to select the ballot to cast.
+        @param new_option: str -The new value to set the ballot's option to.
+        @param tx_signer_address: str - The address of the account that can authorize this transaction with a digital signature.
+        """
+        tx_name: str = "04_cast_ballot"
+        tx_arguments: list = [
+            cadence.UInt64(election_id),
+            cadence.String(new_option)
+        ]
+
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+
+        await self.submitTransaction(tx_object=tx_object)
+
+        log.info(f"Voter {tx_signer_address} cast a new option for election {election_id}")
+
+    
+    async def submitBallot(self, election_id: int, tx_signer_address: str) -> dict[str:int]:
+        """Function to submit a ballot in votebox from  the transaction signer address to the election with the id provided as argument.
+
+        @param election_id: int - The election identifier to select the ballot to submit.
+        @tx_signer_address: str - The address of the account that can authorize this transaction with a digital signature.
+
+        @return dict[str:int] The function returns the parameters from the BallotSubmitted event in the format
+        {
+            "ballot_id": int,
+            "election_id": int
+        }
+        """
+        tx_name: str = "05_submit_ballot"
+        tx_arguments: list = [
+            cadence.UInt64(election_id)
+        ]
+
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+
+        await self.submitTransaction(tx_object=tx_object)
+
+        ballot_submitted_events: dict[str:int] = await self.event_runner.getBallotSubmittedEvents(event_num=1)
+
+        return ballot_submitted_events[0]

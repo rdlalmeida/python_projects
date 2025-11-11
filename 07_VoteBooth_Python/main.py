@@ -1,11 +1,11 @@
 import asyncio
-import flow_py_sdk
 from common import utils, account_config
 from python_scripts.cadence_scripts import ScriptRunner
 from python_scripts.cadence_transactions import TransactionRunner
+from python_scripts.event_management import EventRunner
 import os, pathlib
 import configparser
-from python_scripts import contract_management
+import random
 
 import logging
 log = logging.getLogger(__name__)
@@ -19,6 +19,11 @@ config.read(config_path)
 ctx = account_config.AccountConfig()
 
 accounts = ctx.getAccounts()
+
+script_runner = ScriptRunner()
+tx_runner = TransactionRunner()
+event_runner = EventRunner()
+
 
 election_names: list[str] = [
     "A. Bullfights",
@@ -74,6 +79,7 @@ election_public_paths: list[str] = [
     "PublicElection03"
 ]
 
+
 async def main() -> None:
     """
     Main entry point for this project
@@ -81,32 +87,93 @@ async def main() -> None:
     # 0. Setup the project contracts
     # await contract_management.main(op="deploy")
 
-    # Create a transaction runner
-    tx_runner = TransactionRunner()
-
+    # Create an event runner
+    await event_runner.configureDeployerAddress()
+    
+    # Use this selector to chose between the pre-made elections in this file
     election_index: int = 0
-
-    temp_election_id: int = 157230162771973
+    # Keep the id of the election in question for this process
+    current_election_id: int = None
 
     # 1. Setup an election with the data from the config file
-    if (False): 
-        election_id: int = await tx_runner.createElection(
+    if (True):
+        election_created_event: dict = await tx_runner.createElection(
             election_name=election_names[election_index],
             election_ballot=election_ballots[election_index],
             election_options=election_options[election_index],
             election_public_key=election_public_keys[election_index],
             election_storage_path=election_storage_paths[election_index],
             election_public_path=election_public_paths[election_index],
-            tx_signer_address=ctx.service_account["address"]
+            tx_signer_address=ctx.service_account["address"].hex()
         )
 
-        log.info(f"Successfully created Election with id {election_id}")
-    else:
-        new_election_id: int = await tx_runner.deleteElection(election_id=temp_election_id, tx_signer_address=ctx.service_account["address"])
+        current_election_id = election_created_event["election_id"]
+        log.info(f"Successfully created Election with id {current_election_id} and name '{election_created_event["election_name"]}'")
+    
+    # 1.1 Destroy the current election
+    if (False):
+        election_destroyed_event: dict[str:int] = await tx_runner.deleteElection(
+            election_id=current_election_id,
+            tx_signer_address=ctx.service_account["address"].hex()
+        )
 
-        log.info(f"Successfully deleted Election with id {new_election_id}")
+        log.info(f"Successfully destroyed Election with id {election_destroyed_event["election_id"]}. It had {election_destroyed_event["ballots_stored"]} ballots in it")
+
+    # 2. Create a VoteBox into each of the user accounts inside a loop
+    if (True):
+        for user_account in ctx.accounts:
+            votebox_created_event: dict[str:str] = await tx_runner.createVoteBox(tx_signer_address=user_account["address"].hex())
+            
+            log.info(f"Successfully created a VoteBox for account {votebox_created_event["voter_address"]}")
+
+    # 2.1 Destroy the VoteBox from the transaction signer's account
+    if (False):
+        votebox_destroyed_event: dict = await tx_runner.deleteVoteBox(tx_signer_address=ctx.accounts[0]["address"].hex())
+        log.info(f"Successfully deleted a VoteBox for account {votebox_destroyed_event["voter_address"]}, with {votebox_destroyed_event["active_ballots"]} active ballots still in it. This VoteBox was used to vote in {len(votebox_destroyed_event["elections_voted"])} elections:")
+        
+        index: int = 0
+        for active_election_id in votebox_destroyed_event["elections_voted"]:
+            log.info(f"Election #{index}: {active_election_id}")
+            index += 1
+
+    # 3. Mint a blank Ballot into the account provided, for the election in question
+    if (True):
+        for user_account in ctx.accounts:
+            ballot_created_event: dict[str:int] = await tx_runner.createBallot(election_id=current_election_id, recipient_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex())
+
+            log.info(f"Successfully created Ballot with id {ballot_created_event["ballot_id"]} attached to Election {ballot_created_event["linked_election_id"]} for account {user_account["address"].hex()}")
+        
+        if (False):
+            # Mint another round of Ballots just to be sure that this blows up
+            for user_account in ctx.accounts:
+                try:
+                    ballot_created_event: dict[str:int] = await tx_runner.createBallot(election_id=current_election_id, recipient_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex())
+
+                    log.info(f"Successfully created another Ballot with id {ballot_created_event["ballot_id"]} attached to Election {ballot_created_event["linked_election_id"]} for account {user_account["address"].hex()}")
+                except Exception as e:
+                    log.warning(f"WARNING: User {user_account["address"].hex()} already has a Ballot in store for election {current_election_id}")
+    
+    # 4. Cast the ballots for each of the user accounts to a random option from within the ones available for the election
+    if (True):
+        for user_account in ctx.accounts:
+            random_index: int = random.randint(a=1, b=len(election_options[election_index]))
+            # TODO: ADD THE ENCRYPTION AND RANDOM LOGIC HERE!
+            random_option: str = election_options[election_index][random_index]
+
+            # Cast the ballot
+            await tx_runner.castBallot(election_id=current_election_id, new_option=random_option, tx_signer_address=user_account["address"].hex())
+        
+
+    # 5. Submit the cast ballots to the election
+    if (True):
+        for user_account in ctx.accounts:
+            
+
 
     
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    new_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(new_loop)
+    new_loop.run_until_complete(main())
+    # asyncio.run(main())
+    

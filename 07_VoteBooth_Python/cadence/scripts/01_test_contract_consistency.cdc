@@ -6,13 +6,16 @@
     4. VoteBooth
 
     The logic is to check that each contract in that list apart from #1 was deployed into the same account.
+    If the project is found consistent, this script returns the address of the account where all the project contracts are deployed into.
+
+    @returns Address? If the project is found consistent, this script returns the address of the account where all the project contracts were deployed into. Otherwise, if an inconsistency is found, the script returns nil.
 **/
 import BallotStandard from 0xf8d6e0586b0a20c7
 import ElectionStandard from 0xf8d6e0586b0a20c7
 import VoteBoxStandard from 0xf8d6e0586b0a20c7
 import VoteBooth from 0xf8d6e0586b0a20c7
 
-access(all) fun main(): Bool {
+access(all) fun main(): Address? {
     let ballotDeployer: Address = BallotStandard.deployerAddress
     let electionDeployer: Address = ElectionStandard.deployerAddress
     let voteBoxDeployer: Address = VoteBoxStandard.deployerAddress
@@ -36,7 +39,7 @@ access(all) fun main(): Bool {
             )
         }
 
-        return false
+        return nil
     }
 
     if (voteBoxDeployer == electionDeployer) {
@@ -57,7 +60,7 @@ access(all) fun main(): Bool {
             )
         }
 
-        return false
+        return nil
     }
 
     if (voteboothDeployer == voteBoxDeployer) {
@@ -78,8 +81,8 @@ access(all) fun main(): Bool {
             )
         }
 
-        return false
+        return nil
     }
 
-    return true
+    return voteboothDeployer
 }

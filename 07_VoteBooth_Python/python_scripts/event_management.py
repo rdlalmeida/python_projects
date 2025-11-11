@@ -12,6 +12,7 @@ import pathlib
 import asyncio
 
 from common import utils, account_config
+from python_scripts import cadence_scripts
 
 import logging
 log = logging.getLogger(__name__)
@@ -28,6 +29,22 @@ class EventRunner():
         self.config.read(config_path)
 
         self.ctx = account_config.AccountConfig()
+
+        self.script_runner = cadence_scripts.ScriptRunner()
+
+        # Set the project deployer address to None for now
+        self.deployer_address: str = None
+
+        
+    async def configureDeployerAddress(self) -> None:
+        """Internal function to retrieve and set the address of the account where the project contracts are currently deployed.
+        """
+        # Run the 01_test_contract_consistency script and store the result, if an address is returned. Raise an exception if the project was found inconsistent.
+        self.deployer_address: str = await self.script_runner.testContractConsistency()
+
+        if (self.deployer_address == ""):
+            raise Exception("ERROR: The project is not consistent yet!")
+
 
     async def getEventsByName(self, event_name: str, event_num: int) -> list[cadence.Event]:
         """Function to retrieve a list with the latest-n  events with the name provided as input from the event queue.
@@ -70,6 +87,20 @@ class EventRunner():
             "linked_election_id": int
         }
         """
+        event_name: str = "A." + self.deployer_address + ".BallotStandard.BallotCreated"
+
+        events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        ballot_created_events: list[dict[str:int]] = []
+
+        for event in events:
+            ballot_created_event: dict = {}
+            ballot_created_event["ballot_id"] = event.value.fields["_ballotId"].value
+            ballot_created_event["linked_election_id"] = event.value.fields["_linkedElectionId"].value
+
+            ballot_created_events.append(ballot_created_event)
+        
+        return ballot_created_events
 
 
     async def getBallotBurnedEvents(self, event_num: int) -> dict[str:int]:
@@ -83,6 +114,19 @@ class EventRunner():
             "linked_election_id: int
         }
         """
+        event_name: str = "A." + self.deployer_address + ".BallotStandard.BallotBurned"
+        events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        ballot_burned_events: list[dict[str:int]] = []
+
+        for event in events:
+            ballot_burned_event: dict = {}
+            ballot_burned_event["ballot_id"] = event.value.fields["_ballotId"].value
+            ballot_burned_event["linked_election_id"] = event.value.fields["_linkedElectionId"].value
+
+            ballot_burned_events.append(ballot_burned_event)
+        
+        return ballot_burned_events
 
 
     async def getBallotSubmittedEvents(self, event_num: int) -> dict[str:int]:
@@ -96,6 +140,19 @@ class EventRunner():
             "election_id": int
         }
         """
+        event_name: str = "A." + self.deployer_address + ".ElectionStandard.BallotSubmitted"
+        events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        ballot_submitted_events: list[dict[str:int]] = []
+
+        for event in events:
+            ballot_submitted_event: dict = {}
+            ballot_submitted_event["ballot_id"] = event.value.fields["_ballotId"].value
+            ballot_submitted_event["election_id"] = event.value.fields["_electionId"].value
+
+            ballot_submitted_events.append(ballot_submitted_event)
+
+        return ballot_submitted_events
 
     
     async def getBallotReplacedEvents(self, event_num: int) -> dict[str:int]:
@@ -110,6 +167,20 @@ class EventRunner():
             "election_id": int
         }
         """
+        event_name: str = "A." + self.deployer_address + ".ElectionStandard.BallotReplaced"
+        events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        ballot_replaced_events: list[dict[str:int]] = []
+
+        for event in events:
+            ballot_replaced_event: dict = {}
+            ballot_replaced_event["old_ballot_id"] = event.value.fields["_oldBallotId"].value
+            ballot_replaced_event["new_ballot_id"] = event.value.fields["_newBallotId"].value
+            ballot_replaced_event["election_id"] = event.value.fields["_electionId"].value
+
+            ballot_replaced_events.append(ballot_replaced_event)
+        
+        return ballot_replaced_events
 
     
     async def getBallotRevokedEvents(self, event_num: int) -> dict[str:int]:
@@ -123,6 +194,19 @@ class EventRunner():
             "election_id": int
         }
         """
+        event_name: str = "A." + self.deployer_address + ".ElectionStandard.BallotRevoked"
+        events: list[dict[str:int]] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        ballot_revoked_events: list[dict[str:int]] = []
+
+        for event in events:
+            ballot_revoked_event: dict = {}
+            ballot_revoked_event["ballot_id"] = event.value.fields["_ballotId"].value
+            ballot_revoked_event["election_id"] = event.value.fields["_electionId"].value
+
+            ballot_revoked_events.append(ballot_revoked_event)
+        
+        return ballot_revoked_events
 
     
     async def getBallotsWithdrawnEvents(self, event_num: int) -> dict[str: int]:
@@ -136,6 +220,19 @@ class EventRunner():
             "election_id": int
         }
         """
+        event_name: str = "A." + self.deployer_address + ".ElectionStandard.BallotsWithdrawn"
+        events: list[dict[str:int]] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        ballots_withdrawn_events: list[dict[str:int]] = []
+
+        for event in events:
+            ballot_withdrawn_event: dict = {}
+            ballot_withdrawn_event["ballots_withdrawn"] = event.value.fields["_ballotsWithdrawn"].value
+            ballot_withdrawn_event["election_id"] = event.value.fields["_electionId"].value
+
+            ballots_withdrawn_events.append(ballot_withdrawn_event)
+
+        return ballots_withdrawn_events
 
     
     async def getElectionCreatedEvents(self, event_num: int) -> dict:
@@ -149,18 +246,18 @@ class EventRunner():
             "election_name": str
         }
         """
-        event_name: str = "A.f8d6e0586b0a20c7.ElectionStandard.ElectionCreated"
+        event_name: str = "A." + self.deployer_address + ".ElectionStandard.ElectionCreated"
 
         events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
 
         election_created_events: list[dict] = []
 
         for event in events:
-            current_event: dict = {}
-            current_event["election_id"] = event.value.fields["_electionId"].value
-            current_event["election_name"] = event.value.fields["_electionName"].value
+            election_created_event: dict = {}
+            election_created_event["election_id"] = event.value.fields["_electionId"].value
+            election_created_event["election_name"] = event.value.fields["_electionName"].value
 
-            election_created_events.append(current_event)
+            election_created_events.append(election_created_event)
 
         return election_created_events
 
@@ -176,18 +273,18 @@ class EventRunner():
             "ballots_stored": int
         }
         """
-        event_name: str = "A.f8d6e0586b0a20c7.ElectionStandard.ElectionDestroyed"
+        event_name: str = "A." + self.deployer_address + ".ElectionStandard.ElectionDestroyed"
 
         events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
 
         election_destroyed_events: list[dict] = []
 
         for event in events:
-            current_event: dict = {}
-            current_event["election_id"] = event.value.fields["_electionId"].value
-            current_event["ballots_stored"] = event.value.fields["_ballotsStored"].value
+            election_destroyed_event: dict = {}
+            election_destroyed_event["election_id"] = event.value.fields["_electionId"].value
+            election_destroyed_event["ballots_stored"] = event.value.fields["_ballotsStored"].value
 
-            election_destroyed_events.append(current_event)
+            election_destroyed_events.append(election_destroyed_event)
         
         return election_destroyed_events
 
@@ -202,6 +299,18 @@ class EventRunner():
             "resource_type": str
         }
         """
+        event_name: str = "A." + self.deployer_address + ".ElectionStandard.NonNilResourceReturned"
+        events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        non_nil_resource_returned_events: list[dict[str:str]] = []
+
+        for event in events:
+            non_nil_resource_returned_event: dict = {}
+            non_nil_resource_returned_event["resource_type"] = event.value.fields["_resourceType"].value
+
+            non_nil_resource_returned_events.append(non_nil_resource_returned_event)
+        
+        return non_nil_resource_returned_events
 
     
     async def getVoteBoxCreatedEvents(self, event_num: int) -> dict[str:str]:
@@ -214,6 +323,18 @@ class EventRunner():
             "voter_address": str
         }
         """
+        event_name: str = "A." + self.deployer_address + ".VoteBoxStandard.VoteBoxCreated"
+        events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        votebox_created_events: list[dict[str:str]] = []
+
+        for event in events:
+            votebox_created_event: dict[str:str] = {}
+            votebox_created_event["voter_address"] = event.value.fields["_voterAddress"].hex()
+
+            votebox_created_events.append(votebox_created_event)
+
+        return votebox_created_events
 
     
     async def getVoteBoxDestroyedEvents(self, event_num: int) -> dict:
@@ -228,6 +349,20 @@ class EventRunner():
             "voter_address": str
         }
         """
+        event_name: str = "A." + self.deployer_address + ".VoteBoxStandard.VoteBoxDestroyed"
+        events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        votebox_destroyed_events: list[dict] = []
+
+        for event in events:
+            votebox_destroyed_event: dict = {}
+            votebox_destroyed_event["elections_voted"] = event.value.fields["_electionsVoted"].value
+            votebox_destroyed_event["active_ballots"] = event.value.fields["_activeBallots"].value
+            votebox_destroyed_event["voter_address"] = event.value.fields["_voterAddress"].hex()
+
+            votebox_destroyed_events.append(votebox_destroyed_event)
+        
+        return votebox_destroyed_events
 
     
     async def getElectionIndexCreatedEvents(self, event_num: int) -> dict[str:str]:
@@ -240,6 +375,18 @@ class EventRunner():
             "account_address": str
         }
         """
+        event_name: str = "A." + self.deployer_address + ".VoteBooth.ElectionIndexCreated"
+        events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        election_index_created_events: list[dict[str:str]] = []
+
+        for event in events:
+            election_index_created_event: dict[str:str] = []
+            election_index_created_event["account_address"] = event.value.fields["_accountAddress"].hex()
+
+            election_index_created_events.append(election_index_created_event)
+
+        return election_index_created_events
 
     
     async def getElectionIndexDestroyedEvents(self, event_num: int) -> dict[str:str]:
@@ -252,6 +399,18 @@ class EventRunner():
             "account_address": str
         }
         """
+        event_name: str = "A." + self.deployer_address + ".VoteBooth.ElectionIndexDestroyed"
+        events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        election_index_destroyed_events: list[dict[str:str]] = []
+
+        for event in events:
+            election_index_destroyed_event: dict[str:str] = []
+            election_index_destroyed_event["account_address"] = event.value.fields["_accountAddress"].hex()
+
+            election_index_destroyed_events.append(election_index_destroyed_event)
+
+        return election_index_destroyed_events
 
     
     async def getVoteBoothPrinterAdminCreatedEvents(self, event_num: int) -> dict[str:str]:
@@ -264,6 +423,18 @@ class EventRunner():
             "account_address": str
         }
         """
+        event_name: str = "A." + self.deployer_address + ".VoteBooth.VoteBoothPrinterAdminCreated"
+        events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        votebooth_printer_admin_created_events: list[dict[str:str]] = []
+
+        for event in events:
+            votebooth_printer_admin_created_event: dict[str:str] = {}
+            votebooth_printer_admin_created_event["account_address"] = event.value.fields["_accountAddress"].hex()
+
+            votebooth_printer_admin_created_events.append(votebooth_printer_admin_created_event)
+        
+        return votebooth_printer_admin_created_events
 
 
     async def getVoteBoothPrinterAdminDestroyedEvents(self, event_num: int) -> dict[str:str]:
@@ -276,3 +447,15 @@ class EventRunner():
             "account_address": str
         }
         """
+        event_name: str = "A." + self.deployer_address + ".VoteBooth.VoteBoothPrinterAdminDestroyed"
+        events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        votebooth_printer_admin_destroyed_events: list[dict[str:str]] = []
+
+        for event in events:
+            votebooth_printer_admin_destroyed_event: dict[str:str] = {}
+            votebooth_printer_admin_destroyed_event["account_address"] = event.value.fields["_accountAddress"].hex()
+
+            votebooth_printer_admin_destroyed_events.append(votebooth_printer_admin_destroyed_event)
+
+        return votebooth_printer_admin_destroyed_events

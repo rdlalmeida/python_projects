@@ -6,7 +6,6 @@
 
 import Burner from 0xf8d6e0586b0a20c7
 import VoteBoxStandard from 0xf8d6e0586b0a20c7
-import VoteBooth from 0xf8d6e0586b0a20c7
 
 transaction() {
     prepare(signer: auth(SaveValue, LoadValue, Capabilities) &Account) {
@@ -19,30 +18,11 @@ transaction() {
         Burner.burn(<- oldVoteBox)
 
         signer.storage.save(<- newVoteBox, to: VoteBoxStandard.voteBoxStoragePath)
-        if (VoteBooth.verbose) {
-            log(
-                "Created a new @VoteVoxStandard.VoteBox at "
-                .concat(VoteBoxStandard.voteBoxStoragePath.toString())
-                .concat(" for account ")
-                .concat(signer.address.toString())
-            )
-        }
-
         // Repeat the process for the capabilities
         let oldCapability: Capability? = signer.capabilities.unpublish(VoteBoxStandard.voteBoxPublicPath)
         
         let newCapability: Capability<&{VoteBoxStandard.VoteBoxPublic}> = signer.capabilities.storage.issue<&{VoteBoxStandard.VoteBoxPublic}>(VoteBoxStandard.voteBoxStoragePath)
-
         signer.capabilities.publish(newCapability, at: VoteBoxStandard.voteBoxPublicPath)
-
-        if (VoteBooth.verbose) {
-            log(
-                "Published a new Capability<&{VoteBoxStandard.VoteBoxPublic}> at "
-                .concat(VoteBoxStandard.voteBoxPublicPath.toString())
-                .concat(" for account ")
-                .concat(signer.address.toString())
-            )
-        }
     }
 
     execute {
