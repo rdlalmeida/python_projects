@@ -6,12 +6,60 @@
     account03: 0xe03daebed8ca0615
     account04: 0x045a1763c93006ca
     account05: 0x120e725050340cab
+
+    @param amount (UFix64) The amount of FLOW token to deposit in each account
+    @param recipients ([Address]) The list of recipient addresses to deposit the funds into.
+
+    NOTE: To execute this transaction using the flow-cli, use the following command:
+    $ flow transactions send cadence/transactions/00_fund_all_accounts.cdc --args-json '[
+        {
+            "type": "Optional",
+            "value": null
+        }, 
+        {
+            "type": "Optional",
+            "value": null
+        }
+    ]' --signer emulator-account --network emulator
+
+    To execute this transaction with non-nil arguments, use
+    $ flow transactions send cadence/transactions/00_fund_all_accounts.cdc --args-json '[
+        {
+            "type": "UFix64",
+            "value": "10.5"
+        },
+        {
+            "type": "Array",
+            "value": [
+                {
+                    "type": "Address",
+                    "value": "0x179b6b1cb6755e31"
+                },
+                {
+                    "type": "Address",
+                    "value": "0xf3fcd2c1a78f5eee"
+                },
+                {
+                    "type": "Address",
+                    "value": "0xe03daebed8ca0615"
+                },
+                {
+                    "type": "Address",
+                    "value": "0x045a1763c93006ca"
+                },
+                {
+                    "type": "Address",
+                    "value": "0x120e725050340cab"
+                }
+            ]
+        }
+    ]' --signer emulator-account --network emulator 
 */
 
-import "FlowToken"
-import "FungibleToken"
+import FlowToken from 0x0ae53cb6e3f42a79
+import FungibleToken from 0xee82856bf20e2aa6
 
-transaction() {
+transaction(amount: UFix64?, recipients: [Address]?) {
     let vaultReference: auth(FungibleToken.Withdraw) &FlowToken.Vault
     let receiverRef: [&{FungibleToken.Receiver}]
     let from: Address
@@ -25,10 +73,22 @@ transaction() {
         panic(
             "Unable to get a reference to the vault for account ".concat(signer.address.toString())
         )
+        if (amount == nil) {
+            self.amount = 10.1
+        }
+        else {
+            self.amount = amount!
+        }
 
-        self.amount = 10.0
         self.receiverRef = []
-        self.to = [0x179b6b1cb6755e31, 0xf3fcd2c1a78f5eee, 0xe03daebed8ca0615, 0x045a1763c93006ca, 0x120e725050340cab]
+
+        if (recipients == nil) {
+            self.to = [0x179b6b1cb6755e31, 0xf3fcd2c1a78f5eee, 0xe03daebed8ca0615, 0x045a1763c93006ca, 0x120e725050340cab]
+        }
+        else{
+            self.to = recipients!
+        }
+
 
         for receiverAddress in self.to {
             let recipientAccount: &Account = getAccount(receiverAddress)

@@ -30,3 +30,4 @@ if __name__ == "__main__":
     for account in ctx.accounts:
         print("Account ",index, " = ", account["name"], " => ", account["address"])
         index+=1
+

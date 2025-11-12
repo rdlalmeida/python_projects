@@ -11,6 +11,7 @@ import pathlib
 import os
 
 from python_scripts.event_management import EventRunner
+from python_scripts.cadence_scripts import ScriptRunner
 
 # Setup logging capabilities
 import logging
@@ -47,6 +48,7 @@ class TransactionRunner():
         self.config.read(config_path)
 
         self.event_runner = EventRunner()
+        self.script_runner = ScriptRunner()
 
     
     async def getTransaction(self, tx_name: str, tx_arguments: list, tx_signer_address: str) -> Tx:
@@ -372,6 +374,112 @@ class TransactionRunner():
 
         await self.submitTransaction(tx_object=tx_object)
 
+        # This transaction can trigger either a BallotSubmitted or a BallotReplaced event depending on the state of the user's VoteBox.
+        # If no Ballots exist for the current_election_id, this submission triggers the BallotSubmitted event. But if this Ballot
+        # replaces a previously submitted one, then this transaction triggers the BallotReplaced instead
+
+        # Start by grabbing the BallotSubmitted event for this transaction
         ballot_submitted_events: dict[str:int] = await self.event_runner.getBallotSubmittedEvents(event_num=1)
 
-        return ballot_submitted_events[0]
+        # And the respective BallotReplaced event as well. If all goes well, I should have only one item in either one of these lists.
+        ballot_replaced_events: dict[str:int] = await self.event_runner.getBallotReplacedEvents(event_num=1)
+
+        # Case 1: I have one BallotSubmitted event and 0 BallotReplaced. The transaction submitted the first Ballot to the VoteBox resource
+        if (len(ballot_submitted_events) > 0 and len(ballot_replaced_events) == 0):
+            # All OK. Return the BallotSubmitted event details
+            return ballot_submitted_events[0]
+        
+        # Case 2: I have 0 BallotSubmitted events and at least one BallotReplaced event. The transaction replaces an previously submitted Ballot.
+        elif (len(ballot_submitted_events) == 0 and len(ballot_replaced_events) > 0):
+            return ballot_replaced_events[0]
+        # Any other case is an error. Raise the respective Exception
+        elif (len(ballot_submitted_events) > 0 and len(ballot_replaced_events) > 0):
+            # Got both events at once. This is an Error
+            raise Exception(f"ERROR: Transaction triggered {len(ballot_submitted_events)} BallotSubmitted events and {len(ballot_replaced_events)} BallotReplaced events! One of these needs to be 0!")
+        elif (len(ballot_submitted_events) == 0 and len(ballot_replaced_events) == 0):
+            # And in this case, I got no events back! This is a problem as well!
+            raise Exception(f"ERROR: Transaction did not triggered any BallotSubmitted or BallotReplaced events!")
+        else:
+            # Something else happened
+            raise Exception(f"ERROR: Ballot submission for account {tx_signer_address} failed!")
+        
+    
+    async def cleanupVoteBooth(self, tx_signer_address: str) -> None:
+        """Function to delete every resource and active capability currently stored and active in the tx_signer_address account. This includes all Elections, active and otherwise, BallotPrinterAdmin, and Election index.
+
+        @param tx_signer_address: str - The address of the account that can authorize this transaction with a digital signature.
+        @return None This function should trigger a series of events, namely, ElectionIndexDestroyed, VoteBoothPrinterAdminDestroyed, and a series of ElectionDestroyed as well. As such, all the result printing happens at the end of this function, to prevent having to return a weird compounded dictionary.
+        """
+        tx_name: str = "09_cleanup_votebooth"
+        tx_arguments: list = []
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+
+        # Grab the number of active elections from the VoteBooth.ElectionIndex resource to find out how many ElectionDestroyed events should I listen for
+        active_elections: list[int] = await self.script_runner.getActiveElections()
+        
+
+        await self.submitTransaction(tx_object=tx_object)
+
+        # Grab all the events
+        election_destroyed_events: dict[str:int] = await self.event_runner.getElectionDestroyedEvents(event_num=len(active_elections))
+        election_index_destroyed_events: dict[str:str] = await self.event_runner.getElectionIndexDestroyedEvents(event_num=1)
+        votebooth_printer_admin_destroyed: dict[str:str] = await self.event_runner.getVoteBoothPrinterAdminDestroyedEvents(event_num=1)
+
+        # It is easier to do all the log.info printing from this side
+        log.info(f"Successfully deleted {len(election_destroyed_events)} Elections from the VoteBooth contract in account {tx_signer_address}:")
+        for election_destroyed_event in election_destroyed_events:
+            log.info(election_destroyed_event["election_id"])
+
+        log.info(f"Successfully destroyed the ElectionIndex from account {election_index_destroyed_events[0]["account_address"]}")
+        log.info(f"Successfully destroyed the VoteBoothPrinterAdmin from account {votebooth_printer_admin_destroyed[0]["account_address"]}")
+
+    
+    async def fundAllAccounts(self, amount: float, recipients: list[str], tx_signer_address: str) -> None:
+        """Function to deposit the amount provided in the argument to each of the accounts included in the recipient address list.
+
+        @param amount: float - The amount of FLOW token to transfer from the service account into each of the accounts in the recipient list.
+        @param recipients: list[str] - The list of addresses for the accounts to transfer funds to.
+        @param tx_signer_address: str - The address of the account that can authorize this transactions with a digital signature and with enough funds in its balance to execute this transaction.
+
+        @return None Similar to other complex functions, the return dictionary for this one is not trivial as well. As such, all the log.info printing and event capturing happens in this one.
+        """
+        # Validate the amount provided
+        if (amount < 0):
+            raise Exception(f"ERROR: Invalid FLOW amount provided: {amount}. Please provide a positive float value for this parameter!")
+        
+
+        tx_name = "00_fund_all_accounts"
+        tx_arguments: list = [cadence.UFix64(amount)]
+        addresses: list[str] = []
+
+        for recipient in recipients:
+            # NOTE: The "address" parameter in the user account list is already in the expected cadence.Address format.
+            addresses.append(cadence.Address.from_hex(recipient))
+
+        tx_arguments.append(cadence.Array(addresses))
+
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+
+        await self.submitTransaction(tx_object=tx_object)
+
+        token_deposited_events: list[dict] = await self.event_runner.getTokenDepositedEvents(event_num=len(self.ctx.accounts))
+
+        # Run the script to get the balance of all accounts, including the service_account
+        current_accounts: dict = {
+            "emulator_account": {
+                "address": self.ctx.service_account["address"].hex(),
+                "balance": await self.script_runner.getAccountBalance(account_address=self.ctx.service_account["address"].hex())
+            }
+        }
+
+        for user_account in self.ctx.accounts:
+            current_accounts[user_account["name"]] = {
+                "address": user_account["address"].hex(),
+                "balance": await self.script_runner.getAccountBalance(account_address=user_account["address"].hex())
+            }
+
+        for token_deposited_event in token_deposited_events:
+            log.info(f"Successfully funded {token_deposited_event["amount"]} FLOW tokens into account {token_deposited_event["to"]}")
+            log.info(f"{token_deposited_event["to"]} account balance: {current_accounts[token_deposited_event["to"]]["balance"]} FLOW")
+
+        

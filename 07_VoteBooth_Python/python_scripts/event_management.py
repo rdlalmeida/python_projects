@@ -34,6 +34,9 @@ class EventRunner():
 
         # Set the project deployer address to None for now
         self.deployer_address: str = None
+        self.flow_fees_deployer_address: str = None
+        self.flow_token_deployer_address: str = None
+        self.fungible_token_deployer_address: str = None
 
         
     async def configureDeployerAddress(self) -> None:
@@ -44,6 +47,13 @@ class EventRunner():
 
         if (self.deployer_address == ""):
             raise Exception("ERROR: The project is not consistent yet!")
+        
+        # Check which one is the currently configured network and add the addresses for the FlowToken and Fungible and NonFungibleToken and FlowFees contract,
+        # given that these contracts are often deployed in a different account than the service one
+        current_network: str = self.config.get(section="network", option="current")
+        self.flow_fees_deployer_address = self.config.get(section=current_network, option="FlowFees")
+        self.flow_token_deployer_address = self.config.get(section=current_network, option="FlowToken")
+        self.fungible_token_deployer_address = self.config.get(section=current_network, option="FungibleToken")
 
 
     async def getEventsByName(self, event_name: str, event_num: int) -> list[cadence.Event]:
@@ -70,8 +80,9 @@ class EventRunner():
             events_to_return: list[cadence.Event] = []
 
             for i in range(len(events) - 1,(len(events) - 1 - event_num), -1):
-                events_to_return.append(events[i].events[0])
-
+                # Check if any events of the type in question were returned
+                if (len(events[i].events) > 0):
+                    events_to_return.append(events[i].events[0])
             
             return events_to_return
     
@@ -356,9 +367,12 @@ class EventRunner():
 
         for event in events:
             votebox_destroyed_event: dict = {}
-            votebox_destroyed_event["elections_voted"] = event.value.fields["_electionsVoted"].value
             votebox_destroyed_event["active_ballots"] = event.value.fields["_activeBallots"].value
             votebox_destroyed_event["voter_address"] = event.value.fields["_voterAddress"].hex()
+            # The election_voted property is an [int], so it needs special processing
+            votebox_destroyed_event["elections_voted"] = []
+            for active_ballot in event.value.fields["_electionsVoted"].value:
+                votebox_destroyed_event["elections_voted"].append(active_ballot.value)
 
             votebox_destroyed_events.append(votebox_destroyed_event)
         
@@ -381,7 +395,7 @@ class EventRunner():
         election_index_created_events: list[dict[str:str]] = []
 
         for event in events:
-            election_index_created_event: dict[str:str] = []
+            election_index_created_event: dict[str:str] = {}
             election_index_created_event["account_address"] = event.value.fields["_accountAddress"].hex()
 
             election_index_created_events.append(election_index_created_event)
@@ -459,3 +473,30 @@ class EventRunner():
             votebooth_printer_admin_destroyed_events.append(votebooth_printer_admin_destroyed_event)
 
         return votebooth_printer_admin_destroyed_events
+    
+
+    async def getTokensDepositedEvents(self, event_num: int) -> dict:
+        """Function to return the latest event_num FlowToken.TokensDeposited events from the event queue.
+
+        @param event_num: int - The number of events to return.
+        
+        @return dict Returns the event parameters in the format
+        {
+            "amount": float,
+            "to": str
+        }
+        """
+        # TODO: How to get the deployed address of the FlowToken contract?
+        event_name: str = "A." + self.flow_token_deployer_address + ".FlowToken.TokensDeposited"
+        events: list[cadence.Event] = await self.getEventsByName(event_name=event_name, event_num=event_num)
+
+        tokens_deposited_events: list[dict] = []
+
+        for event in events:
+            tokens_deposited_event: dict = {}
+            tokens_deposited_event["amount"] = event.value.fields["amount"].value
+            tokens_deposited_event["to"] = event.value.fields["to"].from_hex()
+
+            tokens_deposited_events.append(tokens_deposited_event)
+
+        return tokens_deposited_events

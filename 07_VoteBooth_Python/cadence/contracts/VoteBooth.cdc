@@ -125,13 +125,22 @@ access(all) contract VoteBooth {
 
         /**
             Function to add a new record to the ElectionIndex resource.
+            WEIRD SCENARIO I'VE ENCOUNTERED: If I create multiple Elections with the same StoragePath, I can get a situation where I have multiple activeElections but in reality only one active Election resource exists. This is because I was not checking for the addition of multiple StoragePaths. The electionIndex uses the electionId as key, so it does not care about the same StoragePath being submitted again and again.
 
             @param electionId (UInt64) The electionId of the resource in question.
             @param electionStoragePath (StoragePath) The path to the private storage area where the Election resource was stored.
             @param electionPublicPath (PublicPath) The path to the public storage area where a public reference to this Election can be retrieved from.
         **/
         access(account) fun addElectionToIndex(electionId: UInt64, electionStoragePath: StoragePath, electionPublicPath: PublicPath): Void {
-            // Done
+            // Cycle through all the current items in the electionIndex, and check if any has the same StoragePath as the one submitted
+            for indexedElectionId in self.electionIndex.keys {
+                if (self.electionIndex[indexedElectionId]!.keys[0] == electionStoragePath) {
+                    // If the StoragePath submitted already exists, replace that record with the current one
+                    let oldRecord: {StoragePath: PublicPath} = self.electionIndex.remove(key: indexedElectionId)!
+                }
+            }
+
+            // Add the new record to the index
             self.electionIndex[electionId] = {electionStoragePath: electionPublicPath}
         }
         

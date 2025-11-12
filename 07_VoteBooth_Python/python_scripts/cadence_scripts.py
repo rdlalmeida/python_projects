@@ -100,7 +100,9 @@ class ScriptRunner():
         @return list[int] This function returns the list of active election ids.
         """
         name = "02_get_active_elections"
-        arguments = [cadence.Address(votebox_address)] if votebox_address else []
+        arguments = [cadence.Address.from_hex(votebox_address)] if votebox_address else [cadence.Optional(None)]
+        # arguments = [cadence.Optional(cadence.Address.from_hex(votebox_address))]
+
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
         async with flow_client(
@@ -111,7 +113,13 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return script_result.value
+            # This particular script returns an array of cadence.UInt64 values. Cast those to a regular array before returning.
+            return_list: list[int] = []
+
+            for return_item in script_result.value:
+                return_list.append(return_item.value)
+
+            return return_list
     
     
     async def getElectionName(self, election_id: int, votebox_address: str = None) -> str:
@@ -462,3 +470,26 @@ class ScriptRunner():
                 raise ScriptError(script_name=name)
             
             return bool(script_result.value)
+        
+
+    async def getAccountBalance(self, account_address: str) -> float:
+        """Function to retrieve the account balance, in FLOW tokens, of the account whose address is provided as input.
+
+        @param account_address: str - The address of the account whose balance is to be retrieved.
+
+        @return float This function returns the balance amount in FLOW tokens for the account provided.
+        """
+        name = "17_get_account_balance"
+        arguments = [cadence.Address.from_hex(account_address)]
+
+        script_object: Script = self.getScript(script_name=name, script_arguments=arguments)
+
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
+
+            if (not script_result):
+                raise ScriptError(script_name=name)
+
+            return float(script_result.value)
