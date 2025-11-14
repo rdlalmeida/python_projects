@@ -2,7 +2,8 @@ from flow_py_sdk import (
     flow_client,
     cadence,
     Tx,
-    ProposalKey
+    ProposalKey,
+    entities
 )
 
 import configparser
@@ -142,24 +143,29 @@ class TransactionRunner():
 
             return tx_object
     
-    async def submitTransaction(self, tx_object: Tx) -> None:
+    async def submitTransaction(self, tx_object: Tx) -> entities.TransactionResultResponse:
         """
         Simple internal function to abstract all the logic to submit a transaction for execution and process any raised errors. This is always the same process for most transactions, therefore it is best to encode it into a single function.
 
         @param tx_object: Tx - This function requires a previously prepared Tx-type object.
+
+        @returns TransactionResultResponse An object that encapsules all the state changes related to the transaction executed, including events.
         """
         try:
             async with flow_client(
                 host=self.ctx.access_node_host, port=self.ctx.access_node_port
             ) as client:
-                await client.execute_transaction(tx=tx_object, wait_for_seal=True)
+                tx_response: entities.TransactionResultResponse = await client.execute_transaction(tx=tx_object, wait_for_seal=True)
+
+                return tx_response
         except Exception as e:
             log.error(f"Unable to execute transaction from account {tx_object.payer.hex()}: ")
             log.error(e)
-            exit(-1)
+            # Propagate the Exception upwards for additional treatment
+            raise e
 
 
-    async def createElection(self, election_name: str, election_ballot: str, election_options: dict[int: str], election_public_key: list[int], election_storage_path: str, election_public_path: str, tx_signer_address: str) -> dict:
+    async def createElection(self, election_name: str, election_ballot: str, election_options: dict[int: str], election_public_key: list[int], election_storage_path: str, election_public_path: str, tx_signer_address: str) -> list[dict]:
         """Function to create a new Election in the project environment.
 
         @param election_name: str - The name of election to create
@@ -221,15 +227,15 @@ class TransactionRunner():
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
-        await self.submitTransaction(tx_object=tx_object)
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
         # Grab only the latest ElectionCreated event
-        election_created_events: list[dict] = await self.event_runner.getElectionCreatedEvents(event_num=1)
+        election_created_events: list[dict] = await self.event_runner.getElectionCreatedEvents(tx_response=tx_response)
 
-        return election_created_events[0]
+        return election_created_events
     
 
-    async def deleteElection(self, election_id: int, tx_signer_address: str) -> dict[str:int]:
+    async def deleteElection(self, election_id: int, tx_signer_address: str) -> list[dict[str:int]]:
         """Function to delete an election identified by the id provided from the current environment.
 
         @param election_id: int - The identifier for the election to delete
@@ -248,14 +254,14 @@ class TransactionRunner():
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
-        await self.submitTransaction(tx_object=tx_object)
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
-        election_destroyed_events: list[dict] = await self.event_runner.getElectionDestroyedEvents(event_num=1)
+        election_destroyed_events: list[dict] = await self.event_runner.getElectionDestroyedEvents(tx_response=tx_response)
 
-        return election_destroyed_events[0]
+        return election_destroyed_events
     
 
-    async def createVoteBox(self, tx_signer_address: str) -> dict[str:str]:
+    async def createVoteBox(self, tx_signer_address: str) -> list[dict[str:str]]:
         """Function to create a votebox resource into the the account that is supposed to sign this transaction.
 
         @param tx_signer_address: str - The address of the account that is going to digitally sign this transaction.
@@ -271,15 +277,15 @@ class TransactionRunner():
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
-        await self.submitTransaction(tx_object=tx_object)
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         
         # Grab the VoteBoxCreated event list
-        votebox_created_events: list[dict[str:str]] = await self.event_runner.getVoteBoxCreatedEvents(event_num=1)
+        votebox_created_events: list[dict[str:str]] = await self.event_runner.getVoteBoxCreatedEvents(tx_response=tx_response)
 
-        return votebox_created_events[0]
+        return votebox_created_events
     
 
-    async def deleteVoteBox(self, tx_signer_address: str) -> dict[str:str]:
+    async def deleteVoteBox(self, tx_signer_address: str) -> list[dict[str:str]]:
         """Function to delete a votebox resource from the account storage for the user that digitally signs this transaction.
 
         @param tx_signer_address: str - The address of the account that is going to digitally sign this transaction.
@@ -298,14 +304,14 @@ class TransactionRunner():
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
-        await self.submitTransaction(tx_object=tx_object)
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
-        votebox_destroyed_event:dict = await self.event_runner.getVoteBoxDestroyedEvents(event_num=1)
+        votebox_destroyed_event:dict = await self.event_runner.getVoteBoxDestroyedEvents(tx_response=tx_response)
 
         return votebox_destroyed_event
     
 
-    async def createBallot(self, election_id: int, recipient_address: str, tx_signer_address: str) -> dict[str:int]:
+    async def createBallot(self, election_id: int, recipient_address: str, tx_signer_address: str) -> list[dict[str:int]]:
         """Function to create and deposit a ballot resource into the votebox in the account identified by the recipient address.
 
         @param election_id: int - The identifier for the Election that this Ballot should be associated to.
@@ -326,11 +332,11 @@ class TransactionRunner():
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
-        await self.submitTransaction(tx_object=tx_object)
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
-        ballot_created_event: dict[str:int] = await self.event_runner.getBallotCreatedEvents(event_num=1)
+        ballot_created_event: dict[str:int] = await self.event_runner.getBallotCreatedEvents(tx_response=tx_response)
 
-        return ballot_created_event[0]
+        return ballot_created_event
     
 
     async def castBallot(self, election_id: int, new_option: str, tx_signer_address: str) -> None:
@@ -353,7 +359,7 @@ class TransactionRunner():
         log.info(f"Voter {tx_signer_address} cast a new option for election {election_id}")
 
     
-    async def submitBallot(self, election_id: int, tx_signer_address: str) -> dict[str:int]:
+    async def submitBallot(self, election_id: int, tx_signer_address: str) -> list[dict[str:int]]:
         """Function to submit a ballot in votebox from  the transaction signer address to the election with the id provided as argument.
 
         @param election_id: int - The election identifier to select the ballot to submit.
@@ -372,26 +378,26 @@ class TransactionRunner():
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
-        await self.submitTransaction(tx_object=tx_object)
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
         # This transaction can trigger either a BallotSubmitted or a BallotReplaced event depending on the state of the user's VoteBox.
         # If no Ballots exist for the current_election_id, this submission triggers the BallotSubmitted event. But if this Ballot
         # replaces a previously submitted one, then this transaction triggers the BallotReplaced instead
 
         # Start by grabbing the BallotSubmitted event for this transaction
-        ballot_submitted_events: dict[str:int] = await self.event_runner.getBallotSubmittedEvents(event_num=1)
+        ballot_submitted_events: list[dict[str:int]] = await self.event_runner.getBallotSubmittedEvents(tx_response=tx_response)
 
         # And the respective BallotReplaced event as well. If all goes well, I should have only one item in either one of these lists.
-        ballot_replaced_events: dict[str:int] = await self.event_runner.getBallotReplacedEvents(event_num=1)
+        ballot_replaced_events: list[dict[str:int]] = await self.event_runner.getBallotReplacedEvents(tx_response=tx_response)
 
         # Case 1: I have one BallotSubmitted event and 0 BallotReplaced. The transaction submitted the first Ballot to the VoteBox resource
         if (len(ballot_submitted_events) > 0 and len(ballot_replaced_events) == 0):
             # All OK. Return the BallotSubmitted event details
-            return ballot_submitted_events[0]
+            return ballot_submitted_events
         
         # Case 2: I have 0 BallotSubmitted events and at least one BallotReplaced event. The transaction replaces an previously submitted Ballot.
         elif (len(ballot_submitted_events) == 0 and len(ballot_replaced_events) > 0):
-            return ballot_replaced_events[0]
+            return ballot_replaced_events
         # Any other case is an error. Raise the respective Exception
         elif (len(ballot_submitted_events) > 0 and len(ballot_replaced_events) > 0):
             # Got both events at once. This is an Error
@@ -418,12 +424,12 @@ class TransactionRunner():
         active_elections: list[int] = await self.script_runner.getActiveElections()
         
 
-        await self.submitTransaction(tx_object=tx_object)
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
         # Grab all the events
-        election_destroyed_events: dict[str:int] = await self.event_runner.getElectionDestroyedEvents(event_num=len(active_elections))
-        election_index_destroyed_events: dict[str:str] = await self.event_runner.getElectionIndexDestroyedEvents(event_num=1)
-        votebooth_printer_admin_destroyed: dict[str:str] = await self.event_runner.getVoteBoothPrinterAdminDestroyedEvents(event_num=1)
+        election_destroyed_events: dict[str:int] = await self.event_runner.getElectionDestroyedEvents(tx_response=tx_response)
+        election_index_destroyed_events: dict[str:str] = await self.event_runner.getElectionIndexDestroyedEvents(tx_response=tx_response)
+        votebooth_printer_admin_destroyed: dict[str:str] = await self.event_runner.getVoteBoothPrinterAdminDestroyedEvents(tx_response=tx_response)
 
         # It is easier to do all the log.info printing from this side
         log.info(f"Successfully deleted {len(election_destroyed_events)} Elections from the VoteBooth contract in account {tx_signer_address}:")
@@ -450,7 +456,7 @@ class TransactionRunner():
 
         tx_name = "00_fund_all_accounts"
         tx_arguments: list = [cadence.UFix64(amount)]
-        addresses: list[str] = []
+        addresses: list[cadence.Address] = []
 
         for recipient in recipients:
             # NOTE: The "address" parameter in the user account list is already in the expected cadence.Address format.
@@ -460,9 +466,9 @@ class TransactionRunner():
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
-        await self.submitTransaction(tx_object=tx_object)
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
-        token_deposited_events: list[dict] = await self.event_runner.getTokenDepositedEvents(event_num=len(self.ctx.accounts))
+        token_deposited_events: list[dict] = await self.event_runner.getTokensDepositedEvents(tx_response=tx_response)
 
         # Run the script to get the balance of all accounts, including the service_account
         current_accounts: dict = {
@@ -480,6 +486,37 @@ class TransactionRunner():
 
         for token_deposited_event in token_deposited_events:
             log.info(f"Successfully funded {token_deposited_event["amount"]} FLOW tokens into account {token_deposited_event["to"]}")
-            log.info(f"{token_deposited_event["to"]} account balance: {current_accounts[token_deposited_event["to"]]["balance"]} FLOW")
 
-        
+        for account in current_accounts:
+            log.info(f"Account '{account}' ({current_accounts[account]["address"]}) balance = {current_accounts[account]["balance"]} FLOW")
+
+    
+    async def destroyVoteBoxBallot(self, election_id: int, tx_signer_address: str) -> dict[str:int]:
+        """Function to destroy a single Ballot from a VoteBox in the tx_signer_address account, stored internally under the election_id key provided.
+
+        @param election_id: int - The identifier for the Election that this Ballot should be associated to.
+        @param tx_signer_address: str - The address of the account that can authorize this transaction with a digital signature.
+
+        @return dict[str:int] The function returns the parameters from the BallotBurned event emitted in the format
+        {
+            "ballot_id": int,
+            "linked_election_id": int
+        }
+        """
+        # TODO
+
+
+    async def cleanupVoteBox(self, tx_signer_address: str) -> list[dict[str:int]]:
+        """Function to cleanup the VoteBox resource retrieved from the account that signs the transaction. What this function does is to check the list of activeElectionIds from the ElectionIndex in the VoteBooth contract and validate that every Ballot currently stored in the VoteBox matched an active election. Does that don't are considered inactive and are burned on the spot.
+
+        @param tx_signer_address - The address of the account that can authorize this transaction with a digital signature.
+
+        @return list[dict[str:int]] The function returns a list with the parameters for all the BallotBurned events emitted during the cleanup process in the format
+        [
+        {
+            "ballot_id": int,
+            "linked_election_id": int
+        }
+        ] 
+        """
+        #TODO

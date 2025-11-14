@@ -3,7 +3,8 @@ from flow_py_sdk import(
     cadence,
     Tx,
     TransactionTemplates,
-    ProposalKey
+    ProposalKey,
+    entities
 )
 
 import configparser
@@ -65,7 +66,7 @@ class DeployContract():
         self.event_runner: EventRunner = EventRunner()
 
         
-    async def run(self, contract_name: str, contract_source: str, update: bool):
+    async def run(self, contract_name: str, contract_source: str, update: bool) -> entities.TransactionResultResponse:
         # Validate the contract name at the top
         if (not project_files.__contains__(contract_name) or project_dependencies.__contains__(contract_name)):
             raise Exception(f"ERROR: Contract '{contract_name}' does not belong to the current project!")
@@ -119,8 +120,10 @@ class DeployContract():
 
             # Submit transaction
             try:
-                await client.execute_transaction(transaction)
+                tx_response: entities.TransactionResultResponse = await client.execute_transaction(transaction)
                 log.info(f"Contract {contract_name} successfully deployed to network at {self.ctx.access_node_host}:{self.ctx.access_node_port} for account {signer_address}")
+
+                return tx_response
             except Exception as deploy_ex:
                 # Test if this Exception was due to an existing contract with the same name
                 if (deploy_ex.args[0].__contains__("cannot overwrite existing contract")):
@@ -155,8 +158,10 @@ class DeployContract():
                         )
                         log.info("Trying an Update instead...")
                         try:
-                            await client.execute_transaction(transaction)
+                            tx_response: entities.TransactionResultResponse = await client.execute_transaction(transaction)
                             log.info(f"Contract {contract_name} updated successfully to network at {self.ctx.access_node_host}:{self.ctx.access_node_port} for account {self.ctx.service_account["address"]}")
+                            return tx_response
+                        
                         except Exception as update_ex:
                             log.error(f"Unable to update contract '{contract_name}' due to: ")
                             log.error(update_ex)
@@ -244,21 +249,21 @@ class DeployContract():
 
         log.info("4. Deploying the VoteBooth project contract...")
         try:
-            await self.run(contract_name="VoteBooth", contract_source=contract_source.read(), update=True)
+            tx_response: entities.TransactionResultResponse = await self.run(contract_name="VoteBooth", contract_source=contract_source.read(), update=True)
             log.info("VoteBooth contract deployed successfully!")
 
             # After deploying the last contract of the project, I should run the EventRunner class constructor again to update the deployment addresses
             # that are needed to process the events properly. This needs to happen before running any of the event capturing routines or it will fail
             await self.event_runner.configureDeployerAddress()
 
-            election_index_created_event: dict[str:str] = await self.event_runner.getElectionIndexCreatedEvents(event_num=1)
+            election_index_created_events: list[dict[str:str]] = await self.event_runner.getElectionIndexCreatedEvents(tx_response=tx_response)
 
-            if (len(election_index_created_event) > 0):
+            for election_index_created_event in election_index_created_events:
                 log.info(f"ElectionIndex created for account {election_index_created_event["account_address"]}")
 
-            votebooth_printer_admin_created_event: dict[str:str] = await self.event_runner.getVoteBoothPrinterAdminCreatedEvents(event_num=1)
+            votebooth_printer_admin_created_events: list[dict[str:str]] = await self.event_runner.getVoteBoothPrinterAdminCreatedEvents(tx_response=tx_response)
             
-            if (len(votebooth_printer_admin_created_event)> 0):
+            for votebooth_printer_admin_created_event in votebooth_printer_admin_created_events:
                 log.info(f"VoteBoothPrinterAdmin created for account {votebooth_printer_admin_created_event["account_address"]}")
 
         except Exception as e:
@@ -289,7 +294,7 @@ class DeleteContract():
         self.event_runner = EventRunner()
 
     # The contract removal function only needs the contract name
-    async def run(self, contract_name: str):
+    async def run(self, contract_name: str) -> entities.TransactionResultResponse:
         async with flow_client(
             host=self.ctx.access_node_host, port=self.ctx.access_node_port
         ) as client:
@@ -325,7 +330,8 @@ class DeleteContract():
             )
             
             try:
-                await client.execute_transaction(transaction)
+                tx_response: entities.TransactionResultResponse = await client.execute_transaction(transaction)
+                return tx_response
             except Exception as e:
                 log.error(f"Unable to delete contract '{contract_name}' due to:")
                 log.error(e)
@@ -344,18 +350,6 @@ class DeleteContract():
             log.info(f"Deleting '{project_contract}' from network {self.ctx.access_node_host}:{self.ctx.access_node_port} for account {self.ctx.service_account["address"]}")
             await self.run(contract_name=project_contract)
             log.info(f"Contract '{project_contract}' deleted successfully!")
-
-            # Before moving to the next one, this process should emit a ElectionIndexDestroyed and a VoteBoothPrinterAdminDestroyed events when the VoteBooth
-            # contract is deleted. Try to capture these events and do something if some are returned
-            if (project_contract == "VoteBooth"):
-                election_index_destroyed_event: dict[str:str] = await self.event_runner.getElectionIndexDestroyedEvents(event_num=1)
-                votebooth_printer_admin_destroyed_event: dict[str:str] = await self.event_runner.getVoteBoothPrinterAdminDestroyedEvents(event_num=1)
-
-                if (len(election_index_destroyed_event) > 0):
-                    log.info(f"Election Index destroyed from account {election_index_destroyed_event["account_address"]}")
-
-                if (len(votebooth_printer_admin_destroyed_event) > 0):
-                    log.info(f"VoteBooth Printer Admin destroyed from account {votebooth_printer_admin_destroyed_event["account_address"]}")
 
 
     async def deleteProjectDependencies(self):

@@ -134,7 +134,9 @@ class ScriptRunner():
         arguments = [cadence.UInt64(election_id)]
 
         if(votebox_address):
-            arguments.append(cadence.Address(votebox_address))
+            arguments.append(cadence.Address.from_hex(votebox_address))
+        else:
+            arguments.append(cadence.Optional(None))
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
@@ -147,7 +149,7 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return str(script_result.value)
+            return str(script_result.value.__str__())
     
     
     async def getElectionBallot(self, election_id: int, votebox_address: str = None) -> str:
@@ -162,7 +164,9 @@ class ScriptRunner():
         arguments = [cadence.UInt64(election_id)]
 
         if (votebox_address):
-            arguments.append(cadence.Address(votebox_address))
+            arguments.append(cadence.Address.from_hex(votebox_address))
+        else:
+            arguments.append(cadence.Optional(None))
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
@@ -189,7 +193,9 @@ class ScriptRunner():
         arguments = [cadence.UInt64(election_id)]
 
         if (votebox_address):
-            arguments.append(cadence.Address(votebox_address))
+            arguments.append(cadence.Address.from_hex(votebox_address))
+        else:
+            arguments.append(cadence.Optional(None))
         
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
@@ -201,8 +207,7 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            # TODO: I doubt this works as is. Test this please...
-            return dict[int: str](script_result)
+            return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result.value)
     
 
     async def getElectionId(self, election_id: int, votebox_address: str = None) -> int:
@@ -217,7 +222,9 @@ class ScriptRunner():
         arguments = [cadence.UInt64(election_id)]
 
         if (votebox_address):
-            arguments.append(cadence.Address(votebox_address))
+            arguments.append(cadence.Address.from_hex(votebox_address))
+        else:
+            arguments.append(cadence.Optional(None))
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
         async with flow_client(
@@ -228,8 +235,9 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
         
-            return int(script_result.value)
+            return int(script_result.value.__str__())
     
+
     async def getPublicEncryptionKey(self, election_id: int, votebox_address: str = None) -> list[int]:
         """Function to retrieve the public encryption key for the election identified by id provided as argument.
 
@@ -242,9 +250,13 @@ class ScriptRunner():
         arguments = [cadence.UInt64(election_id)]
 
         if (votebox_address):
-            arguments.append(cadence.Address(votebox_address))
+            arguments.append(cadence.Address.from_hex(votebox_address))
+        else:
+            arguments.append(cadence.Optional(None))
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
+
+        public_key_to_return: list[int] = []
 
         async with flow_client(
             host=self.ctx.access_node_host, port=self.ctx.access_node_port
@@ -254,7 +266,10 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
 
-            return list[int](script_result.value)
+            for key_element in script_result.value.value:
+                public_key_to_return.append(int(key_element.value.__str__()))
+
+            return public_key_to_return
     
 
     async def getElectionCapability(self, election_id: int, votebox_address: str = None) -> cadence.Capability:
@@ -269,7 +284,9 @@ class ScriptRunner():
         arguments = [cadence.UInt64(election_id)]
 
         if (votebox_address):
-            arguments.append(cadence.Address(votebox_address))
+            arguments.append(cadence.Address.from_hex(votebox_address))
+        else:
+            arguments.append(cadence.Optional(None))
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
@@ -281,7 +298,7 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return cadence.Capability(script_result.value)
+            return script_result.value
     
 
     async def getElectionTotals(self, election_id: int, votebox_address: str = None) -> dict[str: int]:
@@ -296,7 +313,9 @@ class ScriptRunner():
         arguments = [cadence.UInt64(election_id)]
 
         if (votebox_address):
-            arguments.append(cadence.Address(votebox_address))
+            arguments.append(cadence.Address.from_hex(votebox_address))
+        else:
+            arguments.append(cadence.Optional(None))
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
@@ -308,15 +327,15 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return dict[str: int](script_result)
+            return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result.value)
 
 
-    async def getElectionStoragePath(self, election_id: int) -> cadence.StoragePathKind:
+    async def getElectionStoragePath(self, election_id: int) -> str:
         """Function to retrieve the storage path for the election identified by the id provided as argument
 
         @param election_id: int - The election id for the election whose storage path is to be retrieved.
 
-        @return cadence.StoragePathKind I'm hoping this "StoragePathKind" from the cadence module is functionally similar to the StoragePath that I want to retrieve.
+        @return str Returns a string representation of the storage path retrieved.
         """
         name = "10_get_election_storage_path"
         arguments = [cadence.UInt64(election_id)]
@@ -330,16 +349,16 @@ class ScriptRunner():
 
             if (not script_result):
                 raise ScriptError(script_name=name)
-            
-            return cadence.StoragePathKind(script_result.value)
+
+            return "/" + script_result.domain + "/" + script_result.identifier
     
 
-    async def getElectionPublicPath(self, election_id: int) -> cadence.PublicPathKind:
+    async def getElectionPublicPath(self, election_id: int) -> str:
         """Function to retrieve the public path for the election identified by the id provided as argument.
 
         @param election_id: int - The election id for the election whose public path is to be retrieved.
 
-        @return cadence.PublicPathKind Hopefully, the variable type provided is somehow compatible with the PublicPath that I wish to return from this function.
+        @return str Returns a string representation of the public path retrieved.
         """
         name = "11_get_election_public_path"
         arguments = [cadence.UInt64(election_id)]
@@ -353,7 +372,7 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return cadence.PublicPathKind(script_result.value)
+            return "/" + script_result.domain + "/" + script_result.identifier
 
 
     async def getElectionsList(self) -> dict[int: str]:
@@ -374,7 +393,7 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return dict[int: str](script_result.value)
+            return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result)
 
     
     async def getBallotOption(self, election_id: int, votebox_address: str) -> str:
@@ -386,7 +405,7 @@ class ScriptRunner():
         @return str - If there's a ballot submitted for the election id provided, in the votebox for the address provided as well, this function returns the option set in it. Otherwise returns None. 
         """
         name = "13_get_ballot_option"
-        arguments = [cadence.UInt64(election_id), cadence.Address(votebox_address)]
+        arguments = [cadence.UInt64(election_id), cadence.Address.from_hex(votebox_address)]
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
@@ -398,7 +417,7 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return str(script_result.value)
+            return script_result.value
 
     
     async def getBallotId(self, election_id: int, votebox_address: str) -> int:
@@ -410,7 +429,7 @@ class ScriptRunner():
         @return int This function returns the ballot identifiers number for the Ballot stored under the election id inside the votebox resource retrieved from the input argument.
         """
         name = "14_get_ballot_id"
-        arguments = [cadence.UInt64(election_id), cadence.Address(votebox_address)]
+        arguments = [cadence.UInt64(election_id), cadence.Address.from_hex(votebox_address)]
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
@@ -422,7 +441,7 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return int(script_result.value)
+            return script_result.value.value
     
 
     async def getElectionResults(self, election_id: int) -> dict[str: int]:
@@ -446,7 +465,7 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return dict[str: int](script_result.value)
+            return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result)
 
     
     async def isElectionFinished(self, election_id: int) -> bool:
@@ -492,4 +511,27 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
 
-            return float(script_result.value)
+            return float(script_result.__str__())
+
+
+    async def getElectionWinner(self, election_id: int) -> dict[str:int]:
+        """Function to retrieve the winning option for the election with the identifier provided as argument.
+
+        @param election_id: int - The election identifier for the Election to be processed.
+
+        @return dict[str:int] The function returns a dictionary with the winning option for the election, which can have multiple elements for tied election.
+        """
+        name = "18_get_election_winner"
+        arguments = [cadence.UInt64(election_id)]
+
+        script_object: Script = self.getScript(script_name=name, script_arguments=arguments)
+
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
+
+            if (not script_result):
+                raise ScriptError(script_name=name)
+
+            return script_result.value

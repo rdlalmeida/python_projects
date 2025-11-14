@@ -121,6 +121,38 @@ access(all) contract VoteBoxStandard {
             }
         }
 
+
+        /**
+            Function to delete a Ballot from this VoteBox resource, for the electionId provided given that VoteBoxes index stored Ballots using the linkedElectionId as key. If the Ballot exists and its destroyed, the function returns the ballotId (not the linkedElectionId) of the destroyed Ballot. Otherwise returns nil.
+
+            @param electionId (UInt64) The election identifier to use as key to retrieve the Ballot to destroy.
+
+            @return UInt64? If the Ballot exists in the current VoteBox and it is destroyed, the function returns the ballotId of the destroyed Ballot. Otherwise a nil is returned instead.
+        **/
+        access(VoteBoxStandard.VoteBoxAdmin) fun deleteBallot(electionId: UInt64): UInt64? {
+            // Use the internal "getBallotId" function to retrieve a ballotId from the electionId provided. If a valid UInt64 is returned, the Ballot exists
+            // and I can proceed with its destruction. Otherwise, a nil is propagated to the function return
+            let ballotIdToReturn: UInt64? = self.getBallotId(electionId: electionId)
+
+            if (ballotIdToReturn != nil) {
+                // Deal only with the case where I got a valid ballotId back
+                // Load the ballot
+                let ballotToDestroy: @BallotStandard.Ballot <- self.activeBallots.remove(key: electionId) ??
+                panic(
+                    "Unable to retrieve a valid @BallotStandard.Ballot for electionId "
+                    .concat(electionId.toString())
+                    .concat(" from the VoteBox in account ")
+                    .concat(self.owner!.address.toString())
+                )
+
+                // All good. Burn the Ballot
+                Burner.burn(<- ballotToDestroy)
+            }
+
+            return ballotIdToReturn
+        }
+        
+
         /**
             Function to retrieve the name of the Election associated to the Ballot retrieved with the input argument.
 
