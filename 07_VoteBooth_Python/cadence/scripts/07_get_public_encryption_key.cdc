@@ -5,13 +5,13 @@
     @param electionId (UInt64) The election identifier for the Election resource whose parameter is to be returned to.
     @param voteboxAddress (Address?) The account address to use to retrieve the public version of the VoteBox resource. This input can be set to a nil to retrieve the parameter in question directly from the Election resource reference.
 
-    @returns ([UInt8]?) Returns the public encryption key of the Election, encoded as a UInt8 array, if it exists. Otherwise, the process panics at the offending step.
+    @returns (String?) Returns the public encryption key of the Election, if it exists. Otherwise, the process panics at the offending step.
 **/
 import ElectionStandard from 0xf8d6e0586b0a20c7
 import VoteBoxStandard from 0xf8d6e0586b0a20c7
 import VoteBooth from 0xf8d6e0586b0a20c7
 
-access(all) fun main(electionId: UInt64, voteboxAddress: Address?): [UInt8]? {
+access(all) fun main(electionId: UInt64, voteboxAddress: Address?): String? {
     if (voteboxAddress == nil) {
         let deployerAccount: &Account = getAccount(VoteBooth.deployerAddress)
 

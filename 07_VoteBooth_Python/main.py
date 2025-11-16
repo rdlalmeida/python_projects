@@ -3,11 +3,14 @@ from common import utils, account_config
 from python_scripts.cadence_scripts import ScriptRunner
 from python_scripts.cadence_transactions import TransactionRunner
 from python_scripts.event_management import EventRunner
+from python_scripts.election_management import Election
 from python_scripts import contract_management
 import os, pathlib
 import configparser
 import random
 from flow_py_sdk import cadence
+import ecdsa
+
 
 import logging
 log = logging.getLogger(__name__)
@@ -66,10 +69,18 @@ election_options: list[dict[int: str]] = [
     }
 ]
 
-election_public_keys: list[list[int]] = [
-    [87, 174, 84, 18, 106, 155, 246, 129, 83, 78, 24, 168, 183, 53, 39, 121, 60, 186, 137, 156, 247, 185, 9, 137, 100, 151, 208, 113, 59, 191, 26, 118],
-    [51, 171, 190, 97, 148, 77, 139, 219, 238, 108, 187, 103, 11, 17, 101, 98, 82, 99, 198, 155, 229, 236, 199, 71, 83, 213, 183, 240, 193, 220, 78, 239],
-    [2, 164, 77, 118, 115, 138, 60, 142, 115, 146, 41, 115, 4, 36, 56, 23, 183, 225, 212, 85, 28, 203, 62, 60, 162, 113, 133, 116, 215, 163, 53, 79]
+# election_public_keys: list[str] = [
+#     "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1JOYQDWcTOwa97QsTsoym37sdf/gdtx0PqSnp5SzkLB5DpJrt9v4PbppttRlU3gbRrjkrlQH6fWnEOkm2pIkvxpqr2mVWMogpHw8HLU82SRjWDM5mh0WykRJGqOUt7x1b3+HEMynGHCjTY+OzhqcrnylhtH4qAp7fnwIyRAfPxks5c2zICELa667ZhAuKQp2Teyy7WAW/CCaPVUOzJdHeuLmHMep3rhNKcxyKgi/UZHoyNGzJTFApkLBpFlNU0K+ztENBJEy2jrBm9/TEqH+0o3yzYy1SSijBHk7e63QjfQZF4L/TnWQjTLHRW3MSTFmCr5YaPG1Tzdv7ZX8iU1siwIDAQAB",
+#     "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwWrbT+BiU6f2uYSGPVJULflcKpqp/Lj75nuLoMUsOepoAVQGeV1zY+3aOjyJafOfig5f5TN+Kp5rdpqmAJ/PLwYdbI0sqd1/Dp2DgsxpHTbVZngIpEgvSmROqx7w5SN7qxRabsgujXcw3DUmaOfbQwFzS1jvXIXmxSX+WJIM7QwqW864gMsfV2AVYonWsghGaSCOaQ96sceBKWKvvhaMz0byD2LGiY+dpqYs/5OM+V5O+O0JXRsRHcStpqluNzTKDJEdfg5DACIgmQzvohNd2m29+pUCJ3xJavwlUuFRx7pad2iXYLpOqZr4ASv+Oi+OD8JCPLsIwB7S9CpE1Jz61QIDAQAB",
+#     "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyGtcxOs8yvE140S1ytC3A04Cb8gtbOlPNuydnL6aoRIUaLMZh6cuxFCmWlFTDEkMPMTQ8RqUEV7y63xTGj6QWc41gAbWhGXZ+3kNhz5ycI/5T4zAXSLuR/ouYmN8FV3DkaZ0Rf9vbgElMf15Wg6r+JI7lF4NRZiPHDlohpVLSRa+FGOMFWz0gF5PLJx2bsTvLz4nghnGJa800QHFwcPtpc3msy58WEUKoEKp/6nf0lK2kWpLOmhfjw6TaYUEHAPcCf0fh4NmXN3lwv0pThma00QhEFuikukiWrZ4tOS9dk25RgQqtXK5zELJ1lo83NMyiz8NZpfnFku59kgTzSDKXwIDAQAB"
+# ]
+
+keys_dir: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("keys")
+
+election_public_keys: list[pathlib.Path] = [
+    keys_dir.joinpath("rsa_public_1.key"),
+    keys_dir.joinpath("rsa_public_2.key"),
+    keys_dir.joinpath("rsa_public_3.key")
 ]
 
 election_storage_paths: list[str] = [
@@ -85,23 +96,22 @@ election_public_paths: list[str] = [
 ]
 
 
-async def main() -> None:
+async def main(election_index: int = 0) -> None:
     """
     Main entry point for this project
     """
+    current_election: Election = Election()
+    ctx = account_config.AccountConfig()
+
     # 0. Setup the project contracts
     if(False):
         log.info("Rebuilding project contracts...")
+        await contract_management.main(op="clear")
+
+        log.info("Re-deploying project contracts...")
         await contract_management.main(op="deploy")
         # log.info("Done!")
 
-    # Create an event runner
-    await event_runner.configureDeployerAddress()
-    
-    # Use this selector to chose between the pre-made elections in this file
-    election_index: int = 0
-    # Keep the id of the election in question for this process
-    current_election_id: int = None
 
     # 0.1. Fund all test accounts
     if (False):
@@ -114,69 +124,36 @@ async def main() -> None:
         await tx_runner.fundAllAccounts(amount=amount, recipients=recipients, tx_signer_address=ctx.service_account["address"].hex())
 
     # 1. Setup an election with the data from the config file
-    if (False):
-        log.info("Creating a new election...")
-
-        election_created_events: list[dict] = await tx_runner.createElection(
-            election_name=election_names[election_index],
-            election_ballot=election_ballots[election_index],
-            election_options=election_options[election_index],
-            election_public_key=election_public_keys[election_index],
-            election_storage_path=election_storage_paths[election_index],
-            election_public_path=election_public_paths[election_index],
-            tx_signer_address=ctx.service_account["address"].hex()
+    if (True):
+        await current_election.create_election(
+            new_election_name=election_names[election_index],
+            new_election_ballot=election_ballots[election_index],
+            new_election_options=election_options[election_index],
+            new_election_public_key=open(election_public_keys[election_index]).read(),
+            new_election_storage_path=election_storage_paths[election_index],
+            new_election_public_path=election_public_paths[election_index],
+            new_tx_signer_address=ctx.service_account["address"].hex()
         )
-
-        current_election_id = election_created_events[0]["election_id"]
-        for election_created_event in election_created_events:
-            log.info(f"Successfully created Election with id {current_election_id} and name '{election_created_event["election_name"]}'")
-    
-    # Update the current election id with whatever is being returned from the respective script
-    current_active_elections: list[int] = await script_runner.getActiveElections()
-    current_election_id: int = current_active_elections[len(current_active_elections) - 1]
 
     # 1.1 Destroy the current election
     if (False):
-        log.info(f"Destroying election {current_election_id}...")
-        election_destroyed_events: list[dict[str:int]] = await tx_runner.deleteElection(
-            election_id=current_election_id,
-            tx_signer_address=ctx.service_account["address"].hex()
-        )
-
-        for election_destroyed_event in election_destroyed_events:
-            log.info(f"Successfully destroyed Election with id {election_destroyed_event["election_id"]}. It had {election_destroyed_event["ballots_stored"]} ballots in it")
+        await current_election.destroy_election(tx_signer_address=ctx.service_account["address"].hex())
 
     # 2. Create a VoteBox into each of the user accounts inside a loop
     if (False):
         for user_account in ctx.accounts:
-            votebox_created_events: list[dict[str:str]] = await tx_runner.createVoteBox(tx_signer_address=user_account["address"].hex())
-
-            for votebox_created_event in votebox_created_events:
-                log.info(f"Successfully created a VoteBox for account {votebox_created_event["voter_address"]}")
+            await current_election.create_votebox(tx_signer_address=user_account["address"].hex())
 
     # 2.1 Destroy the VoteBox from the transaction signer's account
     if (False):
         for user_account in ctx.accounts:
-            votebox_destroyed_events: list[dict] = await tx_runner.deleteVoteBox(tx_signer_address=user_account["address"].hex())
-            for votebox_destroyed_event in votebox_destroyed_events:
-                log.info(f"Successfully deleted a VoteBox for account {votebox_destroyed_event["voter_address"]}, with {votebox_destroyed_event["active_ballots"]} active ballots still in it. This VoteBox was used to vote in {len(votebox_destroyed_event["elections_voted"])} elections:")
-            
-                index: int = 0
-                for active_election_id in votebox_destroyed_event["elections_voted"]:
-                    log.info(f"Election #{index}: {active_election_id}")
-                    index += 1
+            await current_election.destroy_votebox(tx_signer_address=user_account["address"].hex())
+
 
     # 3. Mint a blank Ballot into the account provided, for the election in question
-    if (False):
+    if (True):
         for user_account in ctx.accounts:
-            try:
-                ballot_created_events: list[dict[str:int]] = await tx_runner.createBallot(election_id=current_election_id, recipient_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex())
-
-                for ballot_created_event in ballot_created_events:
-                    log.info(f"Successfully created Ballot with id {ballot_created_event["ballot_id"]} attached to Election {ballot_created_event["linked_election_id"]} for account {user_account["address"].hex()}")
-            except Exception as e:
-                log.error(f"Unable to create a new Ballot to {user_account["address"].hex()}: ")
-                log.error(e)
+            await current_election.mint_ballot_to_votebox(votebox_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex())
     
     # 4. Cast the ballots for each of the user accounts to a random option from within the ones available for the election
     if (False):
@@ -244,14 +221,14 @@ async def main() -> None:
     # Lemme create a handy dictionary to control the rest of this flow
 
     # 7.1 - 02_get_active_elections
-    if(True):
+    if(False):
         scripts_to_run: dict[str:bool] = {
             "02_get_active_elections": False,
             "03_get_election_name": False,
             "04_get_election_ballot": False,
             "05_get_election_options": False,
             "06_get_election_id": False,
-            "07_get_public_encryption_key": False,
+            "07_get_public_encryption_key": True,
             "08_get_election_capability": False,
             "09_get_election_totals": False,
             "10_get_election_storage_path": False,
@@ -259,10 +236,10 @@ async def main() -> None:
             "12_get_elections_list": False,
             "13_get_ballot_option": False,
             "14_get_ballot_id": False,
-            "15_get_election_results": True,
-            "16_is_election_finished": True,
+            "15_get_election_results": False,
+            "16_is_election_finished": False,
             "17_get_account_balance": False,
-            "18_get_election_winner": True
+            "18_get_election_winner": False
         }
 
         selected_user: int = 1
@@ -342,18 +319,22 @@ async def main() -> None:
         # 07_get_public_encryption_key
         if (scripts_to_run["07_get_public_encryption_key"]):
             public_encryption_key_from_election: list[int] = await script_runner.getPublicEncryptionKey(election_id=current_election_id)
-            public_encryption_key_from_votebox: list[int] = await script_runner.getPublicEncryptionKey(election_id=current_election_id, votebox_address=ctx.accounts[selected_user]["address"].hex())
-
+            public_string_key: str = utils.encodeIntArrayToString(input_array=public_encryption_key_from_election)
+            
             log.info(f"Public encryption key returned from the Election resource:")
             log.info(public_encryption_key_from_election)
             log.info(f"Public key in string format: ")
-            public_string_key: str = utils.encodeIntArrayToString(input_array=public_encryption_key_from_election)
             log.info(public_string_key)
 
+            private_key = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)
+            public_key = private_key.verifying_key 
+
+
+            public_encryption_key_from_votebox: list[int] = await script_runner.getPublicEncryptionKey(election_id=current_election_id, votebox_address=ctx.accounts[selected_user]["address"].hex())
+            public_string_key: str = utils.encodeIntArrayToString(input_array=public_encryption_key_from_votebox)
             log.info(f"Public encryption key returned from the VoteBox resource: ")
             log.info(public_encryption_key_from_votebox)
             log.info(f"Public key in string format: ")
-            public_string_key: str = utils.encodeIntArrayToString(input_array=public_encryption_key_from_votebox)
             log.info(public_string_key)
 
         
@@ -415,13 +396,50 @@ async def main() -> None:
             election_results: dict[str:int] = await script_runner.getElectionResults(election_id=current_election_id)
 
             log.info(f"Election {current_election_id} results: {election_results}")
-        # 16_is_election_finished TODO
-        # 18_get_election_winner TODO
+        
 
+        # 16_is_election_finished
+        if (scripts_to_run["16_is_election_finished"]):
+            election_finished: bool = await script_runner.isElectionFinished(election_id=current_election_id)
+
+            if (election_finished):
+                log.info(f"Election {current_election_id} is finalized!")
+            else:
+                log.info(f"Election {current_election_id} is still running!")
+            
+
+        # 18_get_election_winner
+        if (scripts_to_run["18_get_election_winner"]):
+            election_winner: dict[str:int] = await script_runner.getElectionWinner(election_id=current_election_id)
+
+            if (len(election_winner) > 0):
+                log.info(f"Election {current_election_id} winning options: ")
+                for option in election_winner:
+                    log.info(f"Option '{option}': {election_winner[option]} votes!")
+            else:
+                log.info(f"Election {current_election_id} is not yet tallied!")
 
 
     # 8. Withdraw ballots and compute tally
-    #TODO
+    if (False):
+        ballots_withdrawn_event: dict[str:int] = await tx_runner.tallyElection(election_id=current_election_id, tx_signer_address=ctx.service_account["address"].hex())
+
+        log.info(f"Election {ballots_withdrawn_event["election_id"]} finished and tallied after processing {ballots_withdrawn_event["ballots_withdrawn"]} ballots.")
+
+        # Fetch the election results
+        election_results: dict[str:int] = await script_runner.getElectionResults(election_id=current_election_id)
+
+        log.info(f"Election {current_election_id} results: ")
+        for election_result in election_results:
+            log.info(f"Option '{election_result}': {election_results[election_result]} votes")
+
+        
+        election_winner: dict[str:int] = await script_runner.getElectionWinner(election_id=current_election_id)
+        log.info(f"Election {current_election_id} winner: ")
+        for winner in election_winner:
+            log.info(f"'{winner}' with {election_winner[winner]} votes")
+        
+        
 
     # 9. Clean up project from network
     if (False):
@@ -436,6 +454,7 @@ async def main() -> None:
         await tx_runner.cleanupVoteBooth(tx_signer_address=ctx.service_account["address"].hex())
 
         log.info(f"Successfully cleaned up the VoteBooth contract from account {ctx.service_account["address"].hex()}")
+
 
     
 if __name__ == "__main__":

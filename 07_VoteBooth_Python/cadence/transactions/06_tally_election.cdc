@@ -42,10 +42,6 @@ transaction(electionId: UInt64) {
     execute {
         let electionBallots: @[BallotStandard.Ballot] <- self.electionRef.withdrawBallots()
 
-        let winningOptions: {String: Int} = self.electionRef.tallyElection(_ballotsToTally: <- electionBallots)
-
-        // Log the winning options since I cannot return anything with this
-        log("Election ".concat(electionId.toString()).concat(" results: "))
-        log(winningOptions)
+        self.electionRef.setEncryptedOptions(_ballotsToTally: <- electionBallots)
     }
 }

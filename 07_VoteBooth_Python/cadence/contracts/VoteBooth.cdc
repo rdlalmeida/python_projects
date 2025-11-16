@@ -525,7 +525,7 @@ access(all) contract VoteBooth {
             @param newElectionName (String) The name for the Election resource.
             @param newElectionBallot (String) The question that this Election wants to answer.
             @param newElectionOptions ({UInt8: String}) The set of options that the voter must chose from.
-            @param newPublicKey ([UInt8]) A [UInt8] representing the public encryption key that is to be used to encrypt the Ballot option from the frontend side.
+            @param newPublicKey (String) The public encryption key that is to be used to encrypt the Ballot option from the frontend side.
             @param newElectionStoragePath (StoragePath) A StoragePath-type item to where this Election resource is going to be stored into the voter's own account.
             @param newElectionPublicPath (PublicPath) A PublicPath-type item where the public reference to this Election can be retrieved from.
             @param deployerAccount (auth(Storage) &Account) An authorized reference, with Storage entitlement, to the account where these Elections are to be stored to.
@@ -536,7 +536,7 @@ access(all) contract VoteBooth {
             newElectionName: String,
             newElectionBallot: String,
             newElectionOptions: {UInt8: String},
-            newPublicKey: [UInt8],
+            newPublicKey: String,
             newElectionStoragePath: StoragePath,
             newElectionPublicPath: PublicPath,
             deployerAccount: auth(Storage, Capabilities, ElectionStandard.ElectionAdmin) &Account
@@ -609,9 +609,9 @@ access(all) contract VoteBooth {
 
     // ---------------------------------------------------------------- VOTEBOOTH BEGIN ------------------------------------------------------------------------
     // VoteBooth Contract constructor
-    init(_verbose: Bool) {
+    init() {
         // Set the debug flag to true for now
-        self.verbose = _verbose
+        self.verbose = true
         
         self.voteBoothPrinterAdminStoragePath = /storage/VoteBoothPrinterAdmin
         self.electionIndexStoragePath = /storage/ElectionIndex

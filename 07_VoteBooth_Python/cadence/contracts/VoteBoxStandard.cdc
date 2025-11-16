@@ -37,7 +37,7 @@ access(all) contract VoteBoxStandard {
         access(all) view fun getElectionBallot(electionId: UInt64): String?
         access(all) view fun getElectionOptions(electionId: UInt64): {UInt8: String}?
         access(all) view fun getElectionId(electionId: UInt64): UInt64?
-        access(all) view fun getElectionPublicKey(electionId: UInt64): [UInt8]?
+        access(all) view fun getElectionPublicKey(electionId: UInt64): String?
         access(all) view fun getElectionCapability(electionId: UInt64): Capability?
         access(all) view fun getElectionTotalBallotsMinted(electionId: UInt64): UInt?
         access(all) view fun getElectionTotalBallotsSubmitted(electionId: UInt64): UInt?
@@ -121,7 +121,6 @@ access(all) contract VoteBoxStandard {
             }
         }
 
-
         /**
             Function to delete a Ballot from this VoteBox resource, for the electionId provided given that VoteBoxes index stored Ballots using the linkedElectionId as key. If the Ballot exists and its destroyed, the function returns the ballotId (not the linkedElectionId) of the destroyed Ballot. Otherwise returns nil.
 
@@ -151,7 +150,6 @@ access(all) contract VoteBoxStandard {
 
             return ballotIdToReturn
         }
-        
 
         /**
             Function to retrieve the name of the Election associated to the Ballot retrieved with the input argument.
@@ -230,9 +228,9 @@ access(all) contract VoteBoxStandard {
 
             @param electionId (UInt64) The electionId used to retrieve a reference to the Ballot from the internal activeBallots dictionary.
 
-            @returns ([UInt8]) If a Ballot exists under the provided electionId, this function returns an array of UInt8 values encoding the public encryption key of the Election associated to it. Otherwise, it returns a nil.
+            @returns (String) If a Ballot exists under the provided electionId, this function the public encryption key of the Election associated to it. Otherwise, it returns a nil.
         **/
-        access(all) view fun getElectionPublicKey(electionId: UInt64): [UInt8]? {
+        access(all) view fun getElectionPublicKey(electionId: UInt64): String? {
             let electionRef: &{ElectionStandard.ElectionPublic}? = self.getPublicElectionReference(electionId: electionId)
 
             if (electionRef == nil) {

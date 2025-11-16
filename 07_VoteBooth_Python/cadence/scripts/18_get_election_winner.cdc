@@ -16,11 +16,8 @@ access(all) fun main(electionId: UInt64): {String:Int} {
     )
 
     if (!electionPublicRef.isElectionFinished()) {
-        panic(
-            "ERROR: Election "
-            .concat(electionId.toString())
-            .concat(" has not been finalized yet! Cannot process its results!")
-        )
+        // Return an empty result set if the election is not yet finished
+        return {}
     }
 
     let electionResults: {String: Int} = electionPublicRef.getElectionTally()

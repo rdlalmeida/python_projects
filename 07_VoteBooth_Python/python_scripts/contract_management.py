@@ -254,7 +254,7 @@ class DeployContract():
 
             # After deploying the last contract of the project, I should run the EventRunner class constructor again to update the deployment addresses
             # that are needed to process the events properly. This needs to happen before running any of the event capturing routines or it will fail
-            await self.event_runner.configureDeployerAddress()
+            self.event_runner.configureDeployerAddress()
 
             election_index_created_events: list[dict[str:str]] = await self.event_runner.getElectionIndexCreatedEvents(tx_response=tx_response)
 
@@ -344,7 +344,7 @@ class DeleteContract():
             Function to deploy all project contracts as defined in the project_files dictionary.
         """
         # Update the event_runner deployed addresses before attempting any event capture
-        await self.event_runner.configureDeployerAddress()
+        self.event_runner.configureDeployerAddress() 
 
         for project_contract in project_files:
             log.info(f"Deleting '{project_contract}' from network {self.ctx.access_node_host}:{self.ctx.access_node_port} for account {self.ctx.service_account["address"]}")
@@ -395,7 +395,7 @@ async def main(op: str = "deploy"):
     elif (option == "clear"):
         log.info("Clearing up the network...")
         contract_deleter: DeleteContract = DeleteContract()
-        await contract_deleter.event_runner.configureDeployerAddress()
+        contract_deleter.event_runner.configureDeployerAddress()
         await contract_deleter.resetNetwork()
         log.info(f"Project network cleared successfully!")
     else:

@@ -40,21 +40,16 @@ class EventRunner():
         self.fungible_token_deployer_address: str = None
 
         
-    async def configureDeployerAddress(self) -> None:
+    def configureDeployerAddress(self) -> None:
         """Internal function to retrieve and set the address of the account where the project contracts are currently deployed.
         """
-        # Run the 01_test_contract_consistency script and store the result, if an address is returned. Raise an exception if the project was found inconsistent.
-        self.deployer_address: str = await self.script_runner.testContractConsistency()
-
-        if (self.deployer_address == ""):
-            raise Exception("ERROR: The project is not consistent yet!")
-        
         # Check which one is the currently configured network and add the addresses for the FlowToken and Fungible and NonFungibleToken and FlowFees contract,
         # given that these contracts are often deployed in a different account than the service one
         current_network: str = self.config.get(section="network", option="current")
         self.flow_fees_deployer_address = self.config.get(section=current_network, option="FlowFees")
         self.flow_token_deployer_address = self.config.get(section=current_network, option="FlowToken")
         self.fungible_token_deployer_address = self.config.get(section=current_network, option="FungibleToken")
+        self.deployer_address = self.config.get(section=current_network, option="service_account")
 
 
     async def getEventsByName(self, event_name: str, event_num: int) -> list[cadence.Event]:

@@ -43,8 +43,6 @@ class AccountConfig(object):
                 stack_info=True,
             )
 
-        index = 0
-
         for account in data["accounts"]:
             # Load the required parameters while testing the formatting of the JSON file
             if (data["accounts"][account]["key"]["hashAlgorithm"]):
@@ -90,6 +88,10 @@ class AccountConfig(object):
                 # Otherwise set it as another "normal" account.
                 # NOTE: The key_id field refers to the index of the key in question, given that accounts can have multiple encryption keys stored. But 
                 # the first key, as it is this case, has index = 0.
+                # NOTE: The user accounts have an additional "receipts" dictionary to be filled with a format {election_id: [random_vals]} where, for each 
+                # election voted, this parameter keeps a record of all the random values used to add salt to the Ballot option, which is also used to 
+                # verify Ballots. I'm keeping these in an array because, for testing purposes only, at some point I want users to be able to submit
+                # multiple ballots into a single election. But in regular operation, there should be only one item per one of these arrays
                 self.accounts.append(
                     {
                         "name": account,
@@ -99,9 +101,106 @@ class AccountConfig(object):
                             hash_algo=hash_algorithm,
                             sign_algo=signature_algorithm,
                             private_key_hex=private_key
-                        )
+                        ),
+                        "receipts": {}
                     }
                 )
+    
+    def addReceipt(self, voter_address: str, election_id: int, ballot_receipt: int) -> None:
+        """This function adds a ballot receipt, which is the random value used as salt for encrypting the Ballot option, to the entry of the voter that cast the ballot in the first place. This function detects if the current user entry already has a key for the election_id provided or not. If so, it appends the provided ballot_receipt to it. Otherwise it creates a new one. If the voter_address provided does not exists in the current account list, this function raises and exception.
+
+        @param voter_address: str The address of the account that submitted the Ballot.
+        @param election_id: int The election identifier for the election where the ballot was submitted to.
+        @param ballot_receipt: int The random value that was appended to the Ballot.option before encrypting it to be used as salt.
+        """
+        # Validate that the voter_address provided corresponds to one of the configured account
+        for account in self.accounts:
+            if (account["address"].hex() == voter_address):
+                # Found a matching account. Add the new record to it.
+                if (election_id in account["receipts"]):
+                    # The election record already exists. Append the new receipt to it
+                    account["receipts"][election_id].append(ballot_receipt)
+                else:
+                    # In this case, I need to create a new entry key as well
+                    account["receipts"][election_id] = [ballot_receipt]
+
+                # All done. Finish this
+                return
+        
+        # If the for cycle finishes without finding a match to the voter_address provided, the account is not configured in this network yet
+        raise Exception(f"ERROR: Voter address provided {voter_address} does not exist in the current account configuration!")
+
+    
+    def removeReceipt(self, voter_address: str, election_id: int, ballot_receipt: int) -> int:
+        """And this function removes a given receipt from an existing set.
+        
+        @param voter_address: str The address of the account that has the receipt in it.
+        @param election_id: int The election identifier for the election where the ballot was submitted to.
+        @param ballot_receipt: int The receipt to be removed from the account's internal storage array.
+
+        @returns int: If successful, this function returns the receipt removed from the account list.
+        """
+        # This function is very similar to the previous one to an extent
+        for account in self.accounts:
+            if (account["address"].hex() == voter_address):
+                if (election_id in account["receipts"]):
+                    # The election in question also exists. Continue.
+                    try:
+                        receipt_to_remove: int = account["receipts"][election_id].remove(ballot_receipt)
+
+                        # Return the removed item. This is how this function exits successfully. Any other path raises an exception
+                        return receipt_to_remove
+                    except ValueError:
+                        raise ValueError(f"ERROR: Receipt {ballot_receipt} is not among the receipts for election {election_id} for account {voter_address}!")
+                else:
+                    raise ValueError(f"ERROR: Voter {voter_address} has never voted for election {election_id}")
+
+        raise Exception(f"ERROR: Voter address provided {voter_address} does not exist in the current account configuration!")
+    
+
+    def countReceipts(self, voter_address: str, election_id: int) -> int:
+        """This function returns the number of receipts a giver voter identified with the voter_address provided currently stored under the election_id provided.
+
+        @param voter_address: str The address of the account that has the receipt list in it.
+        @param election_id: int The election identifier for the election where the ballots were submitted into.
+
+        @returns int Returns the number of ballots for the election entry.
+        """
+
+        for account in self.accounts:
+            if (account["address"].hex() == voter_address):
+                if (election_id in account["receipts"]):
+                    # All good. Count the number of receipt and return it
+                    return len(account["receipts"][election_id])
+                else:
+                    raise Exception(f"ERROR: Voter {voter_address} has never voted for election {election_id}")
+        
+        raise Exception(f"ERROR: Voter address provided {voter_address} does not exist in the current account configuration!")
+    
+
+    def removeElectionReceipt(self, voter_address: str, election_id: int) -> dict[int:list[int]]:
+        """This function removes the whole election entry from the account["receipts"] section and returns it back, if it exists.
+        
+        @param voter_address: str The address of the account that should have the election_id entry in it.
+        @param election_id: int The election identifier for the election where the ballots where submitted into.
+
+        @returns dict[int:list[int]] Returns the whole entry from the account["receipts"] that matches the election_id provided, if it exists.
+        """
+        for account in self.accounts:
+            if (account["address"].hex() == voter_address):
+                if (election_id in account["receipts"]):
+                    # Grab the entry to delete to an independent variable
+                    entry_to_return: dict[int:list[int]] = {election_id: account["receipts"][election_id]}
+
+                    # Remove the whole entry from the internal dictionary
+                    del account["receipts"][election_id]
+
+                    # Return the entry removed
+                    return entry_to_return
+                else:
+                    raise Exception(f"ERROR: Voter {voter_address} has never voted for election {election_id}")
+
+        raise Exception(f"ERROR: Voter address provided {voter_address} does not exists in the current account configuration!")
 
 
     def getFlowClient() -> flow_client:

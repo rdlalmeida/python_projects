@@ -534,4 +534,33 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
 
-            return script_result.value
+            if (len(script_result.value) > 0):
+                return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result)
+            else:
+                return {}
+            
+    
+    async def getElectionEncryptedBallots(self, election_id: int) -> list[str]:
+        """Function to retrieve the set of encrypted options to be further processed and tallied.
+
+        @param election_id: int - The election identifier for the Election to be processed.
+
+        @return list[str] The list of Ballot options, still in its encrypted format
+        """
+        name = "19_get_election_encrypted_ballots"
+        arguments = [cadence.UInt64(election_id)]
+
+        script_object: Script = self.getScript(script_name=name, script_arguments=arguments)
+
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
+
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            if (len(script_result.value) > 0):
+                return script_result.value
+            else:
+                return []

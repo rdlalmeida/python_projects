@@ -67,7 +67,7 @@ class TransactionRunner():
         if (self.event_runner.deployer_address == None):
             # This instruction either sets the event_runner.deployer_address to a proper address string, or raise an Exception if this
             # address string was not retrievable
-            await self.event_runner.configureDeployerAddress()
+            self.event_runner.configureDeployerAddress()
 
         try:
             tx_path = pathlib.Path(self.config.get(section="transactions", option=tx_name))
@@ -165,13 +165,13 @@ class TransactionRunner():
             raise e
 
 
-    async def createElection(self, election_name: str, election_ballot: str, election_options: dict[int: str], election_public_key: list[int], election_storage_path: str, election_public_path: str, tx_signer_address: str) -> list[dict]:
+    async def createElection(self, election_name: str, election_ballot: str, election_options: dict[int: str], election_public_key: str, election_storage_path: str, election_public_path: str, tx_signer_address: str) -> list[dict]:
         """Function to create a new Election in the project environment.
 
         @param election_name: str - The name of election to create
         @param election_ballot: str - The election ballot to use in the election.
         @param election_options: dict[int: str] - A dictionary with the available options for the election just created.
-        @param public_key: list[int] - The public encryption key associated to the election created.
+        @param public_key: str - The public encryption key associated to the election created.
         @param election_storage_path: str - The storage path to where the election created should be saved to.
         @param election_public_path: str - The public path to where the public election capability should be published to.
 
@@ -203,16 +203,7 @@ class TransactionRunner():
         # And finally, build the Dictionary from the List[KeyValuePair], as indicated in the module code (check types.py)
         cadence_election_options: cadence.Dictionary = cadence.Dictionary(value=current_options)
 
-        # Same logic applies to cadence. Array. I need to encode each of the initial array elements into the expected cadence type from the contract 
-        # or transaction. In this case, the createElection contract method expects a [UInt8] as election public key
-
-        cadence_value_list: list[cadence.UInt8] = []
-        for element in election_public_key:
-            cadence_value_list.append(cadence.UInt8(element))
-
-        # Done. Cast the array of cadence.UInt8 into a proper cadence.Array
-
-        cadence_election_public_key: cadence.Array = cadence.Array(value=cadence_value_list)
+        cadence_election_public_key: cadence.String = cadence.String(value=election_public_key)
         cadence_election_storage_path: cadence.Path = cadence.Path(domain="storage", identifier=election_storage_path)
         cadence_election_public_path: cadence.Path = cadence.Path(domain="public", identifier=election_public_path)
 
@@ -410,6 +401,29 @@ class TransactionRunner():
             raise Exception(f"ERROR: Ballot submission for account {tx_signer_address} failed!")
         
     
+    async def tallyElection(self, election_id: int, tx_signer_address: str) -> dict[str:int]:
+        """Function to trigger the end of a running Election, the withdrawal of all submitted Ballots, and the computation of results.
+
+        @param election_id: int - The election identifier for the election to be tallied.
+
+        @return dict Returns the winning election option (or options in the case of a tie) in the format:
+        {
+            <election_option>: <vote_count>
+        }
+        """
+        # TODO: FIX THIS TO DEAL WITH THE ENCRYPTED STUFF
+        tx_name: str = "06_tally_election"
+        tx_arguments: list = [cadence.UInt64(election_id)]
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
+
+        ballots_withdrawn_events: list[dict[str:int]] = await self.event_runner.getBallotsWithdrawnEvents(tx_response=tx_response)
+
+        if (len(ballots_withdrawn_events) > 0):
+            return ballots_withdrawn_events[0]
+        
+    
     async def cleanupVoteBooth(self, tx_signer_address: str) -> None:
         """Function to delete every resource and active capability currently stored and active in the tx_signer_address account. This includes all Elections, active and otherwise, BallotPrinterAdmin, and Election index.
 
@@ -419,10 +433,6 @@ class TransactionRunner():
         tx_name: str = "09_cleanup_votebooth"
         tx_arguments: list = []
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
-
-        # Grab the number of active elections from the VoteBooth.ElectionIndex resource to find out how many ElectionDestroyed events should I listen for
-        active_elections: list[int] = await self.script_runner.getActiveElections()
-        
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
@@ -503,7 +513,16 @@ class TransactionRunner():
             "linked_election_id": int
         }
         """
-        # TODO
+        tx_name: str = "10_destroy_votebox_ballot"
+        tx_arguments: list = [cadence.UInt64(election_id)]
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
+
+        ballots_burned_events: list[dict[str:int]] = await self.event_runner.getBallotBurnedEvents(tx_response=tx_response)
+
+        for ballot_burned_event in ballots_burned_events:
+            log.info(f"Ballot {ballot_burned_event["ballot_id"]} attached to election {ballot_burned_event["linked_election_id"]}")
 
 
     async def cleanupVoteBox(self, tx_signer_address: str) -> list[dict[str:int]]:
@@ -519,4 +538,13 @@ class TransactionRunner():
         }
         ] 
         """
-        #TODO
+        tx_name: str = "11_cleanup_votebox"
+        tx_arguments: list = []
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
+
+        ballot_burned_events: list[dict[str:int]] = await self.event_runner.getBallotBurnedEvents(tx_response=tx_response)
+
+        for ballot_burned_event in ballot_burned_events:
+            log.info(f"Ballot {ballot_burned_event["ballot_id"]} attached to election {ballot_burned_event["linked_election_id"]}")
