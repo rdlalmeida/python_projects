@@ -20,7 +20,7 @@ access(all) fun main(electionId: UInt64): {String:Int} {
         return {}
     }
 
-    let electionResults: {String: Int} = electionPublicRef.getElectionTally()
+    let electionResults: {String: Int} = electionPublicRef.getElectionResults()
 
     var winningOptions: {String: Int} = {}
     var currentWinner: {String: Int}? = nil

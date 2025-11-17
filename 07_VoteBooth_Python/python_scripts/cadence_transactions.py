@@ -401,17 +401,14 @@ class TransactionRunner():
             raise Exception(f"ERROR: Ballot submission for account {tx_signer_address} failed!")
         
     
-    async def tallyElection(self, election_id: int, tx_signer_address: str) -> dict[str:int]:
+    async def tallyElection(self, election_id: int, tx_signer_address: str) -> list[str]:
         """Function to trigger the end of a running Election, the withdrawal of all submitted Ballots, and the computation of results.
 
         @param election_id: int - The election identifier for the election to be tallied.
+        @param tx_signer_address: str - The address of the account that can digitally sign this transaction.
 
-        @return dict Returns the winning election option (or options in the case of a tie) in the format:
-        {
-            <election_option>: <vote_count>
-        }
+        @return list[str] This function returns the array of ballot options for the election tallied, still encrypted, to be returned for further processing
         """
-        # TODO: FIX THIS TO DEAL WITH THE ENCRYPTED STUFF
         tx_name: str = "06_tally_election"
         tx_arguments: list = [cadence.UInt64(election_id)]
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
@@ -422,7 +419,17 @@ class TransactionRunner():
 
         if (len(ballots_withdrawn_events) > 0):
             return ballots_withdrawn_events[0]
-        
+    
+    async def finishElection(self, election_id: int, election_results: dict[str:int], tx_signer_address: str) -> bool:
+        """This function finishes an election by setting the election_results dictionary provided, with each election option as key and the number of votes gathered by each option as value.
+
+        @param election_id: int - The election identifier for the election to be finished.
+        @param election_results: dict[str:int] The set of election results in the format [election_option: vote_count]
+        @param tx_signer_address: str - The address of the account that can digitally sign this transaction.
+
+        @return bool If the election was finished correctly, this function returns true. Otherwise, an exception should be raised somewhere...
+        """
+        # TODO
     
     async def cleanupVoteBooth(self, tx_signer_address: str) -> None:
         """Function to delete every resource and active capability currently stored and active in the tx_signer_address account. This includes all Elections, active and otherwise, BallotPrinterAdmin, and Election index.

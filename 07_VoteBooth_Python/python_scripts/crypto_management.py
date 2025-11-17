@@ -18,6 +18,7 @@ utils.configureLogging()
 config_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("common", "config.ini")
 config = configparser.ConfigParser()
 config.read(config_path)
+str_encoding = config.get(section="encryption", option="encoding")
 
 
 test_message: str = "This is ballot option nr 19820301"
@@ -50,7 +51,7 @@ def generate_ec_key_pair():
 
 def encrypt_message(plaintext_message: str, public_key) -> str:
     encrypted_message: str = public_key.encrypt(
-        plaintext=bytes(plaintext_message, encoding="UTF-8"),
+        plaintext=bytes(plaintext_message, encoding=str_encoding),
         padding=padding.OAEP(
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
@@ -107,7 +108,7 @@ def verify_signature(signature: str, signed_message: str, public_key: rsa.RSAPub
         print("Unable to verify the message signature!")
         return False
     
-def savePrivateKeyToFile(filename: str, private_key: rsa.RSAPrivateKey) -> None:
+def save_private_key_to_file(filename: str, private_key: rsa.RSAPrivateKey) -> None:
     private_pem_text = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
@@ -123,7 +124,7 @@ def savePrivateKeyToFile(filename: str, private_key: rsa.RSAPrivateKey) -> None:
         file.write(private_pem_text)
 
 
-def savePublicKeyToFile(filename:str, public_key: rsa.RSAPublicKey) -> None:
+def save_public_key_to_file(filename:str, public_key: rsa.RSAPublicKey) -> None:
     public_pem_text = public_key.public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
@@ -138,7 +139,7 @@ def savePublicKeyToFile(filename:str, public_key: rsa.RSAPublicKey) -> None:
         file.write(public_pem_text)
 
 
-def loadPrivateKeyFromFile(filename: str) -> rsa.RSAPrivateKey:
+def load_private_key_from_file(filename: str) -> rsa.RSAPrivateKey:
     file_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("keys", filename)
 
     if (not file_path.exists()):
@@ -154,7 +155,7 @@ def loadPrivateKeyFromFile(filename: str) -> rsa.RSAPrivateKey:
         return private_key
     
 
-def loadPublicKeyFromFile(filename:str) -> rsa.RSAPublicKey:
+def load_public_key_from_file(filename:str) -> rsa.RSAPublicKey:
     file_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("keys", filename)
 
     if (not file_path.exists()):
@@ -169,13 +170,22 @@ def loadPublicKeyFromFile(filename:str) -> rsa.RSAPublicKey:
         return public_key
     
 
-def serializeKey(public_key: rsa.RSAPublicKey) -> str:
+def load_public_key_from_string(key_string: str) -> rsa.RSAPublicKey:
+    public_key: rsa.RSAPublicKey = serialization.load_pem_public_key(
+        data=bytes(key_string, str_encoding),
+        backend=default_backend()
+    )
+
+    return public_key
+
+
+def serialize_key(public_key: rsa.RSAPublicKey) -> str:
     public_key_bytes = public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo)
 
     return public_key_bytes
 
-def deserializeKey(public_key_string: str) -> rsa.RSAPublicKey:
-    # public_key_bytes = bytes(public_key_string, encoding="UTF-8")
+def deserialize_key(public_key_string: str) -> rsa.RSAPublicKey:
+    # public_key_bytes = bytes(public_key_string, encoding=str_encoding)
 
     public_key = serialization.load_pem_public_key(
         public_key_string,
@@ -183,6 +193,13 @@ def deserializeKey(public_key_string: str) -> rsa.RSAPublicKey:
     )
 
     return public_key
+
+def generate_random_salt() -> int:
+    return random.randint(
+        a=int(config.get(section="random_generator", option="min")),
+        b=int(config.get(section="random_generator", option="max"))
+    )
+
 
 def main():
     # rsa_private_k1, rsa_public_k1 = generate_rsa_key_pair()
@@ -212,7 +229,7 @@ def main():
     # savePublicKeyToFile(filename="rsa_public_1", public_key=rsa_public_k1)
     # savePublicKeyToFile(filename="rsa_public_2", public_key=rsa_public_k2)
     # savePublicKeyToFile(filename="rsa_public_3", public_key=rsa_public_k3)
-    log.info("OK!")
+    pass
 
 
 main()

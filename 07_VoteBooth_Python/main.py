@@ -29,7 +29,7 @@ script_runner = ScriptRunner()
 tx_runner = TransactionRunner()
 event_runner = EventRunner()
 
-# TODO: Implement the Ballot revoke mechanics
+# TODO: Implement the Ballot revoke mechanics by processing Ballots set with "default" as the option
 # TODO: Modify project/contracts to allow multiple votes per account (add entropy to the index string to submit to the Election resource) to allow 
 # bulk submissions of ballots and test this project for bottlenecks. Otherwise I need to create a new account per new vote, which is not ideal.
 
@@ -76,8 +76,7 @@ election_options: list[dict[int: str]] = [
 # ]
 
 keys_dir: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("keys")
-
-election_public_keys: list[pathlib.Path] = [
+election_public_encryption_keys: list[pathlib.Path] = [
     keys_dir.joinpath("rsa_public_1.key"),
     keys_dir.joinpath("rsa_public_2.key"),
     keys_dir.joinpath("rsa_public_3.key")
@@ -100,8 +99,11 @@ async def main(election_index: int = 0) -> None:
     """
     Main entry point for this project
     """
+
     current_election: Election = Election()
     ctx = account_config.AccountConfig()
+
+    new_election: bool = True
 
     # 0. Setup the project contracts
     if(False):
@@ -125,15 +127,33 @@ async def main(election_index: int = 0) -> None:
 
     # 1. Setup an election with the data from the config file
     if (True):
-        await current_election.create_election(
-            new_election_name=election_names[election_index],
-            new_election_ballot=election_ballots[election_index],
-            new_election_options=election_options[election_index],
-            new_election_public_key=open(election_public_keys[election_index]).read(),
-            new_election_storage_path=election_storage_paths[election_index],
-            new_election_public_path=election_public_paths[election_index],
-            new_tx_signer_address=ctx.service_account["address"].hex()
-        )
+        if (new_election):
+
+            # current_election.election_id = 241892558110722
+            # current_election.election_public_encryption_key = open(election_public_encryption_keys[election_index]).read()
+
+            await current_election.create_election(
+                new_election_name=election_names[election_index],
+                new_election_ballot=election_ballots[election_index],
+                new_election_options=election_options[election_index],
+                new_election_public_key=open(election_public_encryption_keys[election_index]).read(),
+                new_election_storage_path=election_storage_paths[election_index],
+                new_election_public_path=election_public_paths[election_index],
+                new_tx_signer_address=ctx.service_account["address"].hex()
+            )
+        else:
+            current_active_elections: list[int] = await script_runner.getActiveElections()
+
+            if (len(current_active_elections) > 1):
+                log.warning(f"Multiple active elections found! Adopting the most recent one...")
+            elif(len(current_active_elections) == 1):
+                log.info(f"Loading Election {current_active_elections[0]} from the network...")
+            else:
+                raise Exception("Unable to load an active election from the network. There are no active elections left!")
+
+            current_election.election_id = current_active_elections.pop()
+
+            current_election.election_public_encryption_key = await script_runner.getPublicEncryptionKey(election_id=current_election.election_id)
 
     # 1.1 Destroy the current election
     if (False):
@@ -156,44 +176,31 @@ async def main(election_index: int = 0) -> None:
             await current_election.mint_ballot_to_votebox(votebox_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex())
     
     # 4. Cast the ballots for each of the user accounts to a random option from within the ones available for the election
-    if (False):
+    if (True):
         for user_account in ctx.accounts:
             random_index: int = random.randint(a=1, b=len(election_options[election_index]))
-            # TODO: ADD THE ENCRYPTION AND RANDOM LOGIC HERE!
-            random_option: str = election_options[election_index][random_index]
+            random_option: dict[int:str] = election_options[election_index][random_index]
+            
+            # Cast the ballot and save the int ballot receipt returned
+            receipt: int = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=user_account["address"].hex())
+            
+            # Set the ballot receipt received to the user account object
+            ctx.addReceipt(voter_address=user_account["address"].hex(),election_id=current_election.election_id, ballot_receipt=receipt)
 
-            # Cast the ballot
-            await tx_runner.castBallot(election_id=current_election_id, new_option=random_option, tx_signer_address=user_account["address"].hex())
+            log.info(f"Voter {user_account["address"].hex()} ballot receipt for election {current_election.election_id} is '{receipt}'")
         
 
     # 5. Submit the cast ballots to the election
-    if (False):
+    if (True):
         for user_account in ctx.accounts:
-            # The submitBallot function can trigger either a BallotSubmitted or a BallotReplaced event depending on the current state 
-            ballot_submitted_events: list[dict[str:int]] = await tx_runner.submitBallot(election_id=current_election_id, tx_signer_address=user_account["address"].hex())
-
-            for ballot_submitted_event in ballot_submitted_events:
-                # Test the dictionary structure returned to determine which event was triggered
-                if "ballot_id" in ballot_submitted_event:
-                    # If this element exists, I got a BallotSubmitted
-                    log.info(f"Voter {user_account["address"].hex()} successfully submitted ballot {ballot_submitted_event["ballot_id"]} to election {ballot_submitted_event["election_id"]}")
-
-                elif "old_ballot_id" in ballot_submitted_event:
-                    # If this element is present, I got a BallotReplaced instead
-                    log.info(f"Voter {user_account["address"].hex()} successfully replaced ballot {ballot_submitted_event["old_ballot_id"]} with ballot {ballot_submitted_event["new_ballot_id"]} for election {ballot_submitted_event["election_id"]}")
-                else:
-                    # If both above verifications failed, raise an Exception because something else must have gone wrong.
-                    raise Exception("ERROR: Submitted a ballot but it did not triggered a BallotSubmitted nor a BallotReplaced event!")
+            await current_election.submit_ballot(tx_signer_address=user_account["address"].hex())
 
 
     # 6. Mint another round of Ballots to the user accounts, cast them again using a random option, and re-submit them to trigger the BallotReplaced event
     if (False):
         # Mint a new round of Ballots
         for user_account in ctx.accounts:
-            ballot_created_events: list[dict[str:int]] = await tx_runner.createBallot(election_id=current_election_id, recipient_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex())
-
-            for ballot_created_event in ballot_created_events:
-                log.info(f"Successfully created another Ballot with id {ballot_created_event["ballot_id"]} to election {ballot_created_event["linked_election_id"]} for account {user_account["address"].hex()}")
+            await current_election.mint_ballot_to_votebox(votebox_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex())
 
         # Cast the randomly as well
         for user_account in ctx.accounts:
@@ -201,21 +208,15 @@ async def main(election_index: int = 0) -> None:
             random_option: str = election_options[election_index][random_index]
 
             # Cast the ballot
-            await tx_runner.castBallot(election_id=current_election_id, new_option=random_option, tx_signer_address=user_account["address"].hex())
+            receipt: int = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=user_account["address"].hex())
+
+            ctx.addReceipt(voter_address=user_account["address"].hex(), election_id=current_election.election_id, ballot_receipt=receipt)
+
+            log.info(f"Voter {user_account["address"].hex()} new ballot receipt for election {current_election.election_id} is '{receipt}'")
 
         # Submit the new round of ballots and test that the BallotReplaced event was triggered
         for user_account in ctx.accounts:
-            ballot_submitted_events: list[dict[str:int]] = await tx_runner.submitBallot(election_id=current_election_id, tx_signer_address=user_account["address"].hex())
-
-            for ballot_submitted_event in ballot_submitted_events:
-                # Test the event returned
-                if "ballot_id" in ballot_submitted_event:
-                    log.info(f"Voter {user_account["address"].hex()} successfully submitted ballot {ballot_submitted_event["ballot_id"]} to election {ballot_submitted_event["election_id"]}")
-
-                elif "old_ballot_id" in ballot_submitted_event:
-                    log.info(f"Voter {user_account["address"].hex()} successfully replaced ballot {ballot_submitted_event["old_ballot_id"]} with ballot {ballot_submitted_event["new_ballot_id"]} for election {ballot_submitted_event["election_id"]}")
-                else:
-                    raise Exception("ERROR: Submitted a ballot but it did not triggered a BallotSubmitted nor a BallotReplaced event!")
+            await current_election.submit_ballot(tx_signer_address=user_account["address"].hex())
 
     # 7. Test out all the scripts just to be sure they work
     # Lemme create a handy dictionary to control the rest of this flow
@@ -223,237 +224,151 @@ async def main(election_index: int = 0) -> None:
     # 7.1 - 02_get_active_elections
     if(False):
         scripts_to_run: dict[str:bool] = {
-            "02_get_active_elections": False,
-            "03_get_election_name": False,
-            "04_get_election_ballot": False,
-            "05_get_election_options": False,
-            "06_get_election_id": False,
+            "02_get_active_elections": True,
+            "03_get_election_name": True,
+            "04_get_election_ballot": True,
+            "05_get_election_options": True,
+            "06_get_election_id": True,
             "07_get_public_encryption_key": True,
-            "08_get_election_capability": False,
-            "09_get_election_totals": False,
-            "10_get_election_storage_path": False,
-            "11_get_election_public_path": False,
-            "12_get_elections_list": False,
-            "13_get_ballot_option": False,
-            "14_get_ballot_id": False,
-            "15_get_election_results": False,
-            "16_is_election_finished": False,
-            "17_get_account_balance": False,
-            "18_get_election_winner": False
+            "08_get_election_capability": True,
+            "09_get_election_totals": True,
+            "10_get_election_storage_path": True,
+            "11_get_election_public_path": True,
+            "12_get_elections_list": True,
+            "13_get_ballot_option": True,
+            "14_get_ballot_id": True,
+            "15_get_election_results": True,
+            "16_is_election_finished": True,
+            "17_get_account_balance": True,
+            "18_get_election_winner": True
         }
 
-        selected_user: int = 1
+        # selected_user: int = 1
         # temp_election_id: int = 178120883699712
-        temp_election_id: int = current_election_id
+        # temp_election_id: int = current_election_id
+        votebox_address = ctx.accounts[0]["address"].hex()
 
         # 02_get_active_elections
         if (scripts_to_run["02_get_active_elections"]):
-            active_elections_from_votebox: list[int] = await script_runner.getActiveElections(votebox_address=ctx.accounts[selected_user]["address"].hex())
-            active_elections_from_election: list[int] = await script_runner.getActiveElections()
+            await current_election.get_active_elections(votebox_address=votebox_address)
 
-            log.info(f"Active elections retrieved from a VoteBox resource: ")
-            for active_votebox_election in active_elections_from_votebox:
-                log.info(f"{active_votebox_election}")
-            
-            log.info(f"Active elections retrieved from an Election resource: ")
-            for active_election in active_elections_from_election:
-                log.info(f"{active_election}")
 
         # 17_get_account_balance
         if (scripts_to_run["17_get_account_balance"]):
-            account_addresses: list[str] = [ctx.service_account["address"].hex()]
-
             for user_account in ctx.accounts:
-                account_addresses.append(user_account["address"].hex())
+                await current_election.get_account_balance(account_address=user_account["address"].hex())
 
-            for account_address in account_addresses:
-                current_account_balance: float = await script_runner.getAccountBalance(account_address)
-
-                log.info(f"Account {account_address} FLOW balance: {current_account_balance}")
 
         # 03_get_election_name
         if (scripts_to_run["03_get_election_name"]):
-            election_name_from_election: str = await script_runner.getElectionName(election_id=current_election_id)
-            election_name_from_votebox: str = await script_runner.getElectionName(election_id=current_election_id, votebox_address=ctx.accounts[selected_user]["address"].hex())
+            await current_election.get_election_name(votebox_address=votebox_address)
 
-            if (election_name_from_election != election_name_from_votebox):
-                raise Exception(f"ERROR: Election name mismatch between election-based ({election_name_from_election}) and the votebox-based one ({election_name_from_votebox})")
-            
-            log.info(f"Election {current_election_id} name: {election_name_from_election}")
-        
 
         # 04_get_election_ballot
         if (scripts_to_run["04_get_election_ballot"]):
-            election_ballot_from_election: str = await script_runner.getElectionBallot(election_id=current_election_id)
-            election_ballot_from_votebox: str = await script_runner.getElectionBallot(election_id=current_election_id, votebox_address=ctx.accounts[selected_user]["address"].hex())
-
-            if (election_ballot_from_election != election_ballot_from_votebox):
-                raise Exception(f"ERROR: Election ballot mismatch between election-based ({election_ballot_from_election}) and the votebox-based one ({election_ballot_from_votebox})")
-
-            log.info(f"Election {current_election_id} name: {election_ballot_from_election}")
-            
+            await current_election.get_election_ballot(votebox_address=votebox_address)            
         
+
         # 05_get_election_options
         if (scripts_to_run["05_get_election_options"]):
-            election_options_from_election: dict[int:str] = await script_runner.getElectionOptions(election_id=current_election_id)
-            election_options_from_votebox: dict[int:str] = await script_runner.getElectionOptions(election_id=current_election_id, votebox_address=ctx.accounts[selected_user]["address"].hex())
-
-            log.info(f"Election options from Election Resource: ")
-            for election_option in election_options_from_election:
-                log.info(f"Option {election_option}: {election_options_from_election[election_option]}")
-
-            log.info(f"Election options from VoteBox Resource: ")
-            for election_option in election_options_from_votebox:
-                log.info(f"Option {election_option}: {election_options_from_votebox[election_option]}")
+            await current_election.get_election_options(votebox_address=votebox_address)
 
 
         # 06_get_election_id
         if (scripts_to_run["06_get_election_id"]):
-            election_id_from_election: int = await script_runner.getElectionId(election_id=current_election_id)
-            election_id_from_votebox: int = await script_runner.getElectionId(election_id=current_election_id, votebox_address=ctx.accounts[selected_user]["address"].hex())
+            await current_election.get_election_id(votebox_address=votebox_address)        
 
-            log.info(f"Election id returned from the Election: {election_id_from_election}")
-            log.info(f"Election id returned from the VoteBox: {election_id_from_votebox}")
-        
 
         # 07_get_public_encryption_key
         if (scripts_to_run["07_get_public_encryption_key"]):
-            public_encryption_key_from_election: list[int] = await script_runner.getPublicEncryptionKey(election_id=current_election_id)
-            public_string_key: str = utils.encodeIntArrayToString(input_array=public_encryption_key_from_election)
-            
-            log.info(f"Public encryption key returned from the Election resource:")
-            log.info(public_encryption_key_from_election)
-            log.info(f"Public key in string format: ")
-            log.info(public_string_key)
-
-            private_key = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)
-            public_key = private_key.verifying_key 
-
-
-            public_encryption_key_from_votebox: list[int] = await script_runner.getPublicEncryptionKey(election_id=current_election_id, votebox_address=ctx.accounts[selected_user]["address"].hex())
-            public_string_key: str = utils.encodeIntArrayToString(input_array=public_encryption_key_from_votebox)
-            log.info(f"Public encryption key returned from the VoteBox resource: ")
-            log.info(public_encryption_key_from_votebox)
-            log.info(f"Public key in string format: ")
-            log.info(public_string_key)
-
+            await current_election.get_election_public_encryption_key(votebox_address=votebox_address)
         
+
         # 08_get_election_capability
         if (scripts_to_run["08_get_election_capability"]):
-            election_capability_from_election: cadence.Capability = await script_runner.getElectionCapability(election_id=current_election_id)
-            election_capability_from_votebox: cadence.Capability = await script_runner.getElectionCapability(election_id=current_election_id, votebox_address=ctx.accounts[selected_user]["address"].hex())
+            await current_election.get_election_capability(votebox_address=votebox_address)
 
-            log.info(f"Election capability returned from the Election resource: {election_capability_from_election.__str__()}")
-            log.info(f"Election capability returned from the VoteBox resource: {election_capability_from_votebox.__str__()}")
 
         # 09_get_election_totals
         if (scripts_to_run["09_get_election_totals"]):
-            election_totals_from_election: dict[str:int] = await script_runner.getElectionTotals(election_id=current_election_id)
-            election_totals_from_votebox: dict[str:int] = await script_runner.getElectionTotals(election_id=current_election_id, votebox_address=ctx.accounts[selected_user]["address"].hex())
+            await current_election.get_election_totals(votebox_address=votebox_address)
 
-            log.info(f"Election totals retrieved from the Election resource: {election_totals_from_election}")
-            log.info(f"Election totals retrieved from the VoteBox resource: {election_totals_from_votebox}")
 
         # 10_get_election_storage_path
         if (scripts_to_run["10_get_election_storage_path"]):
-            election_storage_path: str = await script_runner.getElectionStoragePath(election_id=current_election_id)
-
-            log.info(f"Election {current_election_id} stored at path {election_storage_path}")
+            await current_election.get_election_storage_path()
 
 
         # 11_get_election_public_path
         if (scripts_to_run["11_get_election_public_path"]):
-            election_public_path: str = await script_runner.getElectionPublicPath(election_id=current_election_id)
-
-            log.info(f"Election {current_election_id} published at path {election_public_path}")
+            await current_election.get_election_public_path()
 
         
         # 12_get_election_list
         if (scripts_to_run["12_get_elections_list"]):
-            election_list: dict[int:str] = await script_runner.getElectionsList()
-
-            log.info(f"Current active Elections, as retrieved from the VoteBooth.ElectionIndex resource: ")
-            log.info(election_list)
+            await current_election.get_elections_list()
 
 
         # 13_get_ballot_option
         if (scripts_to_run["13_get_ballot_option"]):
             # Run this for every user_account
             for user_account in ctx.accounts:
-                ballot_option: str = await script_runner.getBallotOption(election_id=current_election_id, votebox_address=user_account["address"].hex())
-
-                log.info(f"Ballot option for election {current_election_id} and user {user_account["address"].hex()}: {ballot_option}")
+                await current_election.get_ballot_option(votebox_address=user_account["address"].hex())
         
+
         # 14_get_ballot_id
         if (scripts_to_run["14_get_ballot_id"]):
             for user_account in ctx.accounts:
-                ballot_id: int = await script_runner.getBallotId(election_id=current_election_id, votebox_address=user_account["address"].hex())
-
-                log.info(f"Ballot id for election {current_election_id} and user {user_account["address"].hex()}: {ballot_id}")
+                await current_election.get_ballot_id(votebox_address=user_account["address"].hex())
 
         # 15_get_election_results
         if (scripts_to_run["15_get_election_results"]):
-            election_results: dict[str:int] = await script_runner.getElectionResults(election_id=current_election_id)
+            await current_election.get_election_results()
 
-            log.info(f"Election {current_election_id} results: {election_results}")
-        
 
         # 16_is_election_finished
         if (scripts_to_run["16_is_election_finished"]):
-            election_finished: bool = await script_runner.isElectionFinished(election_id=current_election_id)
-
-            if (election_finished):
-                log.info(f"Election {current_election_id} is finalized!")
-            else:
-                log.info(f"Election {current_election_id} is still running!")
+            await current_election.is_election_finished()
             
 
         # 18_get_election_winner
         if (scripts_to_run["18_get_election_winner"]):
-            election_winner: dict[str:int] = await script_runner.getElectionWinner(election_id=current_election_id)
-
-            if (len(election_winner) > 0):
-                log.info(f"Election {current_election_id} winning options: ")
-                for option in election_winner:
-                    log.info(f"Option '{option}': {election_winner[option]} votes!")
-            else:
-                log.info(f"Election {current_election_id} is not yet tallied!")
-
+            await current_election.get_election_winner()
 
     # 8. Withdraw ballots and compute tally
-    if (False):
-        ballots_withdrawn_event: dict[str:int] = await tx_runner.tallyElection(election_id=current_election_id, tx_signer_address=ctx.service_account["address"].hex())
+    if (True):
+        (election_results, ballot_receipts) = await current_election.tally_election(private_encryption_key_name="rsa_private_1.key", tx_signer_address=ctx.service_account["address"].hex())
 
-        log.info(f"Election {ballots_withdrawn_event["election_id"]} finished and tallied after processing {ballots_withdrawn_event["ballots_withdrawn"]} ballots.")
+        log.info(f"Election {current_election.election_id} results: ")
+        for result in election_results:
+            log.info(f"Option '{result}': {election_results[result]} votes")
 
-        # Fetch the election results
-        election_results: dict[str:int] = await script_runner.getElectionResults(election_id=current_election_id)
-
-        log.info(f"Election {current_election_id} results: ")
-        for election_result in election_results:
-            log.info(f"Option '{election_result}': {election_results[election_result]} votes")
-
+        log.info(f"Ballot receipts: ")
+        for receipt in ballot_receipts:
+            log.info(receipt)
         
-        election_winner: dict[str:int] = await script_runner.getElectionWinner(election_id=current_election_id)
-        log.info(f"Election {current_election_id} winner: ")
-        for winner in election_winner:
-            log.info(f"'{winner}' with {election_winner[winner]} votes")
-        
+        for user_account in ctx.accounts:
+            log.info(f"Voter {user_account["address"]} has receipt:")
+
+            for election_id in user_account["receipts"]:
+                log.info(f"Election {election_id}: ")
+
+                for receipt in user_account["receipts"][election_id]:
+                    if (ballot_receipts.__contains__(receipt)):
+                        log.info(f"Ballot with receipt {receipt} from voter {user_account["address"].hex()} is valid!")
+                    else:
+                        log.warning(f"WARNING: Ballot with receipt {receipt} from voter {user_account["address"].hex()} is not among the ballot receipt list returned!")
         
 
     # 9. Clean up project from network
-    if (False):
+    if (True):
         # Destroy the VoteBoxes in each of the user accounts
+        # TODO: Refactor this one also
         for user_account in ctx.accounts:
-            votebox_deleted_events: list[dict[str:str]] = await tx_runner.deleteVoteBox(tx_signer_address=user_account["address"].hex())
+            await current_election.deleteVoteBox(tx_signer_address=user_account["address"].hex())
 
-            for votebox_deleted_event in votebox_deleted_events:
-                log.info(f"Successfully deleted a VoteBox for account {votebox_deleted_event["voter_address"]} with {votebox_deleted_event["active_ballots"]} active ballots still in it. This VoteBox was used to vote in {len(votebox_deleted_event["elections_voted"])} elections")
-        
         # Destroy the resources from the VoteBooth contract
-        await tx_runner.cleanupVoteBooth(tx_signer_address=ctx.service_account["address"].hex())
-
-        log.info(f"Successfully cleaned up the VoteBooth contract from account {ctx.service_account["address"].hex()}")
+        await current_election.deleteVoteBooth(tx_signer_address=ctx.service_account["address"].hex())
 
 
     

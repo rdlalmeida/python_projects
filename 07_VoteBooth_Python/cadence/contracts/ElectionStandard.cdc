@@ -58,7 +58,7 @@ access(all) contract ElectionStandard {
         access(all) view fun getElectionCapability(): Capability?
         access(all) fun submitBallot(ballot: @BallotStandard.Ballot): Void
         access(all) view fun isBallotMinted(ballotId: UInt64): Bool
-        access(all) view fun getElectionTally(): {String: Int}
+        access(all) view fun getElectionResults(): {String: Int}
         access(all) view fun getEncryptedOptions(): [String]
     }
 
@@ -121,9 +121,25 @@ access(all) contract ElectionStandard {
         access(self) var electionResults: {String: Int}
 
         /**
+            Setter function with the ElectionStandard.ElectionAdmin entitlement to set the election results of this Election, and to set the 'isFinished' flag to true, thus preventing Ballot from being submitted into this Election. Because the ballot options are encrypted, they need to go off chain to get decrypted and tallied. This function finishes the voting process.
+
+            @param electionResults ({String: Int}) The results for this election, as a dictionary with election option text as key and the number of votes each option got as values.
+
+            @returns Bool: If the election was finished correctly, this function returns true. Otherwise it panics or returns false accordingly.
+        **/
+        access(ElectionStandard.ElectionAdmin) fun finishElection(electionResults: {String: Int}): Bool {
+
+            self.electionResults = electionResults
+
+            self.electionFinished = true
+            
+            return self.electionFinished
+        }
+
+        /**
             Simple getter function for the electionResults dictionary.
         **/
-        access(all) view fun getElectionTally(): {String: Int} {
+        access(all) view fun getElectionResults(): {String: Int} {
             return self.electionResults
         }
 
@@ -408,15 +424,6 @@ access(all) contract ElectionStandard {
         **/
         access(all) view fun isElectionFinished(): Bool {
             return self.electionFinished
-        }
-
-        /**
-            The setter for the electionFinished parameter. This one is protected with an ElectionStandard.ElectionAdmin entitlement because I want only authorized accesses to to set this parameter.
-
-            @param electionStatus (Bool): The new status to set the electionFinished parameter of this Election to.
-        **/
-        access(ElectionStandard.ElectionAdmin) fun finishElection(newStatus: Bool): Void{
-            self.electionFinished = newStatus
         }
 
         // Set of simple Getters for the Election parameters

@@ -64,6 +64,7 @@ class DeployContract():
         self.config.read(config_path)
 
         self.event_runner: EventRunner = EventRunner()
+        self.encoding = self.config.get(section="encryption", option="encoding")
 
         
     async def run(self, contract_name: str, contract_source: str, update: bool) -> entities.TransactionResultResponse:
@@ -80,7 +81,7 @@ class DeployContract():
         }
 
         # Setup the hexadecimal version of the contract as well
-        contract_source_hex = bytes(contract["source"], "UTF-8").hex()
+        contract_source_hex = bytes(contract["source"], self.encoding).hex()
 
         async with flow_client(
             host=self.ctx.access_node_host, port=self.ctx.access_node_port

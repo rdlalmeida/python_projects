@@ -14,5 +14,5 @@ access(all) fun main(electionId: UInt64): {String: Int} {
         "Unable to get a valid &{ElectionStandard.ElectionPublic} from the VoteBooth contract for election ".concat(electionId.toString())
     )
 
-    return electionPublicRef.getElectionTally()
+    return electionPublicRef.getElectionResults()
 }

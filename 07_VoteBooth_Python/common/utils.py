@@ -33,7 +33,7 @@ def encodeIntArrayToString(input_array: list[int]) -> str:
     """
     for input_element in input_array:
         if (input_element < 0 or input_element > 255):
-            raise Exception(f"Unable to convert non UTF-8 value to a character: {input_element}")
+            raise Exception(f"Unable to convert non {config.get(section="encryption", option="encoding")} value to a character: {input_element}")
 
     return bytearray(input_array).hex()
 

@@ -2,10 +2,11 @@ import os, pathlib
 from python_scripts.cadence_scripts import ScriptRunner
 from python_scripts.cadence_transactions import TransactionRunner
 from python_scripts.event_management import EventRunner
-from python_scripts import contract_management
-from common import utils, account_config
+from python_scripts import crypto_management
+from common import utils
 import configparser
-import random
+import base64
+from flow_py_sdk import cadence
 
 
 import logging
@@ -20,6 +21,11 @@ class Election(object):
         super().__init__()
 
         self.election_id: int = None
+        self.election_public_encryption_key: str = None
+        self.election_options: dict[int:str] = None
+        self.option_separator = config.get(section="encryption", option="separator")
+        self.encoding = config.get(section="encryption", option="encoding")
+
         self.tx_runner = TransactionRunner()
         self.script_runner = ScriptRunner()
         self.event_runner = EventRunner()
@@ -65,6 +71,12 @@ class Election(object):
             log.info(f"Successfully created Election with id {election_created_event["election_id"]} and name '{election_created_event["election_name"]}'")
         
         self.election_id = election_created_event["election_id"]
+
+        # Set the election_public_encryption_key internally as well for easier retrieval
+        self.election_public_encryption_key = new_election_public_key
+
+        # The election options also
+        self.election_options = new_election_options
     
 
     async def destroy_election(self, tx_signer_address: str) -> None:
@@ -126,7 +138,7 @@ class Election(object):
         @param tx_signer_address: str The account address to use to digitally sign the transaction.
         """
         if (self.election_id == None):
-            raise Exception(f"ERROR: This Election class does not have an active election in it!")
+            raise Exception(f"ERROR: This Election instance does not have an active election in it!")
         
         try:
             ballot_created_events: list[dict[str:int]] = await self.tx_runner.createBallot(election_id=self.election_id, recipient_address=votebox_address, tx_signer_address=tx_signer_address)
@@ -137,5 +149,364 @@ class Election(object):
             log.error(f"Unable to create a new Ballot to {votebox_address}: ")
             log.error(e)
 
+    
+    async def cast_ballot(self, option_to_set: str, tx_signer_address: str) -> int:
+        """Function to cast a Ballot stored in the VoteBox resource in the account from the tx_signer_address provided with the encrypted and salted version of the option provided, as long as a Ballot exists for the election_id configured in the current Election object. This function also salts and encrypts the option provided before setting it in the Ballot.option in question.
+        @param option_to_set str The option to set the Ballot to, as defined in the election options set values.
+        @param tx_signer_address str The account address to use to digitally sign the transaction.
+
+        @return int The salting process requires the generation of a random integer to append to the option before encrypting it. If successful 
+        """
+        if (self.election_id == None):
+            raise Exception(f"ERROR: This Election instance does not have an active election yet!")
+        elif (self.election_public_encryption_key == None):
+            raise Exception(f"ERROR: This Election class does not have a public encryption key set yet!")
+        
+        # TODO: Check if the ballot option is set to "default" and trigger the revoke process from it.
+        # Generate a random value between the limits defined in the config file
+        option_salt: int = crypto_management.generate_random_salt()
+
+        # Append the generated random to the option to set
+        salted_option: str = option_to_set + self.option_separator + str(option_salt)
+
+        # Encrypt this option with the public encryption key set in this class instance
+        # Retrieve the RSAPublicKey object from the public key string
+        current_public_key = crypto_management.load_public_key_from_string(key_string=self.election_public_encryption_key)
+
+        # Use the reconstructed key to encrypt the salted option
+        encrypted_salted_option: str = crypto_management.encrypt_message(
+            plaintext_message=salted_option,
+            public_key=current_public_key
+        )
+
+        base64_option: str = base64.b64encode(encrypted_salted_option)
+
+        await self.tx_runner.castBallot(election_id=self.election_id, new_option=str(base64_option, encoding=self.encoding), tx_signer_address=tx_signer_address)
+
+        log.info(f"Successfully cast a Ballot for account {tx_signer_address} and for election {self.election_id}")
+
+        # Return the random salt back to the function caller so it can be processed properly
+        return option_salt
+    
+
+    async def submit_ballot(self, tx_signer_address: str) -> None:
+        """Function to submit a previously cast Ballot from the VoteBox from the tx_signer_address account. This sends the Ballot to the Election configured in it (this one) to be tallied at a future date.
+
+        @param tx_signer_address: str - The account address to use to digitally sign the transaction.
+        """
+        if (self.election_id == None):
+            raise Exception(f"ERROR: This Election instance does not have an active election yet!")
+        
+        # The submitBallot function can trigger either a BallotSubmitted or a BallotReplaced event depending on the current state 
+        ballot_submitted_events: list[dict[str:int]] = await self.tx_runner.submitBallot(election_id=self.election_id, tx_signer_address=tx_signer_address)
+
+        for ballot_submitted_event in ballot_submitted_events:
+            # Test the dictionary structure returned to determine which event was triggered
+            if "ballot_id" in ballot_submitted_event:
+                # If this element exists, I got a BallotSubmitted
+                log.info(f"Voter {tx_signer_address} successfully submitted ballot {ballot_submitted_event["ballot_id"]} to election {ballot_submitted_event["election_id"]}")
+
+            elif "old_ballot_id" in ballot_submitted_event:
+                # If this element is present, I got a BallotReplaced instead
+                log.info(f"Voter {tx_signer_address} successfully replaced ballot {ballot_submitted_event["old_ballot_id"]} with ballot {ballot_submitted_event["new_ballot_id"]} for election {ballot_submitted_event["election_id"]}")
+            else:
+                # If both above verifications failed, raise an Exception because something else must have gone wrong.
+                raise Exception("ERROR: Submitted a ballot but it did not triggered a BallotSubmitted nor a BallotReplaced event!")
+    
+
+    async def tally_election(self, private_encryption_key_name: str, tx_signer_address: str) -> tuple[dict[str:int],list[int]]:
+        """Function to trigger the end of the election by processing their ballots, retrieving the ballot.options, decrypting and processing them, tallying the results and producing the winning option. This function also sets the function as finished.
+
+        @param private_encryption_key_path: str - The name of the file containing the private encryption key that can decrypt the ballot options. This filename should point to a file inside the '/keys' subfolder from this project directory. The key loading routine has this folder pre-configured. IMPORTANT: The correspondence between private and public keys used in this process is solely of the responsibility of the user. This process does not validates any keys at any point.
+        @param tx_signer_address: str - The account address to use to digitally sign the transaction.
+
+        @returns tuple[dict[str:int], list[int]] This function returns the dictionary of tallied results, in the format {election_option: vote_count}, and the array of ballot receipts, which are the random integers appended to the ballot text to add as salt
+        """
+        if (self.election_id == None):
+            raise Exception(f"ERROR: This Election instance does not have an active election yet!")
+        
+        if (self.election_options == None):
+            raise Exception(f"ERROR: Unable to tally Election {self.election_id} without a set of valid election options defined first.")
+
+        ballots_withdrawn_event: dict[str:int] = await self.tx_runner.tallyElection(election_id=self.election_id, tx_signer_address=tx_signer_address)
+
+        log.info(f"Election {ballots_withdrawn_event["election_id"]} tallied after processing {ballots_withdrawn_event["ballots_withdrawn"]} ballots.")
+
+        # Fetch the election results, namely the array of encrypted ballot options
+        encrypted_ballots: list[str] = await self.script_runner.getElectionEncryptedBallots(election_id=self.election_id)
+
+        # Recover the private encryption key from the path provided
+        private_key = crypto_management.load_private_key_from_file(private_encryption_key_name)
+
+        # Decrypt the ballot options. These were base64 encoded initially, so they need to be decoded before decrypting
+        decrypted_ballot_options: list[bytes] = []
+
+        for encrypted_ballot in encrypted_ballots:
+            # Decode the ballot option from a string first
+            bytes_ballot_option: bytes = bytes(encrypted_ballot, encoding=self.encoding)
+            decoded_ballot_option = base64.b64decode(bytes_ballot_option)
+
+            decrypted_ballot_option: str = crypto_management.decrypt_message(ciphertext_message=decoded_ballot_option, private_key=private_key)
+
+            decrypted_ballot_options.append(str(decrypted_ballot_option, encoding=self.encoding))
+        
+        # All the ballots are decrypted. Run another loop to split them from the salt, put it to another array and start counting options
+        election_options_tally: dict[str:int] = {}
+        # Pre-fill the election_options_tally with the current election options (values) as the keys for this dictionary and set each value, the vote counter
+        # to 0 to start counting
+        for election_option in self.election_options:
+            election_options_tally[self.election_options[election_option]] = 0
+        
+        # Create an entry for invalid options as well
+        election_options_tally["invalid"] = 0
+
+        ballot_receipts: list[int] = []
+
+        for decrypted_ballot_option in decrypted_ballot_options:
+            # Split the decrypted ballot option by the character used to concatenate the option with the random salt
+            option_elements: list[str] = decrypted_ballot_option.split(self.option_separator)
+
+            # I expect 2 and exactly 2 elements from the string split before. Anything different than that is a problem!
+            if (len(option_elements) != 2):
+                log.error(f"ERROR: Found a illegally formatted ballot option: {decrypted_ballot_option}! Unable to process it further. Skipping...")
+                continue
+
+            # If the current option retrieved is among the ones in the tally dictionary
+            if (option_elements[0] in election_options_tally):
+                # Increase the tally by 1
+                election_options_tally[option_elements[0]] += 1
+            else:
+                # Count it as an "invalid" one and log its contents for debug purposes
+                election_options_tally["invalid"] += 1
+                log.warning("CAUTION: Retrieved a Ballot with an invalid option: {option}. Ballot counted as 'invalid'")
+
+            # Put the receipts in another return array
+            ballot_receipts.append(int(option_elements[1]))
+
+        # Done. Return the results
+        return (election_options_tally, ballot_receipts)
+    
+
+    async def get_active_elections(self, votebox_address: str = None) -> None:
+        """Function to return the list of currently active elections. This function prints a list with all active election ids.
+
+        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        """
+        if (votebox_address == None):
+            active_elections_from_election: list[int] = await self.script_runner.getActiveElections()
+            
+            log.info(f"Active elections retrieved from an Election resource: ")
+            for active_election in active_elections_from_election:
+                log.info(f"{active_election}")
+        
+        else:
+            active_elections_from_votebox: list[int] = await self.script_runner.getActiveElections(votebox_address=votebox_address)
+
+            log.info(f"Active elections retrieved from a VoteBox resource: ")
+            for active_votebox_election in active_elections_from_votebox:
+                log.info(f"{active_votebox_election}")
+
+
+    async def get_election_name(self, votebox_address: str = None) -> None:
+        """Function to print the name of the current election.
+
+        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        """
+        if (votebox_address == None):
+            election_name_from_election: str = await self.script_runner.getElectionName(election_id=self.election_id)
+                        
+            log.info(f"Election {self.election_id} name: {election_name_from_election}")
+        else:
+            election_name_from_votebox: str = await self.script_runner.getElectionName(election_id=self.election_id, votebox_address=votebox_address)
+            
+            log.info(f"Election {self.election_id} name: {election_name_from_votebox}")
+
+
+    async def get_election_ballot(self, votebox_address: str = None) -> None:
+        """Function to print the ballot of the current election.
+
+        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        """
+        if (votebox_address == None):
+            election_ballot_from_election: str = await self.script_runner.getElectionBallot(election_id=self.election_id)
+            log.info(f"Election {self.election_id} name: {election_ballot_from_election}")
+
+        else:
+            election_ballot_from_votebox: str = await self.script_runner.getElectionBallot(election_id=self.election_id, votebox_address=votebox_address)
+            log.info(f"Election {self.election_id} name: {election_ballot_from_votebox}")
+
+
+    async def get_election_options(self, votebox_address: str = None) -> None:
+        """Function to print the options available to the current election.
+
+        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        """
+        if (votebox_address == None):
+            election_options_from_election: dict[int:str] = await self.script_runner.getElectionOptions(election_id=self.election_id)
+            
+            log.info(f"Election options from Election Resource: ")
+            for election_option in election_options_from_election:
+                log.info(f"Option {election_option}: {election_options_from_election[election_option]}")
+        else:
+            election_options_from_votebox: dict[int:str] = await self.script_runner.getElectionOptions(election_id=self.election_id, votebox_address=votebox_address)
+            
+            log.info(f"Election options from VoteBox Resource: ")
+            for election_option in election_options_from_votebox:
+                log.info(f"Option {election_option}: {election_options_from_votebox[election_option]}")
+
+
+    async def get_election_id(self, votebox_address: str = None) -> None:
+        """Function to print the election_id associated to the current election.
+
+        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        """
+        if (votebox_address == None):
+            election_id_from_election: int = await self.script_runner.getElectionId(election_id=self.election_id)
+            log.info(f"Election id returned from the Election: {election_id_from_election}")
+
+        else:
+            election_id_from_votebox: int = await self.script_runner.getElectionId(election_id=self.election_id, votebox_address=votebox_address)
+            log.info(f"Election id returned from the VoteBox: {election_id_from_votebox}")
+
+
+    async def get_election_public_encryption_key(self, votebox_address: str = None) -> None:
+        """Function to print the public encryption key associated to the current election.
+
+        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        """
+        if (votebox_address == None):
+            public_encryption_key_from_election: str = await self.script_runner.getPublicEncryptionKey(election_id=self.election_id)
+            log.info(f"Public encryption key returned from the Election resource: {public_encryption_key_from_election}")
+        else:
+            public_encryption_key_from_votebox: list[int] = await self.script_runner.getPublicEncryptionKey(election_id=self.election_id, votebox_address=votebox_address)
+            log.info(f"Public encryption key returned from the VoteBox resource: {public_encryption_key_from_votebox}")
+
+
+    async def get_election_capability(self, votebox_address: str = None) -> None:
+        """Function to print the public capability associated to the current election.
+
+        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        """
+        if (votebox_address == None):
+            election_capability_from_election: cadence.Capability = await self.script_runner.getElectionCapability(election_id=self.election_id)
+            log.info(f"Election capability returned from the Election resource: {election_capability_from_election.__str__()}")
+        else:
+            election_capability_from_votebox: cadence.Capability = await self.script_runner.getElectionCapability(election_id=self.election_id, votebox_address=votebox_address)
+            log.info(f"Election capability returned from the VoteBox resource: {election_capability_from_votebox.__str__()}")
+
+
+    async def get_election_totals(self, votebox_address: str = None) -> None:
+        """Function to print the total ballots minted and submitted to the current election.
+
+        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        """
+        if (votebox_address == None):
+            election_totals_from_election: dict[str:int] = await self.script_runner.getElectionTotals(election_id=self.election_id)
+            log.info(f"Election totals retrieved from the Election resource: {election_totals_from_election}")
+
+        else:
+            election_totals_from_votebox: dict[str:int] = await self.script_runner.getElectionTotals(election_id=self.election_id, votebox_address=votebox_address)
+            log.info(f"Election totals retrieved from the VoteBox resource: {election_totals_from_votebox}")
+
+
+    async def get_election_storage_path(self) -> None:
+        """Function to print the storage path where the current election resource is stored.
+        """
+        election_storage_path: str = await self.script_runner.getElectionStoragePath(election_id=self.election_id)
+        log.info(f"Election {self.election_id} stored at path {election_storage_path}")
+
+
+    async def get_election_public_path(self) -> None:
+        """Function to print the public path where the current election public capability is published.
+        """
+        election_public_path: str = await self.script_runner.getElectionPublicPath(election_id=self.election_id)
+        log.info(f"Election {self.election_id} published at path {election_public_path}")
+
+
+    async def get_elections_list(self) -> None:
+        """Function to print current active elections as retrieved from the VoteBooth ElectionIndex resource.
+        """
+        election_list: dict[int:str] = await self.script_runner.getElectionsList()
+
+        log.info(f"Current active Elections, as retrieved from the VoteBooth.ElectionIndex resource: ")
+        log.info(election_list)
+
+
+    async def get_ballot_option(self, votebox_address: str = None) -> None:
+        """Function to print the current option set for the ballot in the VoteBox resource in the account for the address provided.
+
+        @param votebox_address str - The address from where the the VoteBox resource reference is to be retrieved 
+        """
+        ballot_option: str = await self.script_runner.getBallotOption(election_id=self.election_id, votebox_address=votebox_address)
+        log.info(f"Ballot option for election {self.election_id} and user {votebox_address}: {ballot_option}")
+
+
+    async def get_ballot_id(self, votebox_address: str = None) -> None:
+        """Function to print the ballot it for the ballot in the VoteBox resource in the account for the address provided.
+
+        @param votebox_address str - The address from where the the VoteBox resource reference is to be retrieved 
+        """
+        ballot_id: int = await self.script_runner.getBallotId(election_id=self.election_id, votebox_address=votebox_address)
+        log.info(f"Ballot id for election {self.election_id} and user {votebox_address}: {ballot_id}")
+
+
+    async def get_election_results(self) -> None:
+        """Function to print out the election results for the current election.
+        """
+        election_results: dict[str:int] = await self.script_runner.getElectionResults(election_id=self.election_id)
+        log.info(f"Election {self.election_id} results: {election_results}")
+
+
+    async def is_election_finished(self) -> None:
+        """Function to print out the running state of the present election.
+        """
+        election_finished: bool = await self.script_runner.isElectionFinished(election_id=self.election_id)
+
+        if (election_finished):
+            log.info(f"Election {self.election_id} is finalized!")
+        else:
+            log.info(f"Election {self.election_id} is still running!")
+
+
+    async def get_election_winner(self) -> None:
+        """Function to print out the winner of the current election, if set.
+        """
+        election_winner: dict[str:int] = await self.script_runner.getElectionWinner(election_id=self.election_id)
+
+        if (len(election_winner) > 0):
+            log.info(f"Election {self.election_id} winning options: ")
+            for option in election_winner:
+                log.info(f"Option '{option}': {election_winner[option]} votes!")
+        else:
+            log.info(f"Election {self.election_id} is not yet tallied!")
+
+
+    async def get_account_balance(self, account_address: str) -> None:
+        """Function to print out account balances, in FLOW tokens, for the account with the address provided.
+
+        @param account_address: str - The address of the account whose balance is to retrieve.
+        """
+        current_account_balance: float = await self.script_runner.getAccountBalance(account_address=account_address)
+
+        log.info(f"Account {account_address} FLOW balance: {current_account_balance}")
 
     
+    async def deleteVoteBox(self, tx_signer_address: str) -> None:
+        """Function to destroy a VoteBox resource from the account whose address is provided in the tx_signer_address argument.
+
+        @param tx_signer_address: str - The address of the account that has the VoteBox resource stored in their account and can digitally sign the transaction to delete it.
+        """
+        votebox_deleted_events: list[dict[str:str]] = await self.tx_runner.deleteVoteBox(tx_signer_address=tx_signer_address)
+
+        for votebox_deleted_event in votebox_deleted_events:
+            log.info(f"Successfully deleted a VoteBox for account {votebox_deleted_event["voter_address"]} with {votebox_deleted_event["active_ballots"]} active ballots still in it. This VoteBox was used to vote in {len(votebox_deleted_event["elections_voted"])} elections")
+
+    
+    async def deleteVoteBooth(self, tx_signer_address: str) -> None:
+        """Function to clean the storage account for the tx_signer_address parameter provided, namely, to destroy the ElectionIndex and VoteBoothBallotPrinterAdmin resources.
+
+        @param tx_signer_address: str - The address of the account that has the VoteBooth related resources in the storage account.
+        """
+        await self.tx_runner.cleanupVoteBooth(tx_signer_address=tx_signer_address)
+
+        log.info(f"Successfully cleaned up the VoteBooth contract from account {tx_signer_address}")

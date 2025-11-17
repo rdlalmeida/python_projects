@@ -238,13 +238,13 @@ class ScriptRunner():
             return int(script_result.value.__str__())
     
 
-    async def getPublicEncryptionKey(self, election_id: int, votebox_address: str = None) -> list[int]:
+    async def getPublicEncryptionKey(self, election_id: int, votebox_address: str = None) -> str:
         """Function to retrieve the public encryption key for the election identified by id provided as argument.
 
         @param election_id: int - The election id for the election whose public encryption key is to be retrieved.
         @param votebox_address: str? - If provided, the script retrieves the public encryption key from the votebox resource. If None is provided, this goes to the votebooth contract.
 
-        @returns int The function returns the public encryption key for the election identified by the election id provided.
+        @returns str The function returns the public encryption key for the election identified by the election id provided.
         """
         name = "07_get_public_encryption_key"
         arguments = [cadence.UInt64(election_id)]
@@ -256,8 +256,6 @@ class ScriptRunner():
 
         script_object = self.getScript(script_name=name, script_arguments=arguments)
 
-        public_key_to_return: list[int] = []
-
         async with flow_client(
             host=self.ctx.access_node_host, port=self.ctx.access_node_port
         ) as client:
@@ -265,11 +263,8 @@ class ScriptRunner():
 
             if (not script_result):
                 raise ScriptError(script_name=name)
-
-            for key_element in script_result.value.value:
-                public_key_to_return.append(int(key_element.value.__str__()))
-
-            return public_key_to_return
+            
+            return script_result.value.__str__()
     
 
     async def getElectionCapability(self, election_id: int, votebox_address: str = None) -> cadence.Capability:
@@ -560,7 +555,12 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
+            encrypted_options: str = []
             if (len(script_result.value) > 0):
-                return script_result.value
+                # I need to extract and decode each value to a return array first
+                for result_value in script_result.value:
+                    encrypted_options.append(result_value.__str__())
+
+                return encrypted_options
             else:
                 return []
