@@ -160,17 +160,11 @@ access(all) contract ElectionStandard {
         **/
         access(ElectionStandard.ElectionAdmin) fun setEncryptedOptions(_ballotsToTally: @[BallotStandard.Ballot]): Void {
             pre{
-                self.storedBallots.length == 0: "ERROR: Unable to tally Election ".concat(self.electionId.toString()).concat(". This one still has stored Ballots in it!")
-                self.talliedBallots.length == 0: "ERROR: Election ".concat(self.electionId.toString()).concat(" talliedBallots array is not empty! There are ".concat(self.talliedBallots.length.toString()).concat(" Ballots in it already!"))
                 !self.electionFinished: "ERROR: Election ".concat(self.electionId.toString()).concat(" is set as finished already!")
-                self.encryptedOptions.length == 0: "ERROR: Election ".concat(self.electionId.toString()).concat(" has encrypted options set already!")
             }
 
             post {
-                self.storedBallots.length == 0: "ERROR: The tallying process for Election ".concat(self.electionId.toString()).concat(" still has ").concat(self.storedBallots.length.toString()).concat(" in storage still!")
                 !self.electionFinished: "ERROR: Election ".concat(self.electionId.toString()).concat(" was set as finished!")
-                self.talliedBallots.length == before(_ballotsToTally.length): "ERROR: Not all Ballots were processed for Election ".concat(self.electionId.toString()).concat(": the number of tallied Ballots does not match the number of Ballots received!")
-                self.encryptedOptions.length > 0: "ERROR: Election ".concat(self.electionId.toString()).concat(" did not set any encrypted options!")
             }
 
             // The idea here is to move the input Ballots to the internal talliedBallots array and extract the options to another array in the process.
@@ -560,17 +554,6 @@ access(all) contract ElectionStandard {
                         .concat(" without triggering an underflow error!") 
                 }
 
-            post {
-                self.totalBallotsSubmitted <= self.totalBallotsMinted:
-                    "ERROR: Election "
-                    .concat(self.electionId.toString())
-                    .concat(" has less minted Ballots (")
-                    .concat(self.totalBallotsMinted.toString())
-                    .concat(") than submitted ones (")
-                    .concat(self.totalBallotsSubmitted.toString())
-                    .concat(")!")
-                }
-
             self.totalBallotsMinted = self.totalBallotsMinted - ballots
         }
 
@@ -587,17 +570,6 @@ access(all) contract ElectionStandard {
                     .concat(" submitted Ballots by ")
                     .concat(ballots.toString())
                     .concat(" without triggering an underflow error!")
-            }
-
-            post {
-                self.totalBallotsSubmitted <= self.totalBallotsMinted:
-                    "ERROR: Election "
-                    .concat(self.electionId.toString())
-                    .concat(" has more submitted Ballots (")
-                    .concat(self.totalBallotsSubmitted.toString())
-                    .concat(") than minted ones (")
-                    .concat(self.totalBallotsMinted.toString())
-                    .concat(")!")
             }
 
             self.totalBallotsSubmitted = self.totalBallotsSubmitted - ballots
@@ -805,21 +777,32 @@ access(all) contract ElectionStandard {
 
         /**
             This function is used by the Election Authority to retrieve all Ballots in storage, but completely anonymized, since these are returned as an unordered array of the values from the internal storedBallots dictionary.
+            @param amount (UInt): The number of Ballots to retrieved in this run, to avoid exceeding computation limits for larger elections
 
             @return: @[BallotInterface.Ballot] Returns an array with all the Ballots in no specific order, as stipulated by the Cadence documentation.
         **/
-        access(ElectionStandard.ElectionAdmin) fun withdrawBallots(): @[BallotStandard.Ballot] {
+        access(ElectionStandard.ElectionAdmin) fun withdrawBallots(amount: UInt): @[BallotStandard.Ballot] {
+            // I might need to do this in batches. Start by checking if there are any Ballots left to return and if there aren't any, return an empty set
+            if (self.storedBallots.length == 0) {
+                return <- []
+            }
             // Cadence is super picky when dealing with resources. There is no direct way to retrieve all the values from a dictionary as an array, for example, if these values are resources. As such, I need to do this "manually", i.e., one by one
             var ballotsToTally: @[BallotStandard.Ballot] <- []
 
             // Since the keys in the storedBallots are simple strings, I can get these all at once
             let ballotIndexes: [String] = self.storedBallots.keys
-
-            for ballotIndex in ballotIndexes {
-                let currentBallot: @BallotStandard.Ballot <- self.storedBallots.remove(key: ballotIndex)!
+            var index: UInt = 0
+            var ballotsToRemove: UInt = amount
+            
+            // Keep extracting Ballots while the quota has not been reached or there are any ballots left to return
+            while (ballotsToRemove > 0 && self.storedBallots.length > 0) {
+                let currentBallot: @BallotStandard.Ballot <- self.storedBallots.remove(key: ballotIndexes[index])!
 
                 // Append it to the return array
                 ballotsToTally.append(<- currentBallot)
+
+                ballotsToRemove = ballotsToRemove - 1
+                index = index + 1
             }
 
             // Emit the proper event before returning the return array

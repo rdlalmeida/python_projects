@@ -82,6 +82,12 @@ election_public_encryption_keys: list[pathlib.Path] = [
     keys_dir.joinpath("rsa_public_3.key")
 ]
 
+election_private_encryption_keys_filenames: list[str] = [
+    "rsa_private_1.key",
+    "rsa_private_2.key",
+    "rsa_private_3.key"
+]
+
 election_storage_paths: list[str] = [
     "Election01",
     "Election02",
@@ -106,7 +112,7 @@ async def main(election_index: int = 0) -> None:
     new_election: bool = True
 
     # 0. Setup the project contracts
-    if(False):
+    if(True):
         log.info("Rebuilding project contracts...")
         await contract_management.main(op="clear")
 
@@ -160,7 +166,7 @@ async def main(election_index: int = 0) -> None:
         await current_election.destroy_election(tx_signer_address=ctx.service_account["address"].hex())
 
     # 2. Create a VoteBox into each of the user accounts inside a loop
-    if (False):
+    if (True):
         for user_account in ctx.accounts:
             await current_election.create_votebox(tx_signer_address=user_account["address"].hex())
 
@@ -171,12 +177,12 @@ async def main(election_index: int = 0) -> None:
 
 
     # 3. Mint a blank Ballot into the account provided, for the election in question
-    if (True):
+    if (False):
         for user_account in ctx.accounts:
             await current_election.mint_ballot_to_votebox(votebox_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex())
     
     # 4. Cast the ballots for each of the user accounts to a random option from within the ones available for the election
-    if (True):
+    if (False):
         for user_account in ctx.accounts:
             random_index: int = random.randint(a=1, b=len(election_options[election_index]))
             random_option: dict[int:str] = election_options[election_index][random_index]
@@ -191,9 +197,38 @@ async def main(election_index: int = 0) -> None:
         
 
     # 5. Submit the cast ballots to the election
-    if (True):
+    if (False):
         for user_account in ctx.accounts:
             await current_election.submit_ballot(tx_signer_address=user_account["address"].hex())
+
+    # 5.1 Do the creating, casting, and submitting of ballots in one single configurable cycle
+    if (True):
+        rounds: int = 10
+
+        while (rounds > 0):
+            log.info(f"ROUND #{rounds}")
+            # Create Ballots
+            for user_account in ctx.accounts:
+                await current_election.mint_ballot_to_votebox(votebox_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex())
+
+            # Cast Ballots
+            for user_account in ctx.accounts:
+                random_index: int = random.randint(a=1, b=len(election_options[election_index]))
+                random_option: dict[int:str] = election_options[election_index][random_index]
+                
+                # Cast the ballot and save the int ballot receipt returned
+                receipt: int = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=user_account["address"].hex())
+                
+                # Set the ballot receipt received to the user account object
+                ctx.addReceipt(voter_address=user_account["address"].hex(),election_id=current_election.election_id, ballot_receipt=receipt)
+
+                log.info(f"Voter {user_account["address"].hex()} ballot receipt for election {current_election.election_id} is '{receipt}'")
+
+            # Submit Ballots
+            for user_account in ctx.accounts:
+                await current_election.submit_ballot(tx_signer_address=user_account["address"].hex())
+                
+            rounds -= 1
 
 
     # 6. Mint another round of Ballots to the user accounts, cast them again using a random option, and re-submit them to trigger the BallotReplaced event
@@ -246,7 +281,8 @@ async def main(election_index: int = 0) -> None:
         # selected_user: int = 1
         # temp_election_id: int = 178120883699712
         # temp_election_id: int = current_election_id
-        votebox_address = ctx.accounts[0]["address"].hex()
+        # votebox_address = ctx.accounts[0]["address"].hex()
+        votebox_address = None
 
         # 02_get_active_elections
         if (scripts_to_run["02_get_active_elections"]):
@@ -337,7 +373,8 @@ async def main(election_index: int = 0) -> None:
 
     # 8. Withdraw ballots and compute tally
     if (True):
-        (election_results, ballot_receipts) = await current_election.tally_election(private_encryption_key_name="rsa_private_1.key", tx_signer_address=ctx.service_account["address"].hex())
+        batch_size: int = 10
+        (election_results, ballot_receipts) = await current_election.tally_election(private_encryption_key_name=election_private_encryption_keys_filenames[election_index], batch_size=batch_size, tx_signer_address=ctx.service_account["address"].hex())
 
         log.info(f"Election {current_election.election_id} results: ")
         for result in election_results:
@@ -358,12 +395,23 @@ async def main(election_index: int = 0) -> None:
                         log.info(f"Ballot with receipt {receipt} from voter {user_account["address"].hex()} is valid!")
                     else:
                         log.warning(f"WARNING: Ballot with receipt {receipt} from voter {user_account["address"].hex()} is not among the ballot receipt list returned!")
-        
+    
+    # 9. Check that the election is tallied but not yet finished
+    if (False):
+        election_finished: bool = await script_runner.isElectionFinished(election_id=current_election.election_id)
 
-    # 9. Clean up project from network
-    if (True):
+        if (election_finished):
+            log.warning(f"WARNING: Election {current_election.election_id} has been tallied but is not yet finished!")
+        else:
+            log.info(f"Election {current_election.election_id} is awaiting finish!")
+
+    # 10. Finish the election 
+    if (False):
+        await current_election.finish_election(tx_signer_address=ctx.service_account["address"].hex())
+
+    # 11. Clean up project from network
+    if (False):
         # Destroy the VoteBoxes in each of the user accounts
-        # TODO: Refactor this one also
         for user_account in ctx.accounts:
             await current_election.deleteVoteBox(tx_signer_address=user_account["address"].hex())
 
@@ -375,6 +423,6 @@ async def main(election_index: int = 0) -> None:
 if __name__ == "__main__":
     new_loop = asyncio.new_event_loop()
     asyncio.set_event_loop(new_loop)
-    new_loop.run_until_complete(main())
+    new_loop.run_until_complete(main(election_index=2))
     # asyncio.run(main())
     

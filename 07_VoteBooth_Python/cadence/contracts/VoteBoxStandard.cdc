@@ -404,7 +404,6 @@ access(all) contract VoteBoxStandard {
             )
 
             // Got a valid Ballot. Use its PublicElection reference electionCapability to get a reference to the Election to submit this thing to
-            // TODO: Not sure if this shit works... an authorized reference to a public capability? Seems fishy... this needs testing ASAP
             let electionPublicRef: &{ElectionStandard.ElectionPublic} = ballotToSubmit.electionCapability.borrow<&{ElectionStandard.ElectionPublic}>() ??
             panic(
                 "Unable to retrieve a valid &{ElectionStandard.ElectionPublic} from the electionCapability from Ballot "

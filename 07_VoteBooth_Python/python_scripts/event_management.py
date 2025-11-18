@@ -415,7 +415,7 @@ class EventRunner():
 
         for event in tx_response.events:
             if (event.type == event_name):
-                election_index_destroyed_event: dict[str:str] = []
+                election_index_destroyed_event: dict[str:str] = {}
                 election_index_destroyed_event["account_address"] = event.value.fields["_accountAddress"].hex()
 
                 election_index_destroyed_events.append(election_index_destroyed_event)

@@ -18,8 +18,5 @@ access(all) fun main(electionId: UInt64, voteboxAddress: Address): String? {
         .concat(voteboxAddress.toString())
     )
 
-    let someArray: [Int] = [1, 2, 3, 5]
-    let anotherArray: [Int] = someArray.slice(from: 0, upTo: 2)
-
     return voteboxRef.getVote(electionId: electionId)
 }

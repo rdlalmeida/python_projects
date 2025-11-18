@@ -21,6 +21,13 @@ access(all) contract BallotStandard {
     // ElectionAdministrator account, to ensure they are not getting Ballots and Elections from someone else.
     access(all) let deployerAddress: Address
 
+    /**
+        NOTE: REMOVE THIS PARAMETER IN PROD
+
+        I'm using this value to add basic entropy to the function that calculates the ballotIndex. With this, essentially, each test account can submit as many ballots as they wish, without these replacing existing ones, since I'm generating different indexes every time. This alone is not enough to pervert this system because it messes up with the ballot totals, which I verify religiously (but not in this version. This one has those checks turned off). I need to do this to do some proper load tests with this system without needing to create thousands of different accounts
+    **/
+    access(all) var nonce: UInt
+
     // The public interface applied to the BallotStandard.Ballot resource. These parameter and functions is what a voter has access when he/she grabs a public
     // reference to an Election resource through the Ballot-based election capability. 
     access(all) resource interface BallotPublic {
@@ -136,7 +143,13 @@ access(all) contract BallotStandard {
 
             **/            
             // Grab the voterAddress into a encodable format
-            let voterAddressToEncode: [UInt8] = self.voterAddress!.toString().utf8
+            // TODO: Uncomment the following line in PROD            
+            //let voterAddressToEncode: [UInt8] = self.voterAddress!.toString().utf8
+
+            // TODO: REMOVE THE FOLLOWING WHEN IN PROD
+            let saltedVotedAddress: String = (self.voterAddress!.toString()).concat(BallotStandard.nonce.toString())
+            BallotStandard.nonce = BallotStandard.nonce + 1
+            let voterAddressToEncode: [UInt8] = saltedVotedAddress.utf8
 
 
             // Use the [UInt8] input to get the hash digest of the address String
@@ -220,5 +233,8 @@ access(all) contract BallotStandard {
     init() {
         // Set the address of the contract deployer as an internal parameter for future comparison.
         self.deployerAddress = self.account.address
+
+        // TODO: REMOVE THIS IN PROD
+        self.nonce = 0
     }
 }

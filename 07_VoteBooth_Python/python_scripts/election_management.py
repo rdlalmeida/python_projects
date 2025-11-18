@@ -23,6 +23,7 @@ class Election(object):
         self.election_id: int = None
         self.election_public_encryption_key: str = None
         self.election_options: dict[int:str] = None
+        self.election_results: dict[str:int] = None
         self.option_separator = config.get(section="encryption", option="separator")
         self.encoding = config.get(section="encryption", option="encoding")
 
@@ -214,10 +215,11 @@ class Election(object):
                 raise Exception("ERROR: Submitted a ballot but it did not triggered a BallotSubmitted nor a BallotReplaced event!")
     
 
-    async def tally_election(self, private_encryption_key_name: str, tx_signer_address: str) -> tuple[dict[str:int],list[int]]:
+    async def tally_election(self, private_encryption_key_name: str, batch_size: int, tx_signer_address: str) -> tuple[dict[str:int],list[int]]:
         """Function to trigger the end of the election by processing their ballots, retrieving the ballot.options, decrypting and processing them, tallying the results and producing the winning option. This function also sets the function as finished.
 
         @param private_encryption_key_path: str - The name of the file containing the private encryption key that can decrypt the ballot options. This filename should point to a file inside the '/keys' subfolder from this project directory. The key loading routine has this folder pre-configured. IMPORTANT: The correspondence between private and public keys used in this process is solely of the responsibility of the user. This process does not validates any keys at any point.
+        @param batch_size: int - The number of Ballots to process per batch, to prevent exceeding computation limits in the network
         @param tx_signer_address: str - The account address to use to digitally sign the transaction.
 
         @returns tuple[dict[str:int], list[int]] This function returns the dictionary of tallied results, in the format {election_option: vote_count}, and the array of ballot receipts, which are the random integers appended to the ballot text to add as salt
@@ -228,7 +230,7 @@ class Election(object):
         if (self.election_options == None):
             raise Exception(f"ERROR: Unable to tally Election {self.election_id} without a set of valid election options defined first.")
 
-        ballots_withdrawn_event: dict[str:int] = await self.tx_runner.tallyElection(election_id=self.election_id, tx_signer_address=tx_signer_address)
+        ballots_withdrawn_event: dict[str:int] = await self.tx_runner.tallyElection(election_id=self.election_id, batch_size=batch_size, tx_signer_address=tx_signer_address)
 
         log.info(f"Election {ballots_withdrawn_event["election_id"]} tallied after processing {ballots_withdrawn_event["ballots_withdrawn"]} ballots.")
 
@@ -283,9 +285,48 @@ class Election(object):
             # Put the receipts in another return array
             ballot_receipts.append(int(option_elements[1]))
 
+        # Set this election instance election_results parameter with the results computed so far before returning the results
+        self.election_results = election_options_tally
+
         # Done. Return the results
         return (election_options_tally, ballot_receipts)
     
+
+    async def finish_election(self, tx_signer_address: str) -> None:
+        """Function to finish this election by setting the election results computed into the resource instance itself, and setting its electionFinished flag to true, thus preventing this election from accepting any more ballots. This election instance must have had the election_results parameter set before.
+
+        @param tx_signer_address: str - The account address of the account that has the election in question stored in its storage account area.
+        """
+        if (self.election_id == None):
+            raise Exception(f"ERROR: This Election instance does not have an active election yet!")
+        
+        if (self.election_results == None):
+            raise Exception(f"ERROR: Election {self.election_id} is not tallied yet. Cannot finish it.")
+        
+        # Check first that the election is not yet finished
+        election_finished: bool = await self.script_runner.isElectionFinished(election_id=self.election_id)
+
+        if (election_finished):
+            raise Exception(f"ERROR: Election {self.election_id} is already finished! Cannot continue!")
+        
+        # Set the election to finish with the election_results previously set in this class instance. There are no events emitted with this transaction so
+        # there's no immediate point in capturing the transaction response
+        await self.tx_runner.finishElection(election_id=self.election_id, election_results=self.election_results, tx_signer_address=tx_signer_address)
+
+        # Check that the election was indeed finished
+        election_finished = await self.script_runner.isElectionFinished(election_id=self.election_id)
+
+        if (not election_finished):
+            raise Exception(f"ERROR: Election {self.election_id} failed to finish. The finished flag was not properly set.")
+        
+        # Retrieve the election winning option
+        winning_options: dict[str:int] = await self.script_runner.getElectionWinner(election_id=self.election_id)
+
+        log.info(f"Election {self.election_id} is finished. \nWinning option(s): ")
+        for winning_option in winning_options:
+            log.info(f"'{winning_option}' with {winning_options[winning_option]} votes")
+    
+
 
     async def get_active_elections(self, votebox_address: str = None) -> None:
         """Function to return the list of currently active elections. This function prints a list with all active election ids.

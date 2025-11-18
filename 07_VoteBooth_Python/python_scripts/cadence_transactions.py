@@ -401,16 +401,17 @@ class TransactionRunner():
             raise Exception(f"ERROR: Ballot submission for account {tx_signer_address} failed!")
         
     
-    async def tallyElection(self, election_id: int, tx_signer_address: str) -> list[str]:
+    async def tallyElection(self, election_id: int, batch_size: int, tx_signer_address: str) -> list[str]:
         """Function to trigger the end of a running Election, the withdrawal of all submitted Ballots, and the computation of results.
 
         @param election_id: int - The election identifier for the election to be tallied.
+        @param batch_size: int - The number of Ballots to process per batch, to prevent exceeding computation limits in the network
         @param tx_signer_address: str - The address of the account that can digitally sign this transaction.
 
         @return list[str] This function returns the array of ballot options for the election tallied, still encrypted, to be returned for further processing
         """
         tx_name: str = "06_tally_election"
-        tx_arguments: list = [cadence.UInt64(election_id)]
+        tx_arguments: list = [cadence.UInt64(election_id), cadence.UInt(batch_size)]
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
@@ -429,7 +430,24 @@ class TransactionRunner():
 
         @return bool If the election was finished correctly, this function returns true. Otherwise, an exception should be raised somewhere...
         """
-        # TODO
+        tx_name: str = "12_finish_election"
+        
+        # Compose the expected Cadence-type dictionary from the proper list of KeyValuePairs with the proper formats
+        temp_results: list[cadence.KeyValuePair] = []
+
+        for election_result in election_results:
+            temp_results.append(
+                cadence.KeyValuePair(
+                    key=cadence.String(election_result),
+                    value=cadence.Int(election_results[election_result])
+                )
+            )
+
+        tx_arguments: list = [cadence.UInt64(election_id), cadence.Dictionary(value=temp_results)]
+
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+
+        await self.submitTransaction(tx_object=tx_object)
     
     async def cleanupVoteBooth(self, tx_signer_address: str) -> None:
         """Function to delete every resource and active capability currently stored and active in the tx_signer_address account. This includes all Elections, active and otherwise, BallotPrinterAdmin, and Election index.
