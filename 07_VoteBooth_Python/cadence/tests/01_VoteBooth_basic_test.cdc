@@ -21,7 +21,7 @@ access(all) let nonNilResourceReturnedEventType: Type = Type<ElectionStandard.No
 
 // VoteBoxStandard.cdc
 access(all) let voteBoxCreatedEventType: Type = Type<VoteBoxStandard.VoteBoxCreated>()
-access(all) let voteBoxDestroyedEventType: Type = Type<VoteBoxStandard.VoteBoxDestroyed>()
+access(all) let VoteBoxBurnedEventType: Type = Type<VoteBoxStandard.VoteBoxBurned>()
 
 // VoteBooth.cdc
 access(all) let electionIndexCreatedEventType: Type = Type<VoteBooth.ElectionIndexCreated>()
@@ -39,7 +39,7 @@ access(all) var eventNumberCount: {Type: Int} = {
     electionDestroyedEventType: 0,
     nonNilResourceReturnedEventType: 0,
     voteBoxCreatedEventType: 0,
-    voteBoxDestroyedEventType: 0,
+    VoteBoxBurnedEventType: 0,
     electionIndexCreatedEventType: 0,
     electionIndexDestroyedEventType: 0,
     voteBoothPrinterAdminCreatedEventType: 0,
@@ -55,7 +55,7 @@ access(all) var electionCreatedEvents: [AnyStruct] = []
 access(all) var electionDestroyedEvents: [AnyStruct] = []
 access(all) var nonNilResourceReturnedEvents: [AnyStruct] = []
 access(all) var voteBoxCreatedEvents: [AnyStruct] = []
-access(all) var voteBoxDestroyedEvents: [AnyStruct] = []
+access(all) var VoteBoxBurnedEvents: [AnyStruct] = []
 access(all) var electionIndexCreatedEvents: [AnyStruct] = []
 access(all) var electionIndexDestroyedEvents: [AnyStruct] = []
 access(all) var voteBoothPrinterAdminCreatedEvents: [AnyStruct] = []
@@ -71,7 +71,7 @@ access(all) fun validateEvents() {
     electionDestroyedEvents = Test.eventsOfType(electionDestroyedEventType)
     nonNilResourceReturnedEvents = Test.eventsOfType(nonNilResourceReturnedEventType)
     voteBoxCreatedEvents = Test.eventsOfType(voteBoxCreatedEventType)
-    voteBoxDestroyedEvents = Test.eventsOfType(voteBoxDestroyedEventType)
+    VoteBoxBurnedEvents = Test.eventsOfType(VoteBoxBurnedEventType)
     electionIndexCreatedEvents = Test.eventsOfType(electionIndexCreatedEventType)
     electionIndexDestroyedEvents = Test.eventsOfType(electionIndexDestroyedEventType)
     voteBoothPrinterAdminCreatedEvents = Test.eventsOfType(voteBoothPrinterAdminCreatedEventType)
@@ -140,11 +140,11 @@ access(all) fun validateEvents() {
         .concat(eventNumberCount[voteBoxCreatedEventType]!.toString())
     )
 
-    Test.assert(voteBoxDestroyedEvents.length == eventNumberCount[voteBoxDestroyedEventType]!,
-        message: "ERROR: Mismatch between voteBoxDestroyedEvents.length = "
-        .concat(voteBoxDestroyedEvents.length.toString())
-        .concat(" and eventNumberCount[voteBoxDestroyedEventType] = ")
-        .concat(eventNumberCount[voteBoxDestroyedEventType]!.toString())
+    Test.assert(VoteBoxBurnedEvents.length == eventNumberCount[VoteBoxBurnedEventType]!,
+        message: "ERROR: Mismatch between VoteBoxBurnedEvents.length = "
+        .concat(VoteBoxBurnedEvents.length.toString())
+        .concat(" and eventNumberCount[VoteBoxBurnedEventType] = ")
+        .concat(eventNumberCount[VoteBoxBurnedEventType]!.toString())
     )
 
     Test.assert(electionIndexCreatedEvents.length == eventNumberCount[electionIndexCreatedEventType]!,
@@ -1599,8 +1599,8 @@ access(all) fun testCleanEnvironment() {
         Test.expect(txResult, Test.beSucceeded())
     }
 
-    // After this one, I expect to have accounts.length VoteBoxDestroyed events and as many BallotDestroyed events as well
-    eventNumberCount[voteBoxDestroyedEventType] = eventNumberCount[voteBoxDestroyedEventType]! + accounts.length
+    // After this one, I expect to have accounts.length VoteBoxBurned events and as many BallotDestroyed events as well
+    eventNumberCount[VoteBoxBurnedEventType] = eventNumberCount[VoteBoxBurnedEventType]! + accounts.length
     eventNumberCount[ballotBurnedEventType] = eventNumberCount[ballotBurnedEventType]! + accounts.length
     validateEvents()
 

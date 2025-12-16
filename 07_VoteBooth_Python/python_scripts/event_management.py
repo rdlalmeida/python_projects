@@ -344,8 +344,8 @@ class EventRunner():
         return votebox_created_events
 
     
-    async def getVoteBoxDestroyedEvents(self, tx_response: entities.TransactionResultResponse) -> dict:
-        """Function to return the latest event_num VoteBoxDestroyed events from the event queue.
+    async def getVoteBoxBurnedEvents(self, tx_response: entities.TransactionResultResponse) -> dict:
+        """Function to return the latest event_num VoteBoxBurned events from the event queue.
 
         @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
@@ -356,7 +356,7 @@ class EventRunner():
             "voter_address": str
         }
         """
-        event_name: str = "A." + self.deployer_address + ".VoteBoxStandard.VoteBoxDestroyed"
+        event_name: str = "A." + self.deployer_address + ".VoteBoxStandard.VoteBoxBurned"
 
         votebox_destroyed_events: list[dict] = []
 

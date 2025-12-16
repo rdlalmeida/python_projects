@@ -281,7 +281,7 @@ class TransactionRunner():
 
         @param tx_signer_address: str - The address of the account that is going to digitally sign this transaction.
 
-        @return dict[str:str] The function returns the parameters from the VoteBoxDestroyed event in the format
+        @return dict[str:str] The function returns the parameters from the VoteBoxBurned event in the format
         {
             "elections_voted": list[int],
             "active_ballots": int,
@@ -297,7 +297,7 @@ class TransactionRunner():
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
-        votebox_destroyed_event:dict = await self.event_runner.getVoteBoxDestroyedEvents(tx_response=tx_response)
+        votebox_destroyed_event:dict = await self.event_runner.getVoteBoxBurnedEvents(tx_response=tx_response)
 
         return votebox_destroyed_event
     

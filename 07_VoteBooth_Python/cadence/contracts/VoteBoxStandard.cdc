@@ -24,7 +24,7 @@ access(all) contract VoteBoxStandard {
     // This event emits when a VoteBox is burned using the Burner contract. The idea is to reveal only the electionIds that this VoteBox has been used to 
     // submit Ballots (the _electionsVoted array), as well as the list of active Ballots, or better, the electionIds for the Elections that this VoteBox
     // has an active Ballot in it
-    access(all) event VoteBoxDestroyed(_electionsVoted: [UInt64], _activeBallots: Int, _voterAddress: Address)
+    access(all) event VoteBoxBurned(_electionsVoted: [UInt64], _activeBallots: Int, _voterAddress: Address)
     
     access(all) let deployerAddress: Address
 
@@ -474,7 +474,7 @@ access(all) contract VoteBoxStandard {
             }
 
             // Emit the respective event before finishing
-            emit VoteBoxDestroyed(_electionsVoted: self.electionsVoted, _activeBallots: ballotsBurned, _voterAddress: self.voteBoxOwner)
+            emit VoteBoxBurned(_electionsVoted: self.electionsVoted, _activeBallots: ballotsBurned, _voterAddress: self.voteBoxOwner)
         }
 
         /**

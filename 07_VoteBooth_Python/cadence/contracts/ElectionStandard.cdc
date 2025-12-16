@@ -110,6 +110,7 @@ access(all) contract ElectionStandard {
         access(self) var electionFinished: Bool
 
         // This array is going to be used to store the Ballots after tallying, just to keep them around just in case
+        // TODO: I think I can go without this one. Optimise the tally process to remove this one please
         access(self) var talliedBallots: @[BallotStandard.Ballot]
 
         // This array is used to keep the Ballot options while still encrypted. Since transactions cannot return values, I need to keep these somewhere and
