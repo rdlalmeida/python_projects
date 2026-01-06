@@ -147,7 +147,7 @@ access(all) contract BallotStandard {
             //let voterAddressToEncode: [UInt8] = self.voterAddress!.toString().utf8
 
             // TODO: REMOVE THE FOLLOWING WHEN IN PROD
-            let saltedVotedAddress: String = (self.voterAddress!.toString()).concat(BallotStandard.nonce.toString())
+            let saltedVotedAddress: String = "`self.voterAddress!.toString()``BallotStandard.nonce.toString()`"
             BallotStandard.nonce = BallotStandard.nonce + 1
             let voterAddressToEncode: [UInt8] = saltedVotedAddress.utf8
 
@@ -198,9 +198,7 @@ access(all) contract BallotStandard {
 
             if (hashDigest == nil) {
                 panic(
-                    "ERROR: Unable to decode hashed address "
-                    .concat(self.voterAddress!.toString())
-                    .concat(" back to a String...")
+                    "ERROR: Unable to decode hashed address `self.voterAddress!.toString()` back to a String..."
                 )
             }
             else {

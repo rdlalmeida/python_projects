@@ -11,7 +11,7 @@ import VoteBooth from 0xf8d6e0586b0a20c7
 access(all) fun main(electionId: UInt64): Bool {
     let electionPublicRef: &{ElectionStandard.ElectionPublic} = VoteBooth.getElectionPublicReference(electionId: electionId) ??
     panic(
-        "Unable to get a valid &{ElectionStandard.ElectionPublic} from the VoteBooth contract for election ".concat(electionId.toString())
+        "Unable to get a valid &{ElectionStandard.ElectionPublic} from the VoteBooth contract for election `electionId.toString()`"
     )
 
     return electionPublicRef.isElectionFinished()

@@ -17,10 +17,7 @@ access(all) fun main(electionId: UInt64, voteboxAddress: Address?): {UInt8: Stri
 
         let electionIndexRef: &{VoteBooth.ElectionIndexPublic} = deployerAccount.capabilities.borrow<&{VoteBooth.ElectionIndexPublic}>(VoteBooth.electionIndexPublicPath) ??
         panic(
-            "Unable to get a valid &{VoteBooth.ElectionIndexPublic} at "
-            .concat(VoteBooth.electionIndexPublicPath.toString())
-            .concat(" from account ")
-            .concat(deployerAccount.address.toString())
+            "Unable to get a valid &{VoteBooth.ElectionIndexPublic} at `VoteBooth.electionIndexPublicPath.toString()` from account `deployerAccount.address.toString()`"
         )
 
         let electionRef: &{ElectionStandard.ElectionPublic} = electionIndexRef.getPublicElectionReference(_electionId: electionId)!
@@ -31,10 +28,7 @@ access(all) fun main(electionId: UInt64, voteboxAddress: Address?): {UInt8: Stri
         let voteboxAccount: &Account = getAccount(voteboxAddress!)
         let voteboxRef: &{VoteBoxStandard.VoteBoxPublic} = voteboxAccount.capabilities.borrow<&{VoteBoxStandard.VoteBoxPublic}>(VoteBoxStandard.voteBoxPublicPath) ??
         panic(
-            "Unable to get a valid &{VoteBoxStandard.VoteBoxPublic} at "
-            .concat(VoteBoxStandard.voteBoxPublicPath.toString())
-            .concat(" from account ")
-            .concat(voteboxAddress!.toString())
+            "Unable to get a valid &{VoteBoxStandard.VoteBoxPublic} at `VoteBoxStandard.voteBoxPublicPath.toString()` from account `voteboxAddress!.toString()`"
         )
 
         return voteboxRef.getElectionOptions(electionId: electionId)

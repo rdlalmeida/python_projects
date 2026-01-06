@@ -14,10 +14,7 @@ transaction() {
     prepare(signer: auth(VoteBoxStandard.VoteBoxAdmin, Storage) &Account) {
         self.voteboxRef = signer.storage.borrow<auth(VoteBoxStandard.VoteBoxAdmin, Storage) &VoteBoxStandard.VoteBox>(from: VoteBoxStandard.voteBoxStoragePath) ??
         panic(
-            "Unable to retrieve a valid &VoteBoxStandard.VoteBox at "
-            .concat(VoteBoxStandard.voteBoxStoragePath.toString())
-            .concat(" from account ")
-            .concat(signer.address.toString())
+            "Unable to retrieve a valid &VoteBoxStandard.VoteBox at `VoteBoxStandard.voteBoxStoragePath.toString()` from account `signer.address.toString()`"
         )
 
         self.voteboxOwner = signer.address
@@ -26,10 +23,7 @@ transaction() {
 
         self.electionIndexPublicRef = electionIndexAccount.capabilities.borrow<&{VoteBooth.ElectionIndexPublic}>(VoteBooth.electionIndexPublicPath) ??
         panic(
-            "Unable to get a valid &{VoteBooth.ElectionIndexPublic} at "
-            .concat(VoteBooth.electionIndexPublicPath.toString())
-            .concat(" from account ")
-            .concat(VoteBooth.deployerAddress.toString())
+            "Unable to get a valid &{VoteBooth.ElectionIndexPublic} at `VoteBooth.electionIndexPublicPath.toString()` from account `VoteBooth.deployerAddress.toString()`"
         )
     }
 
@@ -46,10 +40,7 @@ transaction() {
 
                 if (burnedBallotId == nil) {
                     panic(
-                        "Unable to delete Ballot with election id "
-                        .concat(voteboxElectionId.toString())
-                        .concat(" from the VoteBox in account ")
-                        .concat(self.voteboxOwner.toString())
+                        "Unable to delete Ballot with election id `voteboxElectionId.toString()` from the VoteBox in account `self.voteboxOwner.toString()`"
                     )
                 }
 
@@ -58,11 +49,7 @@ transaction() {
         }
 
         log(
-            "Successfully cleaned VoteBox in account "
-            .concat(self.voteboxOwner.toString())
-            .concat(". Deleted ")
-            .concat(inactiveBallots.toString())
-            .concat(" inactive Ballots from it.")
+            "Successfully cleaned VoteBox in account `self.voteboxOwner.toString()`. Deleted `inactiveBallots.toString()` inactive Ballots from it."
         )
     }
 }

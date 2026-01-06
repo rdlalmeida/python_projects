@@ -17,26 +17,17 @@ transaction(electionId: UInt64, batchSize: UInt) {
     prepare(signer: auth(ElectionStandard.ElectionAdmin, BorrowValue) &Account) {
         self.electionIndexRef = signer.capabilities.borrow<&{VoteBooth.ElectionIndexPublic}>(VoteBooth.electionIndexPublicPath) ??
         panic(
-            "Unable to get a valid &{VoteBooth.ElectionIndexPublic} at "
-            .concat(VoteBooth.electionIndexPublicPath.toString())
-            .concat(" from account ")
-            .concat(signer.address.toString())
+            "Unable to get a valid &{VoteBooth.ElectionIndexPublic} at `VoteBooth.electionIndexPublicPath.toString()` from account `signer.address.toString()`"
         )
 
         self.electionStoragePath = self.electionIndexRef.getElectionStoragePath(electionId: electionId) ??
         panic(
-            "Unable to get a StoragePath for Election "
-            .concat(electionId.toString())
-            .concat(" from the ElectionIndexPublic from account ")
-            .concat(signer.address.toString())
+            "Unable to get a StoragePath for Election `electionId.toString()` from the ElectionIndexPublic from account `signer.address.toString()`"
         )
 
         self.electionRef = signer.storage.borrow<auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election>(from: self.electionStoragePath) ??
         panic(
-            "Unable to get a valid auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election at "
-            .concat(self.electionStoragePath.toString())
-            .concat(" from account ")
-            .concat(signer.address.toString())
+            "Unable to get a valid auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election at `self.electionStoragePath.toString()` from account `signer.address.toString()`"
         )
     }
 

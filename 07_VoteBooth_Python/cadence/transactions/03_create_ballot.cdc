@@ -15,30 +15,17 @@ transaction(_linkedElectionId: UInt64, _voterAddress: Address) {
         // Grab an authorized reference to the VoteBoothPrinterAdmin resource using the signer account
         self.voteBoothPrinterAdminRef = signer.storage.borrow<&VoteBooth.VoteBoothPrinterAdmin>(from: VoteBooth.voteBoothPrinterAdminStoragePath) ??
         panic(
-            "Unable to retrieve a valid &VoteBooth.VoteBoothPrinterAdmin at "
-            .concat(VoteBooth.voteBoothPrinterAdminStoragePath.toString())
-            .concat(" for account ")
-            .concat(signer.address.toString())
+            "Unable to retrieve a valid &VoteBooth.VoteBoothPrinterAdmin at `VoteBooth.voteBoothPrinterAdminStoragePath.toString()` for account `signer.address.toString()`"
         )
 
         let newBallotId: UInt64 = self.voteBoothPrinterAdminRef.createBallot(newLinkedElectionId: _linkedElectionId, voterAddress: _voterAddress, deployer: signer) ??
         panic(
-                    "Unable to create a Ballot for Election "
-                    .concat(_linkedElectionId.toString())
-                    .concat(" and deposit it to voter account at ")
-                    .concat(_voterAddress.toString())
-                    .concat(" using the VoteBoothPrinterAdmin at ")
-                    .concat(VoteBooth.voteBoothPrinterAdminStoragePath.toString())
-                    .concat(" from account ")
-                    .concat(signer.address.toString())
-                )
+            "Unable to create a Ballot for Election `_linkedElectionId.toString()` and deposit it to voter account at `_voterAddress.toString()` using the VoteBoothPrinterAdmin at `VoteBooth.voteBoothPrinterAdminStoragePath.toString()` from account `signer.address.toString()`"
+        )
 
         if (VoteBooth.verbose) {
             log(
-                "Successfully created Ballot with id "
-                .concat(newBallotId.toString())
-                .concat(" and deposited to the VoteBox in account ")
-                .concat(_voterAddress.toString())
+                "Successfully created Ballot with id `newBallotId.toString()` and deposited to the VoteBox in account `_voterAddress.toString()`"
                 )
         }
     }

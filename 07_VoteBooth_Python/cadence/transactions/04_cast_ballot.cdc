@@ -14,10 +14,7 @@ transaction(_electionId: UInt64, _newOption: String) {
     prepare(signer: auth(BorrowValue, BallotStandard.BallotAdmin) &Account) {
         self.voteBoxRef = signer.storage.borrow<auth(BallotStandard.BallotAdmin) &VoteBoxStandard.VoteBox>(from: VoteBoxStandard.voteBoxStoragePath) ??
         panic(
-            "Unable to retrieve a valid auth(BallotStandard.BallotAdmin) &VoteBoxStandard at "
-            .concat(VoteBoxStandard.voteBoxStoragePath.toString())
-            .concat(" from account ")
-            .concat(signer.address.toString())
+            "Unable to retrieve a valid auth(BallotStandard.BallotAdmin) &VoteBoxStandard at `VoteBoxStandard.voteBoxStoragePath.toString()` from account `signer.address.toString()`"
         )
     }
 

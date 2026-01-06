@@ -20,26 +20,17 @@ transaction(electionId: UInt64, electionResults: {String: Int}) {
 
         self.electionIndexRef = deployerAccount.capabilities.borrow<&{VoteBooth.ElectionIndexPublic}>(VoteBooth.electionIndexPublicPath) ??
         panic(
-            "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at "
-            .concat(VoteBooth.electionIndexPublicPath.toString())
-            .concat(" from account ")
-            .concat(self.deployerAddress.toString())
+            "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at `VoteBooth.electionIndexPublicPath.toString()` from account `self.deployerAddress.toString()`"
         )
 
         let electionStoragePath: StoragePath = self.electionIndexRef.getElectionStoragePath(electionId: electionId) ??
         panic(
-            "Unable to get a valid StoragePath for Election "
-            .concat(electionId.toString())
-            .concat(" from the ElectionIndexPublic from account ")
-            .concat(self.deployerAddress.toString())
+            "Unable to get a valid StoragePath for Election `electionId.toString()` from the ElectionIndexPublic from account `self.deployerAddress.toString()`"
         )
 
         self.electionRef = signer.storage.borrow<auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election>(from: electionStoragePath) ??
         panic(
-            "Unable to retrieve a valid auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election at "
-            .concat(electionStoragePath.toString())
-            .concat(" from account ")
-            .concat(self.deployerAddress.toString())
+            "Unable to retrieve a valid auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election at `electionStoragePath.toString()` from account `self.deployerAddress.toString()`"
         )
     }
 
@@ -48,16 +39,12 @@ transaction(electionId: UInt64, electionResults: {String: Int}) {
 
         if (result) {
             log(
-                "Election "
-                .concat(electionId.toString())
-                .concat(" is finished!")
+                "Election `electionId.toString()` is finished!"
             )
         }
         else {
             log(
-                "Election "
-                .concat(electionId.toString())
-                .concat(" did not finished correctly!")
+                "Election `electionId.toString()` did not finished correctly!"
             )
         }
     }

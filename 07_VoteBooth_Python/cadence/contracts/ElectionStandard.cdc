@@ -166,11 +166,11 @@ access(all) contract ElectionStandard {
         **/
         access(ElectionStandard.ElectionAdmin) fun setEncryptedOptions(_ballotsToTally: @[BallotStandard.Ballot]): Void {
             pre{
-                !self.electionFinished: "ERROR: Election ".concat(self.electionId.toString()).concat(" is set as finished already!")
+                !self.electionFinished: "ERROR: Election `self.electionId.toString()` is set as finished already!"
             }
 
             post {
-                !self.electionFinished: "ERROR: Election ".concat(self.electionId.toString()).concat(" was set as finished!")
+                !self.electionFinished: "ERROR: Election `self.electionId.toString()` was set as finished!"
             }
 
             // The idea here is to move the input Ballots to the internal talliedBallots array and extract the options to another array in the process.
@@ -192,11 +192,7 @@ access(all) contract ElectionStandard {
             // The input array should be empty by now. Test it just in case because the container still needs to be destroyed
             if (_ballotsToTally.length > 0) {
                 panic(
-                    "ERROR: The input _ballotsToTally array for election "
-                    .concat(self.electionId.toString())
-                    .concat(" was not completely processed. The input array still has ")
-                    .concat(_ballotsToTally.length.toString())
-                    .concat(" Ballots in it left!")
+                    "ERROR: The input _ballotsToTally array for election `self.electionId.toString()` was not completely processed. The input array still has `_ballotsToTally.length.toString()` Ballots in it left!"
                 )
             }
             else{
@@ -212,13 +208,13 @@ access(all) contract ElectionStandard {
         **/
         access(ElectionStandard.ElectionAdmin) fun setElectionResults(_electionResults: {String: Int}): Void {
             pre {
-                !self.electionFinished: "ERROR: Election ".concat(self.electionId.toString()).concat(" is set as finished already!")
-                self.electionResults.length == 0: "ERROR: Election ".concat(self.electionId.toString()).concat(" already has some election results set in!")
+                !self.electionFinished: "ERROR: Election `self.electionId.toString()` is set as finished already!"
+                self.electionResults.length == 0: "ERROR: Election `self.electionId.toString()` already has some election results set in!"
             }
 
             post {
-                self.electionFinished: "ERROR: Election ".concat(self.electionId.toString()).concat(" is not yet set as finished!")
-                self.electionResults.length > 0: "ERROR: Election ".concat(self.electionId.toString()).concat(" did not got its election results set!")
+                self.electionFinished: "ERROR: Election `self.electionId.toString()` is not yet set as finished!"
+                self.electionResults.length > 0: "ERROR: Election `self.electionId.toString()` did not got its election results set!"
             }
 
             // Set the election results internally
@@ -239,15 +235,15 @@ access(all) contract ElectionStandard {
         access(ElectionStandard.ElectionAdmin) fun tallyElection(_ballotsToTally: @[BallotStandard.Ballot]): {String: Int} {
             // Validate that there are no Ballots stored in this resource, both at the beginning and at the end.
             pre {
-                self.storedBallots.length == 0: "ERROR: Unable to tally Election ".concat(self.electionId.toString()).concat(". This one still has stored Ballots in it!")
-                self.talliedBallots.length == 0: "ERROR: Election ".concat(self.electionId.toString()).concat(" talliedBallots array is not empty! There are ").concat(self.talliedBallots.length.toString()).concat(" Ballots in it already!")
-                !self.electionFinished: "ERROR: Election ".concat(self.electionId.toString()).concat(" is set as finished already!")
+                self.storedBallots.length == 0: "ERROR: Unable to tally Election `self.electionId.toString()`. This one still has stored Ballots in it!"
+                self.talliedBallots.length == 0: "ERROR: Election `self.electionId.toString()` talliedBallots array is not empty! There are `self.talliedBallots.length.toString()` Ballots in it already!"
+                !self.electionFinished: "ERROR: Election `self.electionId.toString()` is set as finished already!"
             }
 
             post {
-                self.storedBallots.length == 0: "ERROR: That tallying process for Election ".concat(self.electionId.toString()).concat(" still has ").concat(self.storedBallots.length.toString()).concat(" in storage still!")
-                self.electionFinished: "ERROR: Election ".concat(self.electionId.toString()).concat(" has finished tallying but is not yet set as finished.")
-                self.talliedBallots.length == before(_ballotsToTally.length): "ERROR: Not all Ballots were processed for Election ".concat(self.electionId.toString()).concat(": the length of self.talliedBallots does not match with the number of initial Ballots received as input.")
+                self.storedBallots.length == 0: "ERROR: That tallying process for Election `self.electionId.toString()` still has `self.storedBallots.length.toString()` in storage still!"
+                self.electionFinished: "ERROR: Election `self.electionId.toString()` has finished tallying but is not yet set as finished."
+                self.talliedBallots.length == before(_ballotsToTally.length): "ERROR: Not all Ballots were processed for Election `self.electionId.toString()`: the length of self.talliedBallots does not match with the number of initial Ballots received as input."
             }
 
             // Set this dictionary to return the result, in the format {winningBallot: ballotCount}. I'm returning this in an array to cover the (hopefully
@@ -299,11 +295,7 @@ access(all) contract ElectionStandard {
             // 6. Validate that the input array is empty and destroy it
             if (_ballotsToTally.length != 0) {
                 panic(
-                    "ERROR: The input _ballotsToTally array for election "
-                    .concat(self.electionId.toString())
-                    .concat(" was not completely processed. The input array still has ")
-                    .concat(_ballotsToTally.length.toString())
-                    .concat(" elements in it!")
+                    "ERROR: The input _ballotsToTally array for election `self.electionId.toString()` was not completely processed. The input array still has `_ballotsToTally.length.toString()` elements in it!"
                 )
             }
             else {
@@ -327,7 +319,7 @@ access(all) contract ElectionStandard {
             // Validate that, at least, one max value was found
             if (currentBallot == "" && currentCount == 0) {
                 panic(
-                    "ERROR: Unable to find a winning option for Election ".concat(self.electionId.toString())
+                    "ERROR: Unable to find a winning option for Election `self.electionId.toString()`"
                 )
             }
 
@@ -553,11 +545,7 @@ access(all) contract ElectionStandard {
             // should never be raised.
             pre {
                 ballots <= self.totalBallotsMinted: 
-                    "Unable to decrease the total Ballots minted! Cannot decrease a total of "
-                        .concat(self.totalBallotsMinted.toString())
-                        .concat(" minted Ballots by ")
-                        .concat(ballots.toString())
-                        .concat(" without triggering an underflow error!") 
+                    "Unable to decrease the total Ballots minted! Cannot decrease a total of `self.totalBallotsMinted.toString()` minted Ballots by `ballots.toString()` without triggering an underflow error!" 
                 }
 
             self.totalBallotsMinted = self.totalBallotsMinted - ballots
@@ -571,11 +559,7 @@ access(all) contract ElectionStandard {
         access(all) fun decreaseBallotsSubmitted(ballots: UInt): Void {
             pre {
                 ballots <= self.totalBallotsSubmitted: 
-                    "Unable to decrease the Ballots submitted! Cannot decrease a total of "
-                    .concat(self.totalBallotsSubmitted.toString())
-                    .concat(" submitted Ballots by ")
-                    .concat(ballots.toString())
-                    .concat(" without triggering an underflow error!")
+                    "Unable to decrease the Ballots submitted! Cannot decrease a total of `self.totalBallotsSubmitted.toString()` submitted Ballots by `ballots.toString()` without triggering an underflow error!"
             }
 
             self.totalBallotsSubmitted = self.totalBallotsSubmitted - ballots
@@ -623,13 +607,7 @@ access(all) contract ElectionStandard {
 
                 if (ballotIdToReturn != ballotId) {
                     panic(
-                        "ERROR: Retrieved ballotId #"
-                        .concat(ballotIdToReturn.toString())
-                        .concat(" from mintedBallots at index ")
-                        .concat(ballotIndex!.toString())
-                        .concat(" but expected ballotId #")
-                        .concat(ballotId.toString())
-                        .concat(". Cannot continue!")
+                        "ERROR: Retrieved ballotId #`ballotIdToReturn.toString()` from mintedBallots at index `ballotIndex!.toString()` but expected ballotId #`ballotId.toString()`. Cannot continue!"
                     )
                 }
 
@@ -648,9 +626,7 @@ access(all) contract ElectionStandard {
         access(ElectionStandard.ElectionAdmin) fun addMintedBallot(ballotId: UInt64): Void {
             if (self.mintedBallots.contains(ballotId)) {
                 panic(
-                    "ERROR: ballotId #"
-                    .concat(ballotId.toString())
-                    .concat(" already exists in the internal mintedBallots array. Cannot continue!")
+                    "ERROR: ballotId #`ballotId.toString()` already exists in the internal mintedBallots array. Cannot continue!"
                 )
             }
 
@@ -754,12 +730,7 @@ access(all) contract ElectionStandard {
             // Validate that the indexToRemove was set (is not nil anymore)
             if (indexToRemove == nil) {
                 panic(
-                    "ERROR: Unable to remove ballotId "
-                    .concat(newBallotId.toString())
-                    .concat(" from the mintedBallots array for Election ")
-                    .concat(self.electionId.toString())
-                    .concat(" in account ")
-                    .concat(self.owner!.address.toString())
+                    "ERROR: Unable to remove ballotId `newBallotId.toString()` from the mintedBallots array for Election `self.electionId.toString()` in account `self.owner!.address.toString()`"
                 )
             }
 
@@ -770,13 +741,7 @@ access(all) contract ElectionStandard {
             // any inconsistencies are found.
             if (self.getTotalBallotsSubmitted() != UInt(self.storedBallots.length)) {
                 panic(
-                    "ERROR: Contract inconsistency detected: Election "
-                    .concat(self.electionId.toString())
-                    .concat(" has a totalBallotsSubmitted of ")
-                    .concat(self.getTotalBallotsSubmitted().toString())
-                    .concat(" Ballots, but the internal storedBallots dictionary has ")
-                    .concat(self.storedBallots.length.toString())
-                    .concat(" Ballots in it! These parameters need to match!")
+                    "ERROR: Contract inconsistency detected: Election `self.electionId.toString()` has a totalBallotsSubmitted of `self.getTotalBallotsSubmitted().toString()` Ballots, but the internal storedBallots dictionary has `self.storedBallots.length.toString()` Ballots in it! These parameters need to match!"
                 )
             }
         }
@@ -853,11 +818,7 @@ access(all) contract ElectionStandard {
             // Check that the Election is "empty" from the storedBallots and mintedBallots point of view. Panic if this burn process is not completely clean.
             if(self.storedBallots.length != 0) {
                 panic(
-                    "ERROR: Election "
-                    .concat(self.electionId.toString())
-                    .concat(" is about to be destroyed but it still has ")
-                    .concat(self.storedBallots.length.toString())
-                    .concat(" Ballots stored in it yet! Cannot destroy this until its empty! ")
+                    "ERROR: Election `self.electionId.toString()` is about to be destroyed but it still has `self.storedBallots.length.toString()` Ballots stored in it yet! Cannot destroy this until its empty! "
                 )
             }
 

@@ -26,12 +26,9 @@ transaction(
     prepare(signer: auth(Storage, Capabilities, ElectionStandard.ElectionAdmin) &Account) {
         // Get the authorized reference for the VoteBoothPrinterAdmin resource with all the entitlements specified in the transaction signature
         self.voteBoothPrinterAdminRef 
-            = signer.storage.borrow<auth(Storage, Capabilities, Capabili ElectionStandard.ElectionAdmin) &VoteBooth.VoteBoothPrinterAdmin>(from: VoteBooth.voteBoothPrinterAdminStoragePath) ??
+            = signer.storage.borrow<auth(Storage, Capabilities, ElectionStandard.ElectionAdmin) &VoteBooth.VoteBoothPrinterAdmin>(from: VoteBooth.voteBoothPrinterAdminStoragePath) ??
             panic(
-                "Unable to retrieve a valid auth(Storage, Capabilities, ElectionStandard.ElectionAdmin) &VoteBooth.VoteBoothPrinterAdmin at "
-                .concat(VoteBooth.voteBoothPrinterAdminStoragePath.toString())
-                .concat(" from account at ")
-                .concat(signer.address.toString())
+                "Unable to retrieve a valid auth(Storage, Capabilities, ElectionStandard.ElectionAdmin) &VoteBooth.VoteBoothPrinterAdmin at `VoteBooth.voteBoothPrinterAdminStoragePath.toString()` from account at `signer.address.toString()`"
             )
         
         // Create the Election in this prepare phase because I need access to the signer variable.
@@ -46,7 +43,7 @@ transaction(
         )
 
         if (VoteBooth.verbose) {
-            log("Created a new Election with electionId ".concat(self.newElectionId.toString()).concat(" => ").concat(_electionName))
+            log("Created a new Election with electionId `self.newElectionId.toString()` => `_electionName`")
         }
     }
 

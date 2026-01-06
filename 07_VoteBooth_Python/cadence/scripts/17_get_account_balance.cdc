@@ -16,10 +16,7 @@ access(all) fun main(accountAddress: Address): UFix64 {
     // Get the FLOW balance
     let balanceRef: &{FungibleToken.Balance} = currentAccount.capabilities.borrow<&{FungibleToken.Balance}>(balancePublicPath) ??
     panic(
-        "Unable to retrieve a valid &{FungibleToken.Balance} at "
-        .concat(balancePublicPath.toString())
-        .concat(" for account ")
-        .concat(accountAddress.toString())
+        "Unable to retrieve a valid &{FungibleToken.Balance} at `balancePublicPath.toString()` for account `accountAddress.toString()`"
     )
     
     return balanceRef.balance

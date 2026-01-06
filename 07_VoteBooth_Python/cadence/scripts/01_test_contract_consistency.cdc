@@ -31,11 +31,7 @@ access(all) fun main(): Address? {
     else {
         if (VoteBooth.verbose) {
             log(
-                "WARNING: BallotStandard("
-                .concat(ballotDeployer.toString())
-                .concat(") and ElectionStandard(")
-                .concat(electionDeployer.toString())
-                .concat(") are deployed into different accounts!")
+            "WARNING: BallotStandard(`ballotDeployer.toString()`) and ElectionStandard(`electionDeployer.toString()`) are deployed into different accounts!"
             )
         }
 
@@ -52,11 +48,7 @@ access(all) fun main(): Address? {
     else {
         if (VoteBooth.verbose) {
             log(
-                "WARNING: VoteBoxStandard("
-                .concat(voteBoxDeployer.toString())
-                .concat(") and ElectionStandard(")
-                .concat(electionDeployer.toString())
-                .concat(") are deployed into different accounts!")
+            "WARNING: VoteBoxStandard(`voteBoxDeployer.toString()`) and ElectionStandard(`electionDeployer.toString()`) are deployed into different accounts!"
             )
         }
 
@@ -66,18 +58,14 @@ access(all) fun main(): Address? {
     if (voteboothDeployer == voteBoxDeployer) {
         if (VoteBooth.verbose) {
             log(
-                "VoteBooth and the remaining standards are consistently deployed at ".concat(voteboothDeployer.toString())
+            "VoteBooth and the remaining standards are consistently deployed at `voteboothDeployer.toString()`"
             )
         }
     }
     else {
         if (VoteBooth.verbose) {
             log(
-                "WARNING: VoteBooth("
-                .concat(voteboothDeployer.toString())
-                .concat(") and VoteBoxStandard(")
-                .concat(voteBoxDeployer.toString())
-                .concat(") are deployed into different accounts!")
+            "WARNING: VoteBooth(`voteboothDeployer.toString()`) and VoteBoxStandard(`voteBoxDeployer.toString()`) are deployed into different accounts!"
             )
         }
 

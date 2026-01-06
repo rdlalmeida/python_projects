@@ -12,10 +12,7 @@ transaction(_electionId: UInt64) {
     prepare(signer: auth(BallotStandard.BallotAdmin, BorrowValue) &Account) {
         self.voteBoxRef = signer.storage.borrow<auth(BallotStandard.BallotAdmin) &VoteBoxStandard.VoteBox>(from: VoteBoxStandard.voteBoxStoragePath) ??
         panic(
-            "Unable to retrieve a valid auth(BallotStandard.BallotAdmin) &VoteBoxStandard at "
-            .concat(VoteBoxStandard.voteBoxPublicPath.toString())
-            .concat(" from account ")
-            .concat(signer.address.toString())
+            "Unable to retrieve a valid auth(BallotStandard.BallotAdmin) &VoteBoxStandard at `VoteBoxStandard.voteBoxPublicPath.toString()` from account `signer.address.toString()`"
         )
     }
 
@@ -24,10 +21,7 @@ transaction(_electionId: UInt64) {
 
         if (returnedElectionId != _electionId) {
             panic(
-                "ERROR: The Ballot was cast for Election "
-                .concat(_electionId.toString())
-                .concat(" but the transaction returned Election ")
-                .concat(returnedElectionId.toString())
+                "ERROR: The Ballot was cast for Election `_electionId.toString()` but the transaction returned Election `returnedElectionId.toString()`"
             )
         }
     }

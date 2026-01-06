@@ -13,18 +13,12 @@ access(all) fun main(electionId: UInt64): StoragePath {
 
     let electionIndexRef: &{VoteBooth.ElectionIndexPublic} = deployerAccount.capabilities.borrow<&{VoteBooth.ElectionIndexPublic}>(VoteBooth.electionIndexPublicPath) ??
     panic(
-        "Unable to get a valid &{VoteBooth.ElectionIndexPublic} at "
-        .concat(VoteBooth.electionIndexPublicPath.toString())
-        .concat(" from account ")
-        .concat(deployerAccount.address.toString())
+        "Unable to get a valid &{VoteBooth.ElectionIndexPublic} at `VoteBooth.electionIndexPublicPath.toString()` from account `deployerAccount.address.toString()`"
     )
     
     let electionStoragePath: StoragePath = electionIndexRef.getElectionStoragePath(electionId: electionId) ??
     panic(
-        "Unable to retrieve a valid StoragePath to the Election with id "
-        .concat(electionId.toString())
-        .concat(" from the ElectionIndex stored in account ")
-        .concat(deployerAccount.address.toString())
+        "Unable to retrieve a valid StoragePath to the Election with id `electionId.toString()` from the ElectionIndex stored in account `deployerAccount.address.toString()`"
     )
 
     return electionStoragePath

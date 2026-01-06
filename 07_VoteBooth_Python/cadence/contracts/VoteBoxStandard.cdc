@@ -110,10 +110,7 @@ access(all) contract VoteBoxStandard {
 
                 let electionRef: &{ElectionStandard.ElectionPublic} = electionPubCap.borrow() ??
                 panic(
-                    "Unable to retrieve a valid &{ElectionStandard.ElectionPublic} from the electionCapability set in Ballot "
-                    .concat(ballotRef!.ballotId.toString())
-                    .concat(" in the VoteBox for account ")
-                    .concat(self.owner!.address.toString())
+                    "Unable to retrieve a valid &{ElectionStandard.ElectionPublic} from the electionCapability set in Ballot `ballotRef!.ballotId.toString()` in the VoteBox for account `self.owner!.address.toString()`"
                 )
 
                 // Done. Return the reference
@@ -138,10 +135,7 @@ access(all) contract VoteBoxStandard {
                 // Load the ballot
                 let ballotToDestroy: @BallotStandard.Ballot <- self.activeBallots.remove(key: electionId) ??
                 panic(
-                    "Unable to retrieve a valid @BallotStandard.Ballot for electionId "
-                    .concat(electionId.toString())
-                    .concat(" from the VoteBox in account ")
-                    .concat(self.owner!.address.toString())
+                    "Unable to retrieve a valid @BallotStandard.Ballot for electionId `electionId.toString()` from the VoteBox in account `self.owner!.address.toString()`"
                 )
 
                 // All good. Burn the Ballot
@@ -363,10 +357,10 @@ access(all) contract VoteBoxStandard {
         access(BallotStandard.BallotAdmin) fun setOption(electionId: UInt64, newOption: String): Void {
             // This function does not does anything to the dictionary of active Ballots. Make sure that this situation is consistent
             pre {
-                self.activeBallots[electionId] != nil: "There are no Ballots for election ".concat(electionId.toString()).concat(" currently in storage!")
+                self.activeBallots[electionId] != nil: "There are no Ballots for election `electionId.toString()` currently in storage!"
             }
             post {
-                self.activeBallots[electionId] != nil: "Missing the set Ballot for election ".concat(electionId.toString()).concat(" currently in storage!")
+                self.activeBallots[electionId] != nil: "Missing the set Ballot for election `electionId.toString()` currently in storage!"
             }
 
             // Set the option of the Ballot in question without removing it from the internal dictionary
@@ -387,29 +381,23 @@ access(all) contract VoteBoxStandard {
         access(BallotStandard.BallotAdmin) fun castBallot(electionId: UInt64): UInt64 {
             // Similar to the "setOption" function, this one checks initially if a Ballot with the provided electionId already exists before continuing
             pre {
-                self.activeBallots[electionId] != nil: "There are no Ballot for election ".concat(electionId.toString()).concat(" currently in storage!")
+                self.activeBallots[electionId] != nil: "There are no Ballot for election `electionId.toString()` currently in storage!"
             }
 
             // When this function finishes, there shouldn't be any Ballots under the provided electionId
             post {
-                self.activeBallots[electionId] == nil: "Ballot ".concat(electionId.toString()).concat(" should have been submitted. Cannot continue!")
+                self.activeBallots[electionId] == nil: "Ballot `electionId.toString()` should have been submitted. Cannot continue!"
             }
 
             let ballotToSubmit: @BallotStandard.Ballot <- self.activeBallots.remove(key: electionId) ??
             panic(
-                "Unable to retrieve a valid @BallotStandard.Ballot from the VoteBox from account "
-                .concat(self.owner!.address.toString())
-                .concat(" with electionId ")
-                .concat(electionId.toString())
+                "Unable to retrieve a valid @BallotStandard.Ballot from the VoteBox from account `self.owner!.address.toString()` with electionId `electionId.toString()`"
             )
 
             // Got a valid Ballot. Use its PublicElection reference electionCapability to get a reference to the Election to submit this thing to
             let electionPublicRef: &{ElectionStandard.ElectionPublic} = ballotToSubmit.electionCapability.borrow<&{ElectionStandard.ElectionPublic}>() ??
             panic(
-                "Unable to retrieve a valid &{ElectionStandard.ElectionPublic} from the electionCapability from Ballot "
-                .concat(ballotToSubmit.ballotId.toString())
-                .concat(" with electionId ")
-                .concat(electionId.toString())
+                "Unable to retrieve a valid &{ElectionStandard.ElectionPublic} from the electionCapability from Ballot `ballotToSubmit.ballotId.toString()` with electionId `electionId.toString()`"
             )
 
             // Anonymize the Ballot right before submitting it, since I have the necessary entitlements at this stage
@@ -448,9 +436,9 @@ access(all) contract VoteBoxStandard {
         access(all) fun depositBallot(ballot: @BallotStandard.Ballot): Void {
             // Check and panic if, by whatever reason, there's a Ballot already with the provided electionId
             pre {
-                self.activeBallots[ballot.linkedElectionId] == nil: "The VoteBox in account ".concat(self.owner!.address.toString()).concat(" already has a Ballot under electionId ").concat(ballot.linkedElectionId.toString())
+                self.activeBallots[ballot.linkedElectionId] == nil: "The VoteBox in account `self.owner!.address.toString()` already has a Ballot under electionId `ballot.linkedElectionId.toString()`"
                 // Validate that the Ballot being deposited has the same owner as this VoteBox resource
-                ballot.voterAddress == self.owner!.address: "ERROR: Ballot with owner ".concat(ballot.voterAddress!.toString()).concat(" is trying to be deposited onto voter ").concat(self.owner!.address.toString()).concat(" account. These addresses must match!")
+                ballot.voterAddress == self.owner!.address: "ERROR: Ballot with owner `ballot.voterAddress!.toString()` is trying to be deposited onto voter `self.owner!.address.toString()` account. These addresses must match!"
                 self.validateContracts(): "ERROR: Contract inconsistencies detected! VoteBoxStandard, BallotStandard, and the ElectionStandard contracts are not deployed to the same account."
             }
 

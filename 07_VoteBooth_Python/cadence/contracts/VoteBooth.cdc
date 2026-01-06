@@ -65,10 +65,7 @@ access(all) contract VoteBooth {
 
         let electionIndexRef: &{VoteBooth.ElectionIndexPublic} = deployerAccount.capabilities.borrow<&{VoteBooth.ElectionIndexPublic}>(VoteBooth.electionIndexPublicPath) ??
         panic(
-            "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at "
-            .concat(VoteBooth.electionIndexPublicPath.toString())
-            .concat(" from account ")
-            .concat(deployerAccount.address.toString())
+            "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at `VoteBooth.electionIndexPublicPath.toString()` from account `deployerAccount.address.toString()`"
         )
 
         // At this point, check if the electionId is among the active ones. Continue only if so, return a nil if not
@@ -79,19 +76,13 @@ access(all) contract VoteBooth {
         // The election exists. Get the public path for the election in question from the election index reference
         let electionPublicPath: PublicPath = electionIndexRef.getElectionPublicPath(electionId: electionId) ??
         panic(
-            "Unable to retrieve a valid PublicPath for election "
-            .concat(electionId.toString())
-            .concat(" for the Election Index from account ")
-            .concat(deployerAccount.address.toString())
+            "Unable to retrieve a valid PublicPath for election `electionId.toString()` for the Election Index from account `deployerAccount.address.toString()`"
         )
 
         // Get the public reference to the election from here
         let electionPublicRef: &{ElectionStandard.ElectionPublic} = deployerAccount.capabilities.borrow<&{ElectionStandard.ElectionPublic}>(electionPublicPath) ??
         panic(
-            "Unable to retrieve a &{ElectionStandard.ElectionPublic} at "
-            .concat(electionPublicPath.toString())
-            .concat(" from account ")
-            .concat(deployerAccount.address.toString())
+            "Unable to retrieve a &{ElectionStandard.ElectionPublic} at `electionPublicPath.toString()` from account `deployerAccount.address.toString()`"
         )
 
         return electionPublicRef
@@ -167,10 +158,7 @@ access(all) contract VoteBooth {
             else {
                 let electionEntry: {StoragePath: PublicPath} = self.electionIndex[electionId] ??
                 panic(
-                    "Unable to retrieve a valid {StoragePath: PublicPath} record for electionId "
-                    .concat(electionId.toString())
-                    .concat(" for account ")
-                    .concat(self.owner!.address.toString())
+                    "Unable to retrieve a valid {StoragePath: PublicPath} record for electionId `electionId.toString()` for account `self.owner!.address.toString()`"
                 )
             
             return electionEntry
@@ -238,10 +226,7 @@ access(all) contract VoteBooth {
             // Use it to get a public reference to the ElectionIndex
             let electionIndexRef: &{VoteBooth.ElectionIndexPublic} = deployerAccount.capabilities.borrow<&{VoteBooth.ElectionIndexPublic}>(VoteBooth.electionIndexPublicPath) ??
             panic(
-                "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at "
-                .concat(VoteBooth.electionIndexPublicPath.toString())
-                .concat(" from account ")
-                .concat(deployerAccount.address.toString())
+                "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at `VoteBooth.electionIndexPublicPath.toString()` from account `deployerAccount.address.toString()`"
             )
 
             var electionInfo: {UInt64: String} = {}
@@ -250,18 +235,12 @@ access(all) contract VoteBooth {
             for activeElectionId in activeElectionIds {
                 let electionPublicPath: PublicPath = electionIndexRef.getElectionPublicPath(electionId: activeElectionId) ??
                 panic(
-                    "Unable to get a valid PublicPath from the ElectionIndex for electionId "
-                    .concat(activeElectionId.toString())
-                    .concat(" in account ")
-                    .concat(deployerAccount.address.toString())
+                    "Unable to get a valid PublicPath from the ElectionIndex for electionId `activeElectionId.toString()` in account `deployerAccount.address.toString()`"
                 )
 
                 let electionRef: &{ElectionStandard.ElectionPublic} = deployerAccount.capabilities.borrow<&{ElectionStandard.ElectionPublic}>(electionPublicPath) ??
                 panic(
-                    "Unable to get a valid &{ElectionStandard.ElectionPublic} at "
-                    .concat(electionPublicPath.toString())
-                    .concat(" for account ")
-                    .concat(deployerAccount.address.toString())
+                    "Unable to get a valid &{ElectionStandard.ElectionPublic} at `electionPublicPath.toString()` for account `deployerAccount.address.toString()`"
                 )
 
                 let electionName: String = electionRef.getElectionName()
@@ -286,10 +265,7 @@ access(all) contract VoteBooth {
             // Start by making sure that the Election does exist
             if (!self.electionExists(electionId: _electionId)) {
                 panic(
-                    "ERROR: There are no Elections in storage with id "
-                    .concat(_electionId.toString())
-                    .concat(" for account ")
-                    .concat(deployerAccount.address.toString())
+                    "ERROR: There are no Elections in storage with id `_electionId.toString()` for account `deployerAccount.address.toString()`"
                 )
             }
             
@@ -297,17 +273,13 @@ access(all) contract VoteBooth {
             // The Election exists. Retrieve the PublicPath where its public reference should have been published to
             let electionPublicPath: PublicPath = self.getElectionPublicPath(electionId: _electionId) ??
             panic(
-                "Unable to retrieve a valid PublicPath from the ElectionIndex in account "
-                .concat(deployerAccount.address.toString())
+                "Unable to retrieve a valid PublicPath from the ElectionIndex in account `deployerAccount.address.toString()`"
             )
 
 
             let electionRef: &{ElectionStandard.ElectionPublic} = deployerAccount.capabilities.borrow<&{ElectionStandard.ElectionPublic}>(electionPublicPath) ??
             panic(
-                "Unable to retrieve a valid &{ElectionStandard.ElectionPublic} at "
-                .concat(electionPublicPath.toString())
-                .concat(" from account ")
-                .concat(deployerAccount.address.toString())
+                "Unable to retrieve a valid &{ElectionStandard.ElectionPublic} at `electionPublicPath.toString()` from account `deployerAccount.address.toString()`"
             )
 
             return electionRef
@@ -383,27 +355,20 @@ access(all) contract VoteBooth {
             // 1. Validate and get a reference to the ElectionIndex resource
             let electionIndexRef: &{VoteBooth.ElectionIndexPublic} = deployer.capabilities.borrow<&{VoteBooth.ElectionIndexPublic}>(VoteBooth.electionIndexPublicPath) ??
             panic(
-                "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at "
-                .concat(VoteBooth.electionIndexPublicPath.toString())
-                .concat(" from account ")
-                .concat(deployer.address.toString())
+                "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at `VoteBooth.electionIndexPublicPath.toString()` from account `deployer.address.toString()`"
             )
 
             // Use the index to get the storage path to the election in question. I need to grab an authorized reference from it
             let electionStoragePath: StoragePath = electionIndexRef.getElectionStoragePath(electionId: newLinkedElectionId) ??
             panic(
-                "Unable to retrieve a valid election Storage Path for electionId "
-                .concat(newLinkedElectionId.toString())
+                "Unable to retrieve a valid election Storage Path for electionId `newLinkedElectionId.toString()`"
             )
 
             // 2. Validate and get a reference to the Election with an electionId matching the provided newLinkedElectionId
             // Grab an authorized version to the Election resource
             let electionRef: auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election = deployer.storage.borrow<auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election>(from: electionStoragePath) ??
             panic(
-                "Unable to retrieve a valid auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election at "
-                .concat(electionStoragePath.toString())
-                .concat(" from account ")
-                .concat(deployer.address.toString())
+                "Unable to retrieve a valid auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election at `electionStoragePath.toString()` from account `deployer.address.toString()`"
             )
 
             // 3. Validate and get a reference to a valid VoteBox in the account identified by the voterAddress parameter provided.
@@ -411,10 +376,7 @@ access(all) contract VoteBooth {
 
             let voteBoxRef: &{VoteBoxStandard.VoteBoxPublic} = voterAccount.capabilities.borrow<&{VoteBoxStandard.VoteBoxPublic}>(VoteBoxStandard.voteBoxPublicPath) ??
             panic(
-                "Unable to retrieve a valid &{VoteBoxStandard.VoteBoxPublic} at "
-                .concat(VoteBoxStandard.voteBoxPublicPath.toString())
-                .concat(" for account ")
-                .concat(voterAddress.toString())
+                "Unable to retrieve a valid &{VoteBoxStandard.VoteBoxPublic} at `VoteBoxStandard.voteBoxPublicPath.toString()` for account `voterAddress.toString()`"
             )
 
             // 4. Use the reference to the Election to get its public capability. Force cast it if needed
@@ -451,10 +413,7 @@ access(all) contract VoteBooth {
         access(all) fun addElectionIndexEntry(deployer: auth(Storage) &Account, electionId: UInt64, electionStoragePath: StoragePath, electionPublicPath: PublicPath): Void {
             let electionIndexRef: &VoteBooth.ElectionIndex = deployer.storage.borrow<&VoteBooth.ElectionIndex>(from: VoteBooth.electionIndexStoragePath) ?? 
             panic(
-                "Unable to retrieve a valid &VoteBooth.ElectionIndex at "
-                .concat(VoteBooth.electionIndexStoragePath.toString())
-                .concat(" from account at ")
-                .concat(self.owner!.address.toString())
+                "Unable to retrieve a valid &VoteBooth.ElectionIndex at `VoteBooth.electionIndexStoragePath.toString()` from account at `self.owner!.address.toString()`"
             )
 
             electionIndexRef.addElectionToIndex(electionId: electionId, electionStoragePath: electionStoragePath, electionPublicPath: electionPublicPath)
@@ -472,10 +431,7 @@ access(all) contract VoteBooth {
         access(all) fun removeElectionIndexEntry(deployer: auth(Storage) &Account, electionId: UInt64): {StoragePath: PublicPath}? {
             let electionIndexRef: auth(Storage) &VoteBooth.ElectionIndex = deployer.storage.borrow<auth(Storage) &VoteBooth.ElectionIndex>(from: VoteBooth.electionIndexStoragePath) ?? 
             panic(
-                "Unable to retrieve a valid auth(Storage) &VoteBooth.ElectionIndex at "
-                .concat(VoteBooth.electionIndexStoragePath.toString())
-                .concat(" from account ")
-                .concat(deployer.address.toString())
+                "Unable to retrieve a valid auth(Storage) &VoteBooth.ElectionIndex at `VoteBooth.electionIndexStoragePath.toString()` from account `deployer.address.toString()`"
             )
 
             return electionIndexRef.removeElectionFromIndex(electionId: electionId)
@@ -491,10 +447,7 @@ access(all) contract VoteBooth {
         access(all) fun getElectionStoragePath(deployer: auth(BorrowValue) &Account, electionId: UInt64): StoragePath? {
             let electionIndexRef: &VoteBooth.ElectionIndex = deployer.storage.borrow<&VoteBooth.ElectionIndex>(from: VoteBooth.electionIndexStoragePath) ??
             panic(
-                "Unable to retrieve a valid &VoteBooth.ElectionIndex at "
-                .concat(VoteBooth.electionIndexStoragePath.toString())
-                .concat(" from account at ")
-                .concat(self.owner!.address.toString())
+                "Unable to retrieve a valid &VoteBooth.ElectionIndex at `VoteBooth.electionIndexStoragePath.toString()` from account at `self.owner!.address.toString()`"
             )
 
             let electionStoragePath: StoragePath? = electionIndexRef.getElectionStoragePath(electionId: electionId)
@@ -510,10 +463,7 @@ access(all) contract VoteBooth {
         access(all) view fun getAllActiveElections(deployer: auth(BorrowValue) &Account): [UInt64] {
             let electionIndexRef: &VoteBooth.ElectionIndex = deployer.storage.borrow<&VoteBooth.ElectionIndex>(from: VoteBooth.electionIndexStoragePath) ??
             panic(
-                "Unable to retrieve a valid &VoteBooth.ElectionIndex at "
-                .concat(VoteBooth.electionIndexStoragePath.toString())
-                .concat(" from account at ")
-                .concat(self.owner!.address.toString())
+                "Unable to retrieve a valid &VoteBooth.ElectionIndex at `VoteBooth.electionIndexStoragePath.toString()` from account at `self.owner!.address.toString()`"
             )
 
             return electionIndexRef.getActiveElectionIds()
@@ -582,10 +532,7 @@ access(all) contract VoteBooth {
             // Grab an authorized reference to the Election just stored and set the created capability in it
             let authElectionRef: auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election = deployerAccount.storage.borrow<auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election>(from: newElectionStoragePath) ??
             panic(
-                "Unable to retrieve a valid &ElectionStandard.Election at "
-                .concat(newElectionStoragePath.toString())
-                .concat(" from account ")
-                .concat(deployerAccount.address.toString())
+                "Unable to retrieve a valid &ElectionStandard.Election at `newElectionStoragePath.toString()` from account `deployerAccount.address.toString()`"
             )
 
             authElectionRef.setElectionCapability(capability: newElectionCapability)

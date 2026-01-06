@@ -13,10 +13,7 @@ access(all) fun main(voteboxAddress: Address?): [UInt64] {
 
         let electionIndexRef: &{VoteBooth.ElectionIndexPublic} = deployerAccount.capabilities.borrow<&{VoteBooth.ElectionIndexPublic}>(VoteBooth.electionIndexPublicPath) ??
         panic(
-            "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at "
-            .concat(VoteBooth.electionIndexPublicPath.toString())
-            .concat(" from account ")
-            .concat(deployerAccount.address.toString())
+            "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at `VoteBooth.electionIndexPublicPath.toString()` from account `deployerAccount.address.toString()`"
         )
 
         return electionIndexRef.getActiveElectionIds()
@@ -25,10 +22,7 @@ access(all) fun main(voteboxAddress: Address?): [UInt64] {
         let voteboxAccount: &Account = getAccount(voteboxAddress!)
         let voteboxRef: &{VoteBoxStandard.VoteBoxPublic} = voteboxAccount.capabilities.borrow<&{VoteBoxStandard.VoteBoxPublic}>(VoteBoxStandard.voteBoxPublicPath) ??
         panic(
-            "Unable to bet a valid &{VoteBoxStandard.VoteBoxPublic} at "
-            .concat(VoteBoxStandard.voteBoxPublicPath.toString())
-            .concat(" for account ")
-            .concat(voteboxAddress!.toString())
+            "Unable to bet a valid &{VoteBoxStandard.VoteBoxPublic} at `VoteBoxStandard.voteBoxPublicPath.toString()` for account `voteboxAddress!.toString()`"
         )
 
         return voteboxRef.getActiveElectionIds()

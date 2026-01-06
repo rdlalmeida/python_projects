@@ -36,10 +36,7 @@ access(all) fun main(electionId: UInt64, voteboxAddress: Address?): {String: UIn
         let voteboxAccount: &Account = getAccount(voteboxAddress!)
         let voteboxRef: &{VoteBoxStandard.VoteBoxPublic} = voteboxAccount.capabilities.borrow<&{VoteBoxStandard.VoteBoxPublic}>(VoteBoxStandard.voteBoxPublicPath) ??
         panic(
-            "Unable to get a valid &{VoteBoxStandard.VoteBoxPublic} at "
-            .concat(VoteBoxStandard.voteBoxPublicPath.toString())
-            .concat(" from account ")
-            .concat(voteboxAddress!.toString())
+            "Unable to get a valid &{VoteBooth.ElectionIndexPublic} at `VoteBooth.electionIndexPublicPath.toString()` from account `deployerAccount.address.toString()`"
         )
 
         var ballotTotals: {String: UInt} = {}

@@ -12,8 +12,7 @@ access(all) fun main(): {UInt64: String} {
 
     let electionIndexRef: &{VoteBooth.ElectionIndexPublic} = deployerAccount.capabilities.borrow<&{VoteBooth.ElectionIndexPublic}>(VoteBooth.electionIndexPublicPath) ??
     panic(
-        "ERROR: transactions/12_get_elections_list.cdc -> &{VoteBooth.ElectionIndexPublic}@"
-        .concat(VoteBooth.deployerAddress.toString())
+        "ERROR: transactions/12_get_elections_list.cdc -> &{VoteBooth.ElectionIndexPublic}@`VoteBooth.deployerAddress.toString()`"
     )
 
     let electionInfo: {UInt64: String} = electionIndexRef.listActiveElections()

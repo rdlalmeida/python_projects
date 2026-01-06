@@ -11,10 +11,7 @@ transaction() {
         // Try to load the VoteBox resource
         self.voteBoxToDestroy <- signer.storage.load<@VoteBoxStandard.VoteBox>(from: VoteBoxStandard.voteBoxStoragePath) ??
         panic(
-            "ERROR: Account "
-            .concat(signer.address.toString())
-            .concat(" does not have a VoteBox stored at ")
-            .concat(VoteBoxStandard.voteBoxStoragePath.toString())
+            "ERROR: Account `signer.address.toString()` does not have a VoteBox stored at `VoteBoxStandard.voteBoxStoragePath.toString()`"
         )
     }
 

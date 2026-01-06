@@ -16,34 +16,22 @@ transaction(electionId: UInt64) {
     prepare(signer: auth(LoadValue, UnpublishCapability) &Account) {
         self.electionIndexRef = signer.capabilities.borrow<&{VoteBooth.ElectionIndexPublic}>(VoteBooth.electionIndexPublicPath) ??
         panic(
-            "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at "
-            .concat(VoteBooth.electionIndexPublicPath.toString())
-            .concat(" from account ")
-            .concat(signer.address.toString())
+            "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at `VoteBooth.electionIndexPublicPath.toString()` from account `signer.address.toString()`"
         )
 
         self.electionStoragePath = self.electionIndexRef.getElectionStoragePath(electionId: electionId) ??
         panic(
-            "Unable to retrieve a valid StoragePath for election "
-            .concat(electionId.toString())
-            .concat(" for the ElectionIndexPublic retrieved from account ")
-            .concat(signer.address.toString())
+            "Unable to retrieve a valid StoragePath for election `electionId.toString()` for the ElectionIndexPublic retrieved from account `signer.address.toString()`"
         )
 
         self.electionPublicPath = self.electionIndexRef.getElectionPublicPath(electionId: electionId) ??
         panic(
-            "Unable to retrieve a valid PublicPath for election "
-            .concat(electionId.toString())
-            .concat(" for the ElectionIndexPublic retrieved from account ")
-            .concat(signer.address.toString())
+            "Unable to retrieve a valid PublicPath for election `electionId.toString()` for the ElectionIndexPublic retrieved from account `signer.address.toString()`"
         )
 
         self.electionToDestroy <- signer.storage.load<@ElectionStandard.Election>(from: self.electionStoragePath) ??
         panic(
-            "Unable to retrieve a valid @ElectionStandard.Election at "
-            .concat(self.electionStoragePath.toString())
-            .concat(" from account ")
-            .concat(signer.address.toString())
+            "Unable to retrieve a valid @ElectionStandard.Election at `self.electionStoragePath.toString()` from account `signer.address.toString()`"
         )
 
         // Unpublish all election capabilities

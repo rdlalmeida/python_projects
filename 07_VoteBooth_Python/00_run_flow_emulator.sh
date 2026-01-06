@@ -243,7 +243,7 @@ then
     command_string="${command_string} --min-account-balance=${MIN_ACCOUNT_BALANCE}"
 fi
 
-command_string="${command_string} --transaction-fees=${TRANSACTION_FEES} --transaction-max-gas-limit=${TRANSACTION_MAX_GAS_LIMIT} --script-gas-limit=${SCRIPT_GAS_LIMIT}"
+command_string="${command_string} --transaction-fees=${TRANSACTION_FEES} --transaction-max-compute-limit=${TRANSACTION_MAX_GAS_LIMIT} --script-compute-limit=${SCRIPT_GAS_LIMIT}"
 
 # Command composition finished. Run it
 echo "Running FLOW emulator with\n"

@@ -13,10 +13,7 @@ transaction(electionId: UInt64) {
     prepare(signer: auth(VoteBoxStandard.VoteBoxAdmin, Storage) &Account) {
         self.voteboxRef = signer.storage.borrow<auth(VoteBoxStandard.VoteBoxAdmin, LoadValue) &VoteBoxStandard.VoteBox>(from: VoteBoxStandard.voteBoxStoragePath) ??
         panic(
-            "Unable to retrieve a valid &VoteBoxStandard.VoteBox at "
-            .concat(VoteBoxStandard.voteBoxStoragePath.toString())
-            .concat(" from account ")
-            .concat(signer.address.toString())
+            "Unable to retrieve a valid &VoteBoxStandard.VoteBox at `VoteBoxStandard.voteBoxStoragePath.toString()` from account `signer.address.toString()`"
         )
 
         self.voteboxOwner = signer.address
@@ -29,20 +26,12 @@ transaction(electionId: UInt64) {
         // NOTE: The next logs only matter in the local emulator. For live net tests I need to capture the BallotBurned event instead
         if (burnedBallotId == nil) {
             log(
-                "WARNING: The VoteBox in account "
-                .concat(self.voteboxOwner.toString())
-                .concat(" does not have a Ballot under electionId ")
-                .concat(electionId.toString())
+                "WARNING: The VoteBox in account `self.voteboxOwner.toString()` does not have a Ballot under electionId `electionId.toString()`"
             )
         }
         else {
             log(
-                "Ballot "
-                .concat(burnedBallotId!.toString())
-                .concat(" attached to Election ")
-                .concat(electionId.toString())
-                .concat(" destroyed from the VoteBox in account ")
-                .concat(self.voteboxOwner.toString())
+                "Ballot `burnedBallotId!.toString()` attached to Election `electionId.toString()` destroyed from the VoteBox in account `self.voteboxOwner.toString()`"
             )
         }
     }

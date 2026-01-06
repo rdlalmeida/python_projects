@@ -13,10 +13,7 @@ transaction() {
         // Load the ElectionIndex and VoteBoothPrinterAdmin resource to the transaction variables from the elevated access account
         self.electionIndex <- signer.storage.load<@VoteBooth.ElectionIndex>(from: VoteBooth.electionIndexStoragePath) ??
         panic(
-            "Unable to retrieve a valid @VoteBooth.ElectionIndex at "
-            .concat(VoteBooth.electionIndexStoragePath.toString())
-            .concat(" from account ")
-            .concat(signer.address.toString())
+            "Unable to retrieve a valid @VoteBooth.ElectionIndex at `VoteBooth.electionIndexStoragePath.toString()` from account `signer.address.toString()`"
         )
 
         // Unpublish the ElectionIndexPublic capability as well
@@ -24,10 +21,7 @@ transaction() {
 
         self.voteBoothPrinterAdmin <- signer.storage.load<@VoteBooth.VoteBoothPrinterAdmin>(from: VoteBooth.voteBoothPrinterAdminStoragePath) ??
         panic(
-            "Unable to retrieve a valid @VoteBooth.VoteBoothPrinterAdmin at "
-            .concat(VoteBooth.voteBoothPrinterAdminStoragePath.toString())
-            .concat(" from account ")
-            .concat(signer.address.toString())
+            "Unable to retrieve a valid @VoteBooth.VoteBoothPrinterAdmin at `VoteBooth.voteBoothPrinterAdminStoragePath.toString()` from account `signer.address.toString()`"
         )
 
         // Loop through all the elections in the ElectionIndex, load them, if they exist, and destroy them one by one
@@ -37,19 +31,13 @@ transaction() {
             // Grab the StoragePath
             let electionStoragePath: StoragePath = self.electionIndex.getElectionStoragePath(electionId: electionId) ??
             panic(
-                "Unable to get a StoragePath for Election "
-                .concat(electionId.toString())
-                .concat(" for the ElectionIndex from account ")
-                .concat(signer.address.toString())
+                "Unable to get a StoragePath for Election `electionId.toString()` for the ElectionIndex from account `signer.address.toString()`"
             )
 
             // And the PublicPath for each Election
             let electionPublicPath: PublicPath = self.electionIndex.getElectionPublicPath(electionId: electionId) ??
             panic(
-                "Unable to get a PublicPath for Election "
-                .concat(electionId.toString())
-                .concat(" for the ElectionIndex from account ")
-                .concat(signer.address.toString())
+                "Unable to get a PublicPath for Election `electionId.toString()` for the ElectionIndex from account `signer.address.toString()`"
             )
 
             // Use the PublicPath to unpublish the ElectionPublic capability
@@ -58,10 +46,7 @@ transaction() {
             // And use the StoragePath to load the Election resource
             let electionToDestroy: @ElectionStandard.Election <- signer.storage.load<@ElectionStandard.Election>(from: electionStoragePath) ??
             panic(
-                "Unable to get a valid @ElectionStandard.Election at "
-                .concat(electionStoragePath.toString())
-                .concat(" from account ")
-                .concat(signer.address.toString())
+                "Unable to get a valid @ElectionStandard.Election at `electionStoragePath.toString()` from account `signer.address.toString()`"
             )
 
             // Done. There's not a lot more to do. The burnCallback from the Election resource already takes care of the rest
