@@ -13,7 +13,7 @@ transaction(electionId: UInt64, electionResults: {String: Int}) {
     let electionRef: auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election
     let deployerAddress: Address
 
-    prepare(signer: auth(ElectionStandard.ElectionAdmin, Storage) &Account) {
+    prepare(signer: auth(ElectionStandard.ElectionAdmin, BorrowValue) &Account) {
         self.deployerAddress = VoteBooth.deployerAddress
 
         let deployerAccount: &Account = getAccount(self.deployerAddress)

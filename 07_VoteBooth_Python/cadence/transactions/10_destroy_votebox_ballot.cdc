@@ -8,10 +8,10 @@ import BallotStandard from 0xf8d6e0586b0a20c7
 import VoteBoxStandard from 0xf8d6e0586b0a20c7
 
 transaction(electionId: UInt64) {
-    let voteboxRef: auth(VoteBoxStandard.VoteBoxAdmin, Storage) &VoteBoxStandard.VoteBox
+    let voteboxRef: auth(VoteBoxStandard.VoteBoxAdmin, LoadValue) &VoteBoxStandard.VoteBox
     let voteboxOwner: Address
     prepare(signer: auth(VoteBoxStandard.VoteBoxAdmin, Storage) &Account) {
-        self.voteboxRef = signer.storage.borrow<auth(VoteBoxStandard.VoteBoxAdmin, Storage) &VoteBoxStandard.VoteBox>(from: VoteBoxStandard.voteBoxStoragePath) ??
+        self.voteboxRef = signer.storage.borrow<auth(VoteBoxStandard.VoteBoxAdmin, LoadValue) &VoteBoxStandard.VoteBox>(from: VoteBoxStandard.voteBoxStoragePath) ??
         panic(
             "Unable to retrieve a valid &VoteBoxStandard.VoteBox at "
             .concat(VoteBoxStandard.voteBoxStoragePath.toString())

@@ -8,7 +8,7 @@ import Burner from 0xf8d6e0586b0a20c7
 import VoteBoxStandard from 0xf8d6e0586b0a20c7
 
 transaction() {
-    prepare(signer: auth(SaveValue, LoadValue, Capabilities) &Account) {
+    prepare(signer: auth(Storage, Capabilities) &Account) {
         let newVoteBox: @VoteBoxStandard.VoteBox <- VoteBoxStandard.createVoteBox(newVoteBoxOwner: signer.address)
 
         // Clean up the voter's storage slot and save the new resource into it

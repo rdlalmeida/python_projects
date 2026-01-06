@@ -40,18 +40,18 @@ election_names: list[str] = [
 ]
 
 election_ballots: list[str] = [
-    "A. What should happen to all bullfighters once we finally ban this retarded practice all over Portugal?",
+    "A. How should Portugal deal with its bullfighting arenas?",
     "B. What is the best frosting for coconut cake?",
     "C. Which NBA team is going to win the 2025-25 championship?"
 ]
 
 election_options: list[dict[int: str]] = [
     {
-        1: "Starve them to death",
-        2: "Trick them into a shipping container and drop it into the ocean",
-        3: "Enslave them and force them to build and clean animal shelters for the rest of their miserable life",
-        4: "Process them into animal feed",
-        5: "Tax them into poverty and use the money collected to open and finance public veterinarian clinics."
+        1: "Burn them to the ground",
+        2: "Bomb them from afar using military artillery",
+        3: "Refit them into urban landfills",
+        4: "Rebuild them as public spaces, as malls, gyms, theatres, etc.",
+        5: "Rebuild them as free public veterinarian clinics and force bullfights to maintain them for free."
     },
     {
         1: "Powdered sugar",

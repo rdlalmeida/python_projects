@@ -6,6 +6,11 @@
     # Author: Ricardo Lopes Almeida - https://github.com/rdlalmeida
 **/
 
+// TODO: Create the isBallotSubmitted(ballotIndex: String): Bool function
+// TODO: Add the list of random integers to the finished Election somehow
+// TODO: Add functions to validate that a random integer was found in an encrypted option.
+
+
 import Burner from 0xf8d6e0586b0a20c7
 import BallotStandard from 0xf8d6e0586b0a20c7
 

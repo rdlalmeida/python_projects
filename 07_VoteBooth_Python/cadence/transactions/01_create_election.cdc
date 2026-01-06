@@ -26,7 +26,7 @@ transaction(
     prepare(signer: auth(Storage, Capabilities, ElectionStandard.ElectionAdmin) &Account) {
         // Get the authorized reference for the VoteBoothPrinterAdmin resource with all the entitlements specified in the transaction signature
         self.voteBoothPrinterAdminRef 
-            = signer.storage.borrow<auth(Storage, Capabilities, ElectionStandard.ElectionAdmin) &VoteBooth.VoteBoothPrinterAdmin>(from: VoteBooth.voteBoothPrinterAdminStoragePath) ??
+            = signer.storage.borrow<auth(Storage, Capabilities, Capabili ElectionStandard.ElectionAdmin) &VoteBooth.VoteBoothPrinterAdmin>(from: VoteBooth.voteBoothPrinterAdminStoragePath) ??
             panic(
                 "Unable to retrieve a valid auth(Storage, Capabilities, ElectionStandard.ElectionAdmin) &VoteBooth.VoteBoothPrinterAdmin at "
                 .concat(VoteBooth.voteBoothPrinterAdminStoragePath.toString())
