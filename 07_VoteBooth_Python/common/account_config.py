@@ -221,7 +221,7 @@ class AccountConfig(object):
 
         network_accounts = {}
 
-        network_accounts["emulator-account"] = self.service_account["address"].hex()
+        network_accounts["emulator"] = self.service_account["address"].hex()
 
         for account in self.accounts:
             network_accounts[account["name"]] = account["address"].hex()

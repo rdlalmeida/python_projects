@@ -147,9 +147,15 @@ access(all) contract BallotStandard {
             //let voterAddressToEncode: [UInt8] = self.voterAddress!.toString().utf8
 
             // TODO: REMOVE THE FOLLOWING WHEN IN PROD
-            let saltedVotedAddress: String = "`self.voterAddress!.toString()``BallotStandard.nonce.toString()`"
+            /*
+                The following three lines are used to create unique ballotIndexes for all Ballots, which allows one voter to submit multiple, valid Ballots, since the new ones DO NOT replace the old ones. I'm doing this to stress test this system, without having to create a million of test accounts... This allows me to set independent agents to cast Ballots automatically, without having a pool with a ton of account addresses. This allows me to test this in terms of cost, storage, performance, etc with a lot of data points.
+                The BallotStandard contract maintains a counter. This value is append to the voter address and then hashed, which produces a new ballotIndex every time.
+            */
+            // ---------------- REMOVE BELLOW THIS LINE ----------------------------------------------------------
+            let saltedVotedAddress: String = self.voterAddress!.toString().concat(BallotStandard.nonce.toString())
             BallotStandard.nonce = BallotStandard.nonce + 1
             let voterAddressToEncode: [UInt8] = saltedVotedAddress.utf8
+            // ----------------  REMOVE ABOVE THIS LINE -----------------------------------------------------------
 
 
             // Use the [UInt8] input to get the hash digest of the address String

@@ -2,13 +2,14 @@
     This transaction finishes an Election by setting the provided dictionary as the final election results and by setting the isFinished flag to true.
 
     @param electionResults ({String: Int}) The dictionary of election results to set in this election, in the format {election_option: vote_count}
+    @param ballotReceipts ([UInt64]) A list with all the ballot receipts extracted from the encrypted Ballot options.
     @param electionId (UInt64) The election identifier for the election to finish.
 **/
 
 import ElectionStandard from 0xf8d6e0586b0a20c7
 import VoteBooth from 0xf8d6e0586b0a20c7
 
-transaction(electionId: UInt64, electionResults: {String: Int}) {
+transaction(electionId: UInt64, electionResults: {String: Int}, ballotReceipts: [UInt64]) {
     let electionIndexRef: &{VoteBooth.ElectionIndexPublic}
     let electionRef: auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election
     let deployerAddress: Address
@@ -35,7 +36,7 @@ transaction(electionId: UInt64, electionResults: {String: Int}) {
     }
 
     execute {
-        let result: Bool = self.electionRef.finishElection(electionResults: electionResults)
+        let result: Bool = self.electionRef.finishElection(electionResults: electionResults, ballotReceipts: ballotReceipts)
 
         if (result) {
             log(

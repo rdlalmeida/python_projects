@@ -5,13 +5,14 @@
     @param _voterAddress (Address) The account address of the voter account where this Ballot is to be stored into.
 **/
 
+import ElectionStandard from 0xf8d6e0586b0a20c7
 import VoteBoxStandard from 0xf8d6e0586b0a20c7
 import VoteBooth from 0xf8d6e0586b0a20c7
 
 transaction(_linkedElectionId: UInt64, _voterAddress: Address) {
     let voteBoothPrinterAdminRef: &VoteBooth.VoteBoothPrinterAdmin
 
-    prepare(signer: auth(BorrowValue, VoteBooth.VoteBoothAdmin) &Account) {
+    prepare(signer: auth(BorrowValue, VoteBoxStandard.VoteBoxAdmin, ElectionStandard.ElectionAdmin) &Account) {
         // Grab an authorized reference to the VoteBoothPrinterAdmin resource using the signer account
         self.voteBoothPrinterAdminRef = signer.storage.borrow<&VoteBooth.VoteBoothPrinterAdmin>(from: VoteBooth.voteBoothPrinterAdminStoragePath) ??
         panic(

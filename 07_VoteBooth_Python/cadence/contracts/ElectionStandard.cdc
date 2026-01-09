@@ -6,8 +6,6 @@
     # Author: Ricardo Lopes Almeida - https://github.com/rdlalmeida
 **/
 
-// TODO: Create the isBallotSubmitted(ballotIndex: String): Bool function
-// TODO: Add the list of random integers to the finished Election somehow
 // TODO: Add functions to validate that a random integer was found in an encrypted option.
 
 
@@ -29,7 +27,7 @@ access(all) contract ElectionStandard {
     access(all) event BallotRevoked(_ballotId: UInt64, _electionId: UInt64)
 
     // Event for when all Ballots are withdrawn to be counted
-    access(all) event BallotsWithdrawn(_ballotsWithdrawn: UInt, _electionId: UInt64)
+    access(all) event BallotsWithdrawn(_ballotsWithdrawn: Int, _electionId: UInt64)
 
     // Event for when a new Election resource is created
     access(all) event ElectionCreated(_electionId: UInt64, _electionName: String)
@@ -62,7 +60,9 @@ access(all) contract ElectionStandard {
         access(all) view fun getTotalBallotsSubmitted(): UInt
         access(all) view fun getElectionCapability(): Capability?
         access(all) fun submitBallot(ballot: @BallotStandard.Ballot): Void
+        access(all) fun isBallotSubmitted(ballotIndex: String): Bool
         access(all) view fun isBallotMinted(ballotId: UInt64): Bool
+        access(all) view fun isBallotReceiptValid(ballotReceipt: UInt64): Bool
         access(all) view fun getElectionResults(): {String: Int}
         access(all) view fun getEncryptedOptions(): [String]
     }
@@ -126,6 +126,9 @@ access(all) contract ElectionStandard {
         // is used as key and the number of votes with that option as value.
         access(self) var electionResults: {String: Int}
 
+        // This array keeps a copy of the Ballot receipts, to allow functions that voters can use to check if their random integer is among the tallied Ballots
+        access(self) var ballotReceipts: [UInt64]
+
         /**
             Setter function with the ElectionStandard.ElectionAdmin entitlement to set the election results of this Election, and to set the 'isFinished' flag to true, thus preventing Ballot from being submitted into this Election. Because the ballot options are encrypted, they need to go off chain to get decrypted and tallied. This function finishes the voting process.
 
@@ -133,13 +136,37 @@ access(all) contract ElectionStandard {
 
             @returns Bool: If the election was finished correctly, this function returns true. Otherwise it panics or returns false accordingly.
         **/
-        access(ElectionStandard.ElectionAdmin) fun finishElection(electionResults: {String: Int}): Bool {
+        access(ElectionStandard.ElectionAdmin) fun finishElection(electionResults: {String: Int}, ballotReceipts: [UInt64]): Bool {
 
             self.electionResults = electionResults
+            self.ballotReceipts = ballotReceipts
 
             self.electionFinished = true
             
             return self.electionFinished
+        }
+
+        /**
+            Simple validator function for the Ballot receipts. The function receives a random integer from outside and check if the number provided is among the set of Ballot receipts set internally in this Election instance, namely, the self.ballotReceipts property. To differentiate between situations where the ballotReceipt provided is not a valid one, from  those where the function is called when the Election is not yet finished or the ballotReceipts are not yet set, this function panics if the Election is not finished or the ballotReceipts are not yet set. Otherwise it returns a Bool accordingly
+
+            @param ballotReceipt UInt64 The ballotReceipt number to validated upon.
+
+            @return Bool If the ballotReceipt provided is among the ones extracted from the encrypted Ballots, the function returns True. Otherwise, returns False.
+        **/
+        access(all) view fun isBallotReceiptValid(ballotReceipt: UInt64): Bool {
+            // If the Election is not finished yet, or it is but the ballotReceipts array was not set yet, panic accordingly
+            if (!self.electionFinished) {
+                panic(
+                    "ERROR. Election `self.electionId.toString()` is not finished yet!"
+                )
+            }
+            else if (self.ballotReceipts.length == 0) {
+                panic(
+                    "ERROR: Election `self.electionId.toString()` does not have any Ballot receipts published yet!"
+                )
+            }
+
+            return self.ballotReceipts.contains(ballotReceipt)
         }
 
         /**
@@ -747,39 +774,51 @@ access(all) contract ElectionStandard {
         }
 
         /**
-            This function is used by the Election Authority to retrieve all Ballots in storage, but completely anonymized, since these are returned as an unordered array of the values from the internal storedBallots dictionary.
-            @param amount (UInt): The number of Ballots to retrieved in this run, to avoid exceeding computation limits for larger elections
+            Function to query this Election instance to check if a Ballot with the ballotIndex provided as input is already submitted into this Election.
 
-            @return: @[BallotInterface.Ballot] Returns an array with all the Ballots in no specific order, as stipulated by the Cadence documentation.
+            @param ballotIndex String The ballotIndex string from a Ballot instance.
+            @return Bool Returns true if the Ballot in question was already submitted, false otherwise.
         **/
-        access(ElectionStandard.ElectionAdmin) fun withdrawBallots(amount: UInt): @[BallotStandard.Ballot] {
-            // I might need to do this in batches. Start by checking if there are any Ballots left to return and if there aren't any, return an empty set
+        access(all) fun isBallotSubmitted(ballotIndex: String): Bool {
+            return self.storedBallots.containsKey(ballotIndex)
+        }
+
+        /**
+            This function is used by the Election Authority to retrieve all Ballots in storage, but in reality, all it does is to extract the encrypted options array to a dedicated, readable array to be retrieved externally for decryption and further processing. The options are set in a randomised fashion into the new array to be read in no special order. This Election already stores Ballots using a pre-processed index to reduce the link to the voter that cast it as tenuous as possible. This step removes this link completely, therefore, anonymising the Ballots in the process..
+        **/
+        access(ElectionStandard.ElectionAdmin) fun withdrawBallots(): Void {
+            // If there are no Ballots submitted yet, set the internal parameter to an empty array and return
             if (self.storedBallots.length == 0) {
-                return <- []
-            }
-            // Cadence is super picky when dealing with resources. There is no direct way to retrieve all the values from a dictionary as an array, for example, if these values are resources. As such, I need to do this "manually", i.e., one by one
-            var ballotsToTally: @[BallotStandard.Ballot] <- []
-
-            // Since the keys in the storedBallots are simple strings, I can get these all at once
-            let ballotIndexes: [String] = self.storedBallots.keys
-            var index: UInt = 0
-            var ballotsToRemove: UInt = amount
-            
-            // Keep extracting Ballots while the quota has not been reached or there are any ballots left to return
-            while (ballotsToRemove > 0 && self.storedBallots.length > 0) {
-                let currentBallot: @BallotStandard.Ballot <- self.storedBallots.remove(key: ballotIndexes[index])!
-
-                // Append it to the return array
-                ballotsToTally.append(<- currentBallot)
-
-                ballotsToRemove = ballotsToRemove - 1
-                index = index + 1
+                self.encryptedOptions = []
+                return
             }
 
-            // Emit the proper event before returning the return array
-            emit BallotsWithdrawn(_ballotsWithdrawn: UInt(ballotsToTally.length), _electionId: self.electionId)
+            // Move all the encrypted options from the Ballot resource into the internal String array
+            let storedBallotsKeys: [String] = self.storedBallots.keys
 
-            return <- ballotsToTally
+            for storedBallotKey in storedBallotsKeys {
+                // Grab a simple reference to the stored Ballot. No need to load it
+                let currentBallotRef: &BallotStandard.Ballot? = &self.storedBallots[storedBallotKey]
+
+                if (currentBallotRef == nil) {
+                    panic(
+                        "Unable to retrieve a valid &BallotStandard.Ballot for Ballot with index `storedBallotKey`, stored in Election `self.electionId`"
+                    )
+                }
+
+                // Use the Ballot reference to retrieve the option set in the Ballot to the encryptedOptions array
+                self.encryptedOptions.append(currentBallotRef!.getOption())
+            }
+
+            // Election is done. Set it as finished with an empty result set for now, just to stop it from receiving additional Ballots.
+            if (!self.finishElection(electionResults: {}, ballotReceipts: [])) {
+                panic(
+                    "Election `self.electionId.toString()` was not finished correctly!"
+                )
+            }
+
+            // Finish with emitting the BallotsWithdrawn event
+            emit BallotsWithdrawn(_ballotsWithdrawn: storedBallotsKeys.length, _electionId: self.electionId)
         }
 
         /**
@@ -882,10 +921,13 @@ access(all) contract ElectionStandard {
             // Add the "default" option as well, which is used in this context to count revoked/invalid Ballots
             self.electionResults["default"] = 0
 
-            // Finish by adding one last "invalid" entry to account for any non-default Ballots that have some weird option that does not fit under any of the
+            // Add one last "invalid" entry to account for any non-default Ballots that have some weird option that does not fit under any of the
             // expected ones. I have this process well oiled, so much so that it should be impossible for a voter to select an option outside "default" and
             // the ones available for this Election.
             self.electionResults["invalid"] = 0
+
+            // Set the ballotReceipts to an empty array for now
+            self.ballotReceipts = []
         }
     }
 

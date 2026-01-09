@@ -19,6 +19,8 @@ import logging
 log = logging.getLogger(__name__)
 utils.configureLogging()
 
+
+
 class TransactionError(Exception):
     """Custom Exception to be raised when a Flow transaction was not properly executed.
 
@@ -51,16 +53,17 @@ class TransactionRunner():
         self.event_runner = EventRunner()
         self.script_runner = ScriptRunner()
 
-    
+    # TODO: Change this function to accept a payer address different than the signer one and test if this works with creating voteboxes for users without enough FLOW balance
+    # TODO: Change all the transactions
     async def getTransaction(self, tx_name: str, tx_arguments: list, tx_signer_address: str) -> Tx:
         """
         Simple internal function to abstract the logic of reading the config file, grab the transaction file, read it, and building the Tx object.
 
-        @param tx_name: str - The name of the transaction file to retrieve and process.
-        @param tx_arguments: list - A list with all the arguments to set to the transaction object to return.
-        @param tx_signer_address: str - The address for the account to use to digitally sign the transaction object.
-
-        @return Tx If successful, this function returns a configured Tx object ready to execute.
+        :param tx_name (str) The name of the transaction file to retrieve and process.
+        :param tx_arguments (list): A list with all the arguments to set to the transaction object to return.
+        :param tx_signer_address (str): The address for the account to use to digitally sign the transaction object.:
+        
+        :return Tx If successful, this function returns a configured Tx object ready to execute.
         """
         # Use this function to set up the self.event_runner object properly. Unfortunately I need to do this in an async function outside
         # of the class constructor
@@ -147,9 +150,9 @@ class TransactionRunner():
         """
         Simple internal function to abstract all the logic to submit a transaction for execution and process any raised errors. This is always the same process for most transactions, therefore it is best to encode it into a single function.
 
-        @param tx_object: Tx - This function requires a previously prepared Tx-type object.
+        :param tx_object (Tx): This function requires a previously prepared Tx-type object.
 
-        @returns TransactionResultResponse An object that encapsules all the state changes related to the transaction executed, including events.
+        :returns (TransactionResultResponse): An object that encapsules all the state changes related to the transaction executed, including events.
         """
         try:
             async with flow_client(
@@ -168,14 +171,13 @@ class TransactionRunner():
     async def createElection(self, election_name: str, election_ballot: str, election_options: dict[int: str], election_public_key: str, election_storage_path: str, election_public_path: str, tx_signer_address: str) -> list[dict]:
         """Function to create a new Election in the project environment.
 
-        @param election_name: str - The name of election to create
-        @param election_ballot: str - The election ballot to use in the election.
-        @param election_options: dict[int: str] - A dictionary with the available options for the election just created.
-        @param public_key: str - The public encryption key associated to the election created.
-        @param election_storage_path: str - The storage path to where the election created should be saved to.
-        @param election_public_path: str - The public path to where the public election capability should be published to.
-
-        @return dict If successful, this function returns a dictionary with the ElectionCreated event parameters:
+        :param election_name (str): The name of election to create
+        :param election_ballot (str) The election ballot to use in the election.
+        :param election_options (dict[int: str]): A dictionary with the available options for the election just created.
+        :param public_key (str): The public encryption key associated to the election created.
+        :param election_storage_path (str): The storage path to where the election created should be saved to.
+        :param election_public_path (str): The public path to where the public election capability should be published to.:
+        :return (dict): If successful, this function returns a dictionary with the ElectionCreated event parameters:
         {
             "election_id": int,
             "election_name": str
@@ -217,6 +219,7 @@ class TransactionRunner():
         ]
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+        tx_object = tx_object.with_gas_limit(100000)
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
@@ -229,10 +232,10 @@ class TransactionRunner():
     async def deleteElection(self, election_id: int, tx_signer_address: str) -> list[dict[str:int]]:
         """Function to delete an election identified by the id provided from the current environment.
 
-        @param election_id: int - The identifier for the election to delete
-        @param tx_signer_address: str - The account address to use to digitally sign the transaction.
+        :param election_id (int): The identifier for the election to delete
+        :param tx_signer_address (str): The account address to use to digitally sign the transaction.
 
-        @return dict[str:int] The function returns the parameters from the ElectionDestroyed event in the format
+        :return (dict[str:int]) The function returns the parameters from the ElectionDestroyed event in the format
         {
             "election_id": int,
             "ballots_stored": int
@@ -252,12 +255,12 @@ class TransactionRunner():
         return election_destroyed_events
     
 
-    async def createVoteBox(self, tx_signer_address: str) -> list[dict[str:str]]:
+    async def createVoteBox(self, tx_signer_address: str, tx_payer_address: str) -> list[dict[str:str]]:
         """Function to create a votebox resource into the the account that is supposed to sign this transaction.
 
-        @param tx_signer_address: str - The address of the account that is going to digitally sign this transaction.
+        :param tx_signer_address (str): The address of the account that is going to digitally sign this transaction.
 
-        @return dict[str:str] The function returns the parameters from the VoteBoxCreated event in the format
+        :return (dict[str:str]): The function returns the parameters from the VoteBoxCreated event in the format
         {
             "voter_address": str
         }
@@ -279,9 +282,9 @@ class TransactionRunner():
     async def deleteVoteBox(self, tx_signer_address: str) -> list[dict[str:str]]:
         """Function to delete a votebox resource from the account storage for the user that digitally signs this transaction.
 
-        @param tx_signer_address: str - The address of the account that is going to digitally sign this transaction.
+        :param tx_signer_address (str): The address of the account that is going to digitally sign this transaction.
 
-        @return dict[str:str] The function returns the parameters from the VoteBoxBurned event in the format
+        :return (dict[str:str]): The function returns the parameters from the VoteBoxBurned event in the format
         {
             "elections_voted": list[int],
             "active_ballots": int,
@@ -305,11 +308,11 @@ class TransactionRunner():
     async def createBallot(self, election_id: int, recipient_address: str, tx_signer_address: str) -> list[dict[str:int]]:
         """Function to create and deposit a ballot resource into the votebox in the account identified by the recipient address.
 
-        @param election_id: int - The identifier for the Election that this Ballot should be associated to.
-        @param recipient_address: str - The address of the account where the VoteBox where this Ballot should be deposited into.
-        @param tx_signer_address: str - The address of the account that can authorize this transaction with a digital signature.
-
-        @return dict[str:int] The function returns the parameters from the BallotCreated event in the format
+        :param election_id (int): The identifier for the Election that this Ballot should be associated to.
+        :param recipient_address (str): The address of the account where the VoteBox where this Ballot should be deposited into.
+        :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.:
+        
+        :return (dict[str:int]): The function returns the parameters from the BallotCreated event in the format
         {
             "ballot_id": int,
             "linked_election_id": int
@@ -333,9 +336,9 @@ class TransactionRunner():
     async def castBallot(self, election_id: int, new_option: str, tx_signer_address: str) -> None:
         """Function to set the option provided as the 'new_option' argument in a Ballot cast for the Election identified with the election_id provided, for a VoteBox in the account that digitally signs this transaction.
 
-        @param election_id: int - The election identifier to select the ballot to cast.
-        @param new_option: str -The new value to set the ballot's option to.
-        @param tx_signer_address: str - The address of the account that can authorize this transaction with a digital signature.
+        :param election_id (int): The election identifier to select the ballot to cast.
+        :param new_option (str): The new value to set the ballot's option to.
+        :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
         """
         tx_name: str = "04_cast_ballot"
         tx_arguments: list = [
@@ -353,10 +356,10 @@ class TransactionRunner():
     async def submitBallot(self, election_id: int, tx_signer_address: str) -> list[dict[str:int]]:
         """Function to submit a ballot in votebox from  the transaction signer address to the election with the id provided as argument.
 
-        @param election_id: int - The election identifier to select the ballot to submit.
-        @tx_signer_address: str - The address of the account that can authorize this transaction with a digital signature.
+        :param election_id (int): The election identifier to select the ballot to submit.
+        :tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
 
-        @return dict[str:int] The function returns the parameters from the BallotSubmitted event in the format
+        :return (dict[str:int]): The function returns the parameters from the BallotSubmitted event in the format
         {
             "ballot_id": int,
             "election_id": int
@@ -401,18 +404,18 @@ class TransactionRunner():
             raise Exception(f"ERROR: Ballot submission for account {tx_signer_address} failed!")
         
     
-    async def tallyElection(self, election_id: int, batch_size: int, tx_signer_address: str) -> list[str]:
+    async def tallyElection(self, election_id: int, tx_signer_address: str) -> list[str]:
         """Function to trigger the end of a running Election, the withdrawal of all submitted Ballots, and the computation of results.
 
-        @param election_id: int - The election identifier for the election to be tallied.
-        @param batch_size: int - The number of Ballots to process per batch, to prevent exceeding computation limits in the network
-        @param tx_signer_address: str - The address of the account that can digitally sign this transaction.
+        :param election_id (int): The election identifier for the election to be tallied.
+        :param tx_signer_address (str): The address of the account that can digitally sign this transaction.
 
-        @return list[str] This function returns the array of ballot options for the election tallied, still encrypted, to be returned for further processing
+        :return (list[str]): This function returns the array of ballot options for the election tallied, still encrypted, to be returned for further processing
         """
         tx_name: str = "06_tally_election"
-        tx_arguments: list = [cadence.UInt64(election_id), cadence.UInt(batch_size)]
+        tx_arguments: list = [cadence.UInt64(election_id)]
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+        tx_object = tx_object.with_gas_limit(100000)
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
@@ -421,14 +424,15 @@ class TransactionRunner():
         if (len(ballots_withdrawn_events) > 0):
             return ballots_withdrawn_events[0]
     
-    async def finishElection(self, election_id: int, election_results: dict[str:int], tx_signer_address: str) -> bool:
+    async def finishElection(self, election_id: int, election_results: dict[str:int], ballot_receipts: list[int], tx_signer_address: str) -> bool:
         """This function finishes an election by setting the election_results dictionary provided, with each election option as key and the number of votes gathered by each option as value.
 
-        @param election_id: int - The election identifier for the election to be finished.
-        @param election_results: dict[str:int] The set of election results in the format [election_option: vote_count]
-        @param tx_signer_address: str - The address of the account that can digitally sign this transaction.
-
-        @return bool If the election was finished correctly, this function returns true. Otherwise, an exception should be raised somewhere...
+        :param election_id (int): The election identifier for the election to be finished.
+        :param election_results (dict[str:int]): The set of election results in the format [election_option: vote_count]
+        :param ballot_receipts (list[int]): The list with the ballot receipts as extracted from their encrypted ballot options.
+        :param tx_signer_address (str): The address of the account that can digitally sign this transaction.:
+        
+        :return (bool): If the election was finished correctly, this function returns true. Otherwise, an exception should be raised somewhere...
         """
         tx_name: str = "12_finish_election"
         
@@ -443,7 +447,15 @@ class TransactionRunner():
                 )
             )
 
-        tx_arguments: list = [cadence.UInt64(election_id), cadence.Dictionary(value=temp_results)]
+        # Repeat the process for the array of ballot receipts
+        temp_ballot_receipts: list[cadence.UInt64] = []
+
+        for ballot_receipt in ballot_receipts:
+            temp_ballot_receipts.append(
+                cadence.UInt64(ballot_receipt)
+            )
+
+        tx_arguments: list = [cadence.UInt64(election_id), cadence.Dictionary(value=temp_results), cadence.Array(value=temp_ballot_receipts)]
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
@@ -452,8 +464,8 @@ class TransactionRunner():
     async def cleanupVoteBooth(self, tx_signer_address: str) -> None:
         """Function to delete every resource and active capability currently stored and active in the tx_signer_address account. This includes all Elections, active and otherwise, BallotPrinterAdmin, and Election index.
 
-        @param tx_signer_address: str - The address of the account that can authorize this transaction with a digital signature.
-        @return None This function should trigger a series of events, namely, ElectionIndexDestroyed, VoteBoothPrinterAdminDestroyed, and a series of ElectionDestroyed as well. As such, all the result printing happens at the end of this function, to prevent having to return a weird compounded dictionary.
+        :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
+        :return (None): This function should trigger a series of events, namely, ElectionIndexDestroyed, VoteBoothPrinterAdminDestroyed, and a series of ElectionDestroyed as well. As such, all the result printing happens at the end of this function, to prevent having to return a weird compounded dictionary.
         """
         tx_name: str = "09_cleanup_votebooth"
         tx_arguments: list = []
@@ -478,11 +490,11 @@ class TransactionRunner():
     async def fundAllAccounts(self, amount: float, recipients: list[str], tx_signer_address: str) -> None:
         """Function to deposit the amount provided in the argument to each of the accounts included in the recipient address list.
 
-        @param amount: float - The amount of FLOW token to transfer from the service account into each of the accounts in the recipient list.
-        @param recipients: list[str] - The list of addresses for the accounts to transfer funds to.
-        @param tx_signer_address: str - The address of the account that can authorize this transactions with a digital signature and with enough funds in its balance to execute this transaction.
+        :param amount (float): The amount of FLOW token to transfer from the service account into each of the accounts in the recipient list.
+        :param recipients (list[str]): The list of addresses for the accounts to transfer funds to.
+        :param tx_signer_address (str): The address of the account that can authorize this transactions with a digital signature and with enough funds in its balance to execute this transaction.
 
-        @return None Similar to other complex functions, the return dictionary for this one is not trivial as well. As such, all the log.info printing and event capturing happens in this one.
+        :return (None): Similar to other complex functions, the return dictionary for this one is not trivial as well. As such, all the log.info printing and event capturing happens in this one.
         """
         # Validate the amount provided
         if (amount < 0):
@@ -529,10 +541,10 @@ class TransactionRunner():
     async def destroyVoteBoxBallot(self, election_id: int, tx_signer_address: str) -> dict[str:int]:
         """Function to destroy a single Ballot from a VoteBox in the tx_signer_address account, stored internally under the election_id key provided.
 
-        @param election_id: int - The identifier for the Election that this Ballot should be associated to.
-        @param tx_signer_address: str - The address of the account that can authorize this transaction with a digital signature.
+        :param election_id (int): The identifier for the Election that this Ballot should be associated to.
+        :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
 
-        @return dict[str:int] The function returns the parameters from the BallotBurned event emitted in the format
+        :return (dict[str:int]): The function returns the parameters from the BallotBurned event emitted in the format
         {
             "ballot_id": int,
             "linked_election_id": int
@@ -553,9 +565,9 @@ class TransactionRunner():
     async def cleanupVoteBox(self, tx_signer_address: str) -> list[dict[str:int]]:
         """Function to cleanup the VoteBox resource retrieved from the account that signs the transaction. What this function does is to check the list of activeElectionIds from the ElectionIndex in the VoteBooth contract and validate that every Ballot currently stored in the VoteBox matched an active election. Does that don't are considered inactive and are burned on the spot.
 
-        @param tx_signer_address - The address of the account that can authorize this transaction with a digital signature.
+        :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
 
-        @return list[dict[str:int]] The function returns a list with the parameters for all the BallotBurned events emitted during the cleanup process in the format
+        :return (list[dict[str:int]]): The function returns a list with the parameters for all the BallotBurned events emitted during the cleanup process in the format
         [
         {
             "ballot_id": int,

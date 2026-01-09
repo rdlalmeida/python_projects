@@ -9,7 +9,6 @@ import os, pathlib
 import configparser
 import random
 from flow_py_sdk import cadence
-import ecdsa
 
 
 import logging
@@ -69,12 +68,6 @@ election_options: list[dict[int: str]] = [
     }
 ]
 
-# election_public_keys: list[str] = [
-#     "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1JOYQDWcTOwa97QsTsoym37sdf/gdtx0PqSnp5SzkLB5DpJrt9v4PbppttRlU3gbRrjkrlQH6fWnEOkm2pIkvxpqr2mVWMogpHw8HLU82SRjWDM5mh0WykRJGqOUt7x1b3+HEMynGHCjTY+OzhqcrnylhtH4qAp7fnwIyRAfPxks5c2zICELa667ZhAuKQp2Teyy7WAW/CCaPVUOzJdHeuLmHMep3rhNKcxyKgi/UZHoyNGzJTFApkLBpFlNU0K+ztENBJEy2jrBm9/TEqH+0o3yzYy1SSijBHk7e63QjfQZF4L/TnWQjTLHRW3MSTFmCr5YaPG1Tzdv7ZX8iU1siwIDAQAB",
-#     "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwWrbT+BiU6f2uYSGPVJULflcKpqp/Lj75nuLoMUsOepoAVQGeV1zY+3aOjyJafOfig5f5TN+Kp5rdpqmAJ/PLwYdbI0sqd1/Dp2DgsxpHTbVZngIpEgvSmROqx7w5SN7qxRabsgujXcw3DUmaOfbQwFzS1jvXIXmxSX+WJIM7QwqW864gMsfV2AVYonWsghGaSCOaQ96sceBKWKvvhaMz0byD2LGiY+dpqYs/5OM+V5O+O0JXRsRHcStpqluNzTKDJEdfg5DACIgmQzvohNd2m29+pUCJ3xJavwlUuFRx7pad2iXYLpOqZr4ASv+Oi+OD8JCPLsIwB7S9CpE1Jz61QIDAQAB",
-#     "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyGtcxOs8yvE140S1ytC3A04Cb8gtbOlPNuydnL6aoRIUaLMZh6cuxFCmWlFTDEkMPMTQ8RqUEV7y63xTGj6QWc41gAbWhGXZ+3kNhz5ycI/5T4zAXSLuR/ouYmN8FV3DkaZ0Rf9vbgElMf15Wg6r+JI7lF4NRZiPHDlohpVLSRa+FGOMFWz0gF5PLJx2bsTvLz4nghnGJa800QHFwcPtpc3msy58WEUKoEKp/6nf0lK2kWpLOmhfjw6TaYUEHAPcCf0fh4NmXN3lwv0pThma00QhEFuikukiWrZ4tOS9dk25RgQqtXK5zELJ1lo83NMyiz8NZpfnFku59kgTzSDKXwIDAQAB"
-# ]
-
 keys_dir: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("keys")
 election_public_encryption_keys: list[pathlib.Path] = [
     keys_dir.joinpath("rsa_public_1.key"),
@@ -100,6 +93,26 @@ election_public_paths: list[str] = [
     "PublicElection03"
 ]
 
+async def profile_all_accounts() -> None:
+    print("|---------------------------------------------------------------------------------------------- |")
+    print("| Account       |            Balance                    |                    Storage            |")
+    print("|-----------------------------------------------------------------------------------------------|")
+    print("|               | default       | available             | capacity              | used          |")
+    print("|-----------------------------------------------------------------------------------------------|")
+    
+    for account_entry in accounts:
+
+        account_balance: dict[str:float] = await script_runner.getAccountBalance(recipient_address=accounts[account_entry])
+        account_storage: dict[str:int] = await script_runner.getAccountStorage(recipient_address=accounts[account_entry])
+
+        if (account_entry == "emulator"):
+            print(f"|{account_entry}\t|{account_balance["default"]}|{account_balance["available"]}\t|{account_storage["capacity"]}\t|{account_storage["used"]}\t|")
+            print("|-----------------------------------------------------------------------------------------------|")
+        else:
+            print(f"|{account_entry}\t|{account_balance["default"]}\t|{account_balance["available"]}\t\t|{account_storage["capacity"]}\t\t|{account_storage["used"]}\t\t|")
+            print("|-----------------------------------------------------------------------------------------------|")
+    
+    print("\n")
 
 async def main(election_index: int = 0) -> None:
     """
@@ -113,12 +126,18 @@ async def main(election_index: int = 0) -> None:
 
     # 0. Setup the project contracts
     if(True):
+        print(f"0.1 Accounts before contract deployment ")
+        await profile_all_accounts()
+
         log.info("Rebuilding project contracts...")
         await contract_management.main(op="clear")
 
         log.info("Re-deploying project contracts...")
         await contract_management.main(op="deploy")
         # log.info("Done!")
+
+        print(f"0.2 Accounts after contract deployment ")
+        await profile_all_accounts()
 
 
     # 0.1. Fund all test accounts
@@ -160,13 +179,16 @@ async def main(election_index: int = 0) -> None:
             current_election.election_id = current_active_elections.pop()
 
             current_election.election_public_encryption_key = await script_runner.getPublicEncryptionKey(election_id=current_election.election_id)
+        
+            print(f"1.0 Accounts after creating election ")
+            await profile_all_accounts()
 
     # 1.1 Destroy the current election
     if (False):
         await current_election.destroy_election(tx_signer_address=ctx.service_account["address"].hex())
 
     # 2. Create a VoteBox into each of the user accounts inside a loop
-    if (True):
+    if (False):
         for user_account in ctx.accounts:
             await current_election.create_votebox(tx_signer_address=user_account["address"].hex())
 
@@ -201,15 +223,18 @@ async def main(election_index: int = 0) -> None:
         for user_account in ctx.accounts:
             await current_election.submit_ballot(tx_signer_address=user_account["address"].hex())
 
-    # 5.1 Do the creating, casting, and submitting of ballots in one single configurable cycle
+    # 5.1 Do the creating, casting, and submitting of ballots in one single configurable cycle. This one does the combined stuff from steps 3, 4, and 5 before.
     if (True):
-        rounds: int = 10
+        rounds: int = 1
 
         while (rounds > 0):
             log.info(f"ROUND #{rounds}")
             # Create Ballots
             for user_account in ctx.accounts:
                 await current_election.mint_ballot_to_votebox(votebox_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex())
+
+            print(f"5.1. Accounts after ballot creation ")
+            await profile_all_accounts()
 
             # Cast Ballots
             for user_account in ctx.accounts:
@@ -223,10 +248,16 @@ async def main(election_index: int = 0) -> None:
                 ctx.addReceipt(voter_address=user_account["address"].hex(),election_id=current_election.election_id, ballot_receipt=receipt)
 
                 log.info(f"Voter {user_account["address"].hex()} ballot receipt for election {current_election.election_id} is '{receipt}'")
+            
+            print(f"5.2. Accounts after casting ballots")
+            await profile_all_accounts()
 
             # Submit Ballots
             for user_account in ctx.accounts:
                 await current_election.submit_ballot(tx_signer_address=user_account["address"].hex())
+
+            print(f"5.3. Accounts after submitting ballots ")
+            await profile_all_accounts()
                 
             rounds -= 1
 
@@ -373,28 +404,33 @@ async def main(election_index: int = 0) -> None:
 
     # 8. Withdraw ballots and compute tally
     if (True):
-        batch_size: int = 10
-        (election_results, ballot_receipts) = await current_election.tally_election(private_encryption_key_name=election_private_encryption_keys_filenames[election_index], batch_size=batch_size, tx_signer_address=ctx.service_account["address"].hex())
+        print(f"8.1. Accounts before tallying the election")
+        await profile_all_accounts()
+
+        election_results = await current_election.tally_election(private_encryption_key_name=election_private_encryption_keys_filenames[election_index], tx_signer_address=ctx.service_account["address"].hex())
 
         log.info(f"Election {current_election.election_id} results: ")
         for result in election_results:
             log.info(f"Option '{result}': {election_results[result]} votes")
 
-        log.info(f"Ballot receipts: ")
-        for receipt in ballot_receipts:
-            log.info(receipt)
+        print(f"8.2. Accounts before finishing the election")
+        await profile_all_accounts()
+        
+        # Set the election results to the election to finish it properly first
+        await current_election.finish_election(tx_signer_address=ctx.service_account["address"].hex())
+
+        print(f"8.3. Accounts  after finishing the election")
+        await profile_all_accounts()
         
         for user_account in ctx.accounts:
-            log.info(f"Voter {user_account["address"]} has receipt:")
-
             for election_id in user_account["receipts"]:
-                log.info(f"Election {election_id}: ")
-
                 for receipt in user_account["receipts"][election_id]:
-                    if (ballot_receipts.__contains__(receipt)):
+                    receipt_status: bool = await script_runner.isBallotReceiptValid(election_id=current_election.election_id, ballot_receipt=receipt)
+                    if (receipt_status):
                         log.info(f"Ballot with receipt {receipt} from voter {user_account["address"].hex()} is valid!")
                     else:
                         log.warning(f"WARNING: Ballot with receipt {receipt} from voter {user_account["address"].hex()} is not among the ballot receipt list returned!")
+        
     
     # 9. Check that the election is tallied but not yet finished
     if (False):

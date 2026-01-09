@@ -9,7 +9,7 @@ import BallotStandard from 0xf8d6e0586b0a20c7
 import ElectionStandard from 0xf8d6e0586b0a20c7
 import VoteBooth from 0xf8d6e0586b0a20c7
 
-transaction(electionId: UInt64, batchSize: UInt) {
+transaction(electionId: UInt64) {
     let electionIndexRef: &{VoteBooth.ElectionIndexPublic}
     let electionStoragePath: StoragePath
     let electionRef: auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election
@@ -29,25 +29,11 @@ transaction(electionId: UInt64, batchSize: UInt) {
         panic(
             "Unable to get a valid auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election at `self.electionStoragePath.toString()` from account `signer.address.toString()`"
         )
+
+        // Finish the Election by extracting the Ballot options to a dedicated internal array
+        self.electionRef.withdrawBallots()
     }
 
     execute {
-        var running: Bool = true
-
-        while (running) {
-            // Grab a batch of Ballots
-            let electionBallots: @[BallotStandard.Ballot] <- self.electionRef.withdrawBallots(amount: batchSize)
-
-            // As soon as the function return less Ballots than the batch size, I've run out of Ballots
-            if (electionBallots.length < Int(batchSize)) {
-                // Set the flag to stop this loop
-                running = false
-            }
-
-            // But keep sending the batches for further processing
-            self.electionRef.setEncryptedOptions(_ballotsToTally: <- electionBallots)
-
-        }
-
     }
 }

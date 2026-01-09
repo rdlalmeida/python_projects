@@ -24,6 +24,7 @@ class Election(object):
         self.election_public_encryption_key: str = None
         self.election_options: dict[int:str] = None
         self.election_results: dict[str:int] = None
+        self.ballot_receipts: list[int] = None
         self.option_separator = config.get(section="encryption", option="separator")
         self.encoding = config.get(section="encryption", option="encoding")
 
@@ -44,13 +45,13 @@ class Election(object):
         ) -> None:
         """Function to create a new Election into this class, if none is set so far. This class admits one and only one election per class instance. If the class's self.election_id is not None, this function fails to prevent it from replacing an active election.
 
-        @param election_name: str - The name of the election
-        @param election_ballot: str - The ballot for the election
-        @param election_options: dict[int:str] - The set of valid options to set in the election.
-        @param election_public_key: str - The public encryption key to be associated with the election
-        @param election_storage_path: str - A UNIX-type path to indicate the storage path where the election resource is to be stored.
-        @param election_public_path: str - A UNIX-type path to indicate the public path where the public capability for this election is to be stored to.
-        @param tx_signer_address: str - The address for the account that can sign the transaction to create this election.
+        :param election_name (str) The name of the election
+        :param election_ballot (str) The ballot for the election
+        :param election_options (dict)nt:str] - The set of valid options to set in the election.
+        :param election_public_key (str) The public encryption key to be associated with the election
+        :param election_storage_path (str) A UNIX-type path to indicate the storage path where the election resource is to be stored.
+        :param election_public_path (str) A UNIX-type path to indicate the public path where the public capability for this election is to be stored to.
+        :param tx_signer_address (str) The address for the account that can sign the transaction to create this election.
         """
         # Only one active election per class is allowed 
         if (self.election_id != None):
@@ -105,7 +106,7 @@ class Election(object):
     async def create_votebox(self, tx_signer_address) -> None:
         """Function to create a new VoteBox resource in the tx_signer_address account provided.
 
-        @param tx_signer_address: str The account address to use to digitally sign the transaction.
+        :param tx_signer_address (str): The account address to use to digitally sign the transaction.
         """
         log.info(f"Creating a new VoteBox for account {tx_signer_address}")
         
@@ -118,7 +119,7 @@ class Election(object):
     async def destroy_votebox(self, tx_signer_address) -> None:
         """Function to destroy a VoteBox resource from the account in the tx_signer_address account provided.
 
-        @param tx_signer_address: str The account address to use to digitally sign the transaction.
+        :param tx_signer_address (str): The account address to use to digitally sign the transaction.
         """
         log.info(f"Destroying ")
         votebox_destroyed_events: list[dict] = await self.tx_runner.deleteVoteBox(tx_signer_address=tx_signer_address)
@@ -135,8 +136,8 @@ class Election(object):
     async def mint_ballot_to_votebox(self, votebox_address: str, tx_signer_address: str) -> None:
         """Function to mint a new Ballot for the VoteBox resource in the account with the address provided as tx_signer_address. If the Election class in question does not have an active election in it, this function raises an Exception.
 
-        @param votebox_address: str The account address to where the new Ballot is to be deposited to. This account should have a VoteBox resource already configured in it.
-        @param tx_signer_address: str The account address to use to digitally sign the transaction.
+        :param votebox_address (str): The account address to where the new Ballot is to be deposited to. This account should have a VoteBox resource already configured in it.
+        :param tx_signer_address (str): The account address to use to digitally sign the transaction.
         """
         if (self.election_id == None):
             raise Exception(f"ERROR: This Election instance does not have an active election in it!")
@@ -153,10 +154,10 @@ class Election(object):
     
     async def cast_ballot(self, option_to_set: str, tx_signer_address: str) -> int:
         """Function to cast a Ballot stored in the VoteBox resource in the account from the tx_signer_address provided with the encrypted and salted version of the option provided, as long as a Ballot exists for the election_id configured in the current Election object. This function also salts and encrypts the option provided before setting it in the Ballot.option in question.
-        @param option_to_set str The option to set the Ballot to, as defined in the election options set values.
-        @param tx_signer_address str The account address to use to digitally sign the transaction.
+        :param option_to_set (str): The option to set the Ballot to, as defined in the election options set values.
+        :param tx_signer_address (str): The account address to use to digitally sign the transaction.
 
-        @return int The salting process requires the generation of a random integer to append to the option before encrypting it. If successful 
+        :return (int): The salting process requires the generation of a random integer to append to the option before encrypting it. If successful 
         """
         if (self.election_id == None):
             raise Exception(f"ERROR: This Election instance does not have an active election yet!")
@@ -193,7 +194,7 @@ class Election(object):
     async def submit_ballot(self, tx_signer_address: str) -> None:
         """Function to submit a previously cast Ballot from the VoteBox from the tx_signer_address account. This sends the Ballot to the Election configured in it (this one) to be tallied at a future date.
 
-        @param tx_signer_address: str - The account address to use to digitally sign the transaction.
+        :param tx_signer_address (str): The account address to use to digitally sign the transaction.
         """
         if (self.election_id == None):
             raise Exception(f"ERROR: This Election instance does not have an active election yet!")
@@ -215,14 +216,13 @@ class Election(object):
                 raise Exception("ERROR: Submitted a ballot but it did not triggered a BallotSubmitted nor a BallotReplaced event!")
     
 
-    async def tally_election(self, private_encryption_key_name: str, batch_size: int, tx_signer_address: str) -> tuple[dict[str:int],list[int]]:
+    async def tally_election(self, private_encryption_key_name: str, tx_signer_address: str) -> tuple[dict[str:int],list[int]]:
         """Function to trigger the end of the election by processing their ballots, retrieving the ballot.options, decrypting and processing them, tallying the results and producing the winning option. This function also sets the function as finished.
 
-        @param private_encryption_key_path: str - The name of the file containing the private encryption key that can decrypt the ballot options. This filename should point to a file inside the '/keys' subfolder from this project directory. The key loading routine has this folder pre-configured. IMPORTANT: The correspondence between private and public keys used in this process is solely of the responsibility of the user. This process does not validates any keys at any point.
-        @param batch_size: int - The number of Ballots to process per batch, to prevent exceeding computation limits in the network
-        @param tx_signer_address: str - The account address to use to digitally sign the transaction.
+        :param private_encryption_key_path (str): The name of the file containing the private encryption key that can decrypt the ballot options. This filename should point to a file inside the '/keys' subfolder from this project directory. The key loading routine has this folder pre-configured. IMPORTANT: The correspondence between private and public keys used in this process is solely of the responsibility of the user. This process does not validates any keys at any point.
+        :param tx_signer_address (str): The account address to use to digitally sign the transaction.
 
-        @returns tuple[dict[str:int], list[int]] This function returns the dictionary of tallied results, in the format {election_option: vote_count}, and the array of ballot receipts, which are the random integers appended to the ballot text to add as salt
+        :returns dict[str:int]: This function returns the dictionary of tallied results, in the format {election_option: vote_count}.
         """
         if (self.election_id == None):
             raise Exception(f"ERROR: This Election instance does not have an active election yet!")
@@ -230,7 +230,7 @@ class Election(object):
         if (self.election_options == None):
             raise Exception(f"ERROR: Unable to tally Election {self.election_id} without a set of valid election options defined first.")
 
-        ballots_withdrawn_event: dict[str:int] = await self.tx_runner.tallyElection(election_id=self.election_id, batch_size=batch_size, tx_signer_address=tx_signer_address)
+        ballots_withdrawn_event: dict[str:int] = await self.tx_runner.tallyElection(election_id=self.election_id, tx_signer_address=tx_signer_address)
 
         log.info(f"Election {ballots_withdrawn_event["election_id"]} tallied after processing {ballots_withdrawn_event["ballots_withdrawn"]} ballots.")
 
@@ -288,30 +288,30 @@ class Election(object):
         # Set this election instance election_results parameter with the results computed so far before returning the results
         self.election_results = election_options_tally
 
+        # Same for the ballot receipts
+        self.ballot_receipts = ballot_receipts
+
         # Done. Return the results
-        return (election_options_tally, ballot_receipts)
+        return election_options_tally
     
 
     async def finish_election(self, tx_signer_address: str) -> None:
         """Function to finish this election by setting the election results computed into the resource instance itself, and setting its electionFinished flag to true, thus preventing this election from accepting any more ballots. This election instance must have had the election_results parameter set before.
 
-        @param tx_signer_address: str - The account address of the account that has the election in question stored in its storage account area.
+        :param tx_signer_address (str): The account address of the account that has the election in question stored in its storage account area.
         """
         if (self.election_id == None):
             raise Exception(f"ERROR: This Election instance does not have an active election yet!")
         
         if (self.election_results == None):
-            raise Exception(f"ERROR: Election {self.election_id} is not tallied yet. Cannot finish it.")
+            raise Exception(f"ERROR: Election {self.election_id} is not tallied yet. Cannot finish it!")
         
-        # Check first that the election is not yet finished
-        election_finished: bool = await self.script_runner.isElectionFinished(election_id=self.election_id)
-
-        if (election_finished):
-            raise Exception(f"ERROR: Election {self.election_id} is already finished! Cannot continue!")
-        
+        if (self.ballot_receipts == None):
+            raise Exception(f"ERROR: Election {self.election_id} does not have any ballot receipts yet. Cannot finish it!")
+                
         # Set the election to finish with the election_results previously set in this class instance. There are no events emitted with this transaction so
         # there's no immediate point in capturing the transaction response
-        await self.tx_runner.finishElection(election_id=self.election_id, election_results=self.election_results, tx_signer_address=tx_signer_address)
+        await self.tx_runner.finishElection(election_id=self.election_id, election_results=self.election_results, ballot_receipts=self.ballot_receipts, tx_signer_address=tx_signer_address)
 
         # Check that the election was indeed finished
         election_finished = await self.script_runner.isElectionFinished(election_id=self.election_id)
@@ -325,13 +325,12 @@ class Election(object):
         log.info(f"Election {self.election_id} is finished. \nWinning option(s): ")
         for winning_option in winning_options:
             log.info(f"'{winning_option}' with {winning_options[winning_option]} votes")
-    
 
 
     async def get_active_elections(self, votebox_address: str = None) -> None:
         """Function to return the list of currently active elections. This function prints a list with all active election ids.
 
-        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        :param (optional) votebox_address (str): If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
         """
         if (votebox_address == None):
             active_elections_from_election: list[int] = await self.script_runner.getActiveElections()
@@ -351,7 +350,7 @@ class Election(object):
     async def get_election_name(self, votebox_address: str = None) -> None:
         """Function to print the name of the current election.
 
-        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        :param (optional) votebox_address (str): If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
         """
         if (votebox_address == None):
             election_name_from_election: str = await self.script_runner.getElectionName(election_id=self.election_id)
@@ -366,7 +365,7 @@ class Election(object):
     async def get_election_ballot(self, votebox_address: str = None) -> None:
         """Function to print the ballot of the current election.
 
-        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        :param (optional) votebox_address (str): If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
         """
         if (votebox_address == None):
             election_ballot_from_election: str = await self.script_runner.getElectionBallot(election_id=self.election_id)
@@ -380,7 +379,7 @@ class Election(object):
     async def get_election_options(self, votebox_address: str = None) -> None:
         """Function to print the options available to the current election.
 
-        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        :param (optional) votebox_address (str): If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
         """
         if (votebox_address == None):
             election_options_from_election: dict[int:str] = await self.script_runner.getElectionOptions(election_id=self.election_id)
@@ -399,7 +398,7 @@ class Election(object):
     async def get_election_id(self, votebox_address: str = None) -> None:
         """Function to print the election_id associated to the current election.
 
-        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        :param (optional) votebox_address (str): If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
         """
         if (votebox_address == None):
             election_id_from_election: int = await self.script_runner.getElectionId(election_id=self.election_id)
@@ -413,7 +412,7 @@ class Election(object):
     async def get_election_public_encryption_key(self, votebox_address: str = None) -> None:
         """Function to print the public encryption key associated to the current election.
 
-        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        :param (optional) votebox_address (str): If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
         """
         if (votebox_address == None):
             public_encryption_key_from_election: str = await self.script_runner.getPublicEncryptionKey(election_id=self.election_id)
@@ -426,7 +425,7 @@ class Election(object):
     async def get_election_capability(self, votebox_address: str = None) -> None:
         """Function to print the public capability associated to the current election.
 
-        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        :param (optional) votebox_address (str): If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
         """
         if (votebox_address == None):
             election_capability_from_election: cadence.Capability = await self.script_runner.getElectionCapability(election_id=self.election_id)
@@ -439,7 +438,7 @@ class Election(object):
     async def get_election_totals(self, votebox_address: str = None) -> None:
         """Function to print the total ballots minted and submitted to the current election.
 
-        @param (optional) votebox_address str - If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
+        :param (optional) votebox_address (str): If provided, this function retrieves the data from a unauthorized reference for the VoteBox in the account provided. If omitted, the data is retrieved from the election resource directly.
         """
         if (votebox_address == None):
             election_totals_from_election: dict[str:int] = await self.script_runner.getElectionTotals(election_id=self.election_id)
@@ -476,7 +475,7 @@ class Election(object):
     async def get_ballot_option(self, votebox_address: str = None) -> None:
         """Function to print the current option set for the ballot in the VoteBox resource in the account for the address provided.
 
-        @param votebox_address str - The address from where the the VoteBox resource reference is to be retrieved 
+        :param votebox_address (str): The address from where the the VoteBox resource reference is to be retrieved 
         """
         ballot_option: str = await self.script_runner.getBallotOption(election_id=self.election_id, votebox_address=votebox_address)
         log.info(f"Ballot option for election {self.election_id} and user {votebox_address}: {ballot_option}")
@@ -485,7 +484,7 @@ class Election(object):
     async def get_ballot_id(self, votebox_address: str = None) -> None:
         """Function to print the ballot it for the ballot in the VoteBox resource in the account for the address provided.
 
-        @param votebox_address str - The address from where the the VoteBox resource reference is to be retrieved 
+        :param votebox_address (str): The address from where the the VoteBox resource reference is to be retrieved 
         """
         ballot_id: int = await self.script_runner.getBallotId(election_id=self.election_id, votebox_address=votebox_address)
         log.info(f"Ballot id for election {self.election_id} and user {votebox_address}: {ballot_id}")
@@ -525,7 +524,7 @@ class Election(object):
     async def get_account_balance(self, account_address: str) -> None:
         """Function to print out account balances, in FLOW tokens, for the account with the address provided.
 
-        @param account_address: str - The address of the account whose balance is to retrieve.
+        :param account_address (str): The address of the account whose balance is to retrieve.
         """
         current_account_balance: float = await self.script_runner.getAccountBalance(account_address=account_address)
 
@@ -535,7 +534,7 @@ class Election(object):
     async def deleteVoteBox(self, tx_signer_address: str) -> None:
         """Function to destroy a VoteBox resource from the account whose address is provided in the tx_signer_address argument.
 
-        @param tx_signer_address: str - The address of the account that has the VoteBox resource stored in their account and can digitally sign the transaction to delete it.
+        :param tx_signer_address (str): The address of the account that has the VoteBox resource stored in their account and can digitally sign the transaction to delete it.
         """
         votebox_deleted_events: list[dict[str:str]] = await self.tx_runner.deleteVoteBox(tx_signer_address=tx_signer_address)
 
@@ -546,7 +545,7 @@ class Election(object):
     async def deleteVoteBooth(self, tx_signer_address: str) -> None:
         """Function to clean the storage account for the tx_signer_address parameter provided, namely, to destroy the ElectionIndex and VoteBoothBallotPrinterAdmin resources.
 
-        @param tx_signer_address: str - The address of the account that has the VoteBooth related resources in the storage account.
+        :param tx_signer_address (str): The address of the account that has the VoteBooth related resources in the storage account.
         """
         await self.tx_runner.cleanupVoteBooth(tx_signer_address=tx_signer_address)
 

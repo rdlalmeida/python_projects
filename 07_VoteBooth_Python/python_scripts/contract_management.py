@@ -49,6 +49,8 @@ project_dependencies = {
     "FlowServiceAccount": False,
 }
 
+contract_gas_limit: int = 100000
+
 def test_stuff():
     log.info("Testing...")
 
@@ -117,6 +119,7 @@ class DeployContract():
                     key_id=signer_key_id,
                     signer=signer
                 )
+                .with_gas_limit(gas_limit=contract_gas_limit)
             )
 
             # Submit transaction
@@ -156,6 +159,7 @@ class DeployContract():
                                 key_id=signer_key_id,
                                 signer=signer
                             )
+                            .with_gas_limit(gas_limit=contract_gas_limit)
                         )
                         log.info("Trying an Update instead...")
                         try:
@@ -328,6 +332,7 @@ class DeleteContract():
                     key_id=signer_key_id,
                     signer=signer,
                 )
+                .with_gas_limit(gas_limit=contract_gas_limit)
             )
             
             try:
