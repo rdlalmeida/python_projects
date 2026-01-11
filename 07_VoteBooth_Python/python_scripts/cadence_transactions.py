@@ -53,15 +53,28 @@ class TransactionRunner():
         self.event_runner = EventRunner()
         self.script_runner = ScriptRunner()
 
-    # TODO: Change this function to accept a payer address different than the signer one and test if this works with creating voteboxes for users without enough FLOW balance
-    # TODO: Change all the transactions
-    async def getTransaction(self, tx_name: str, tx_arguments: list, tx_signer_address: str) -> Tx:
+    async def getTransaction(self, tx_name: str, tx_arguments: list, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizers: list[str]= []) -> Tx:
         """
         Simple internal function to abstract the logic of reading the config file, grab the transaction file, read it, and building the Tx object.
+        VERY IMPORTANT: Cadence transactions essentially have two mode of functioning:
+        1. The transaction has a single "signer" address, provided in the tx_signer_address, which is used to pay for the transaction and also to retrieve the authorisations to manipulate the signer's account storage. Providing a signer address supersedes any other configuration.
+
+        2. The transactions has a payer, a proposer, and an authorizer addresses provided, which do not need to be the same address. Cadence allows for a third party to pay for the transaction costs from someone else. This prototype uses this feature to prevent voters from having to pay money to vote, even if it is just a few cents in gas. Every voter initiated transaction in this prototype is proposed and authorised by the voter, but paid by the service account.
+
+        Cadence transactions either have a signer OR have an authoriser, payer, and proposer, but not all at the same time. If the authorizer, payer, and proposer of a transaction are the same person/address, than simplify it by providing a single signer address instead. Otherwise, if the transaction payer is different than the authorizer and/or proposer, the transaction arguments need to be discriminated. In this scenario, the transaction signer should be omitted.
+
+        This function prioritises the signer, i.e., if all "tx_" prefixed arguments are provided, this function considers only the signer. If the signer is omitted and one or more of the remaining "tx_" arguments is missing as well, this function raises an Exception.
 
         :param tx_name (str) The name of the transaction file to retrieve and process.
         :param tx_arguments (list): A list with all the arguments to set to the transaction object to return.
-        :param tx_signer_address (str): The address for the account to use to digitally sign the transaction object.:
+
+        :param tx_signer_address (str): The address for the account to use to digitally sign the transaction object. This parameter, if provided, is used to define the transaction's proposer, payer, and authorizer.
+
+        :param tx_proposer_address (str): The address for the proposer of the transaction. This is just the entity submitting the transaction into the network's mempool and to provide the proposal key for the transaction process. NOTE: The transaction proposer is who pays for the network fees
+
+        :param tx_payer_address (str): The address for the payer of the transaction. This is the account that is going to pay for the gas used to execute the transaction (but not the network fees!), namely the gas required to mutate whatever is being mutated in the blockchain global state.
+
+        :param tx_authorizers (list[str]): The addresses used by the transaction to retrieve the necessary authorisations (digital signatures) to manipulate the blockchain state. The addresses in this list (one transaction can have multiple authorizers) are the ones used in the transaction's "prepare" block.
         
         :return Tx If successful, this function returns a configured Tx object ready to execute.
         """
@@ -81,70 +94,164 @@ class TransactionRunner():
             log.error(f"Unable to retrieve a valid path for transaction '{tx_name}': ")
             exit(-1)
 
-        # Use the beginning of this routine to also check if the signer address provided is properly configured, i.e., it belongs to an active account
-        # in the current network. Set all the parameter to return as None initially to detect if a proper account match was found or not
-        signer_address = None
-        signer_key_id = None
-        signer = None
+        # Validate that there are enough arguments to continue
+        if (tx_signer_address == None):
+            if (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizers) == 0):
+                error_msg = "ERROR: Missing a tx_signer_address and not enough alternative parameters provided, namely, missing:\n"
 
-        if (tx_signer_address == self.ctx.service_account["address"].hex()):
-            signer_address = self.ctx.service_account["address"]
-            signer_key_id = self.ctx.service_account["key_id"]
-            signer = self.ctx.service_account["signer"]
-        else:
-            # I need to check with every one of the user accounts and see if the provided address matches any of the configured ones
-            for account in self.ctx.accounts:
-                # If a match is found, fill out the required parameters
-                if (tx_signer_address == account["address"].hex()):
-                    signer_address = account["address"]
-                    signer_key_id = account["key_id"]
-                    signer = account["signer"]
-
-        # Check if a valid signer account was found in the meantime
-        if (signer_address == None and signer_key_id == None and signer == None):
-            raise Exception(f"Unable to configure a signer object for account {tx_signer_address}. The account is not configured for network {self.ctx.access_node_host}:{self.ctx.access_node_port}")
-
-        # Get the transaction text to a variable
-        tx_code = open(tx_path).read()
+                if (tx_proposer_address == None):
+                    error_msg += "tx_proposer_address\n"
+                
+                if (tx_payer_address == None):
+                    error_msg += "tx_payer_address\n"
+                
+                if (len(tx_authorizers) == 0):
+                    error_msg += "empty tx_authorizers\n"
+                
+                raise Exception(error_msg)
 
         async with flow_client(
             host=self.ctx.access_node_host, port=self.ctx.access_node_port
         ) as client:
-
-            # Use the flow_client to retrieve the proposer object from the address provided
             latest_block = await client.get_latest_block()
-            proposer = await client.get_account_at_latest_block(
-                address=signer_address.bytes
-            )
+            proposal_key: ProposalKey = None
+            # Get the transaction text to a variable
+            tx_code = open(tx_path).read()
+            
+            # Priority case: a signer address was provided. Continue to build the transaction
+            if (tx_signer_address):
+                if (tx_signer_address == self.ctx.service_account["address"].hex()):
+                    signer_address = self.ctx.service_account["address"]
+                    signer_key_id = self.ctx.service_account["key_id"]
+                    signer = self.ctx.service_account["signer"]
+                else:
+                    # I need to check with every one of the user accounts and see if the provided address matches any of the configured ones
+                    for account in self.ctx.accounts:
+                        # If a match is found, fill out the required parameters
+                        if (tx_signer_address == account["address"].hex()):
+                            signer_address = account["address"]
+                            signer_key_id = account["key_id"]
+                            signer = account["signer"]
 
-            # Begin the construction of the Tx object
-            tx_object = Tx(
-                code=tx_code,
-                reference_block_id=latest_block.id,
-                payer=signer_address,
-                proposal_key=ProposalKey(
+                # Check if a valid signer account was found in the meantime
+                if (signer_address == None or signer_key_id == None or signer == None):
+                    raise Exception(f"Unable to configure a signer object for account {tx_signer_address}. The account is not configured for network {self.ctx.access_node_host}:{self.ctx.access_node_port}")
+                
+                proposer = await client.get_account_at_latest_block(
+                    address=signer_address.bytes
+                )
+                
+                proposal_key = ProposalKey(
                     key_address=signer_address,
                     key_id=signer_key_id,
                     key_sequence_number=proposer.keys[0].sequence_number
-                ),
-            )
+                )
 
-            # Run a loop to add all the arguments provided to the tx_object. This arguments need to be provided already in the expected "cadence" format that 
-            # the transaction script expects. This function does not have the necessary context to make this determination.
-            for argument in tx_arguments:
-                tx_object = tx_object.add_arguments(argument)
+                # Begin the construction of the Tx object
+                tx_object: Tx = Tx(
+                    code=tx_code,
+                    reference_block_id=latest_block.id,
+                    payer=signer_address,
+                    proposal_key=proposal_key
+                )
+
+                # Run a loop to add all the arguments provided to the tx_object. This arguments need to be provided already in the expected "cadence" format that 
+                # the transaction script expects. This function does not have the necessary context to make this determination.
+                for argument in tx_arguments:
+                    tx_object = tx_object.add_arguments(argument)
+                
+                # Finish the object by adding the authorizers and envelope signature objects to it
+                tx_object = tx_object.add_authorizers(signer_address)
+                tx_object = tx_object.with_envelope_signature(
+                    address=signer_address,
+                    key_id=signer_key_id,
+                    signer=signer
+                )
+
+                # Done. Return it
+                return tx_object
             
-            # Finish the object by adding the authorizers and envelope signature objects to it
-            tx_object = tx_object.add_authorizers(signer_address)
-            tx_object = tx_object.with_envelope_signature(
-                signer_address,
-                signer_key_id,
-                signer
-            )
+            # Default case: use the proposer, payer, and authoriser provided to build the transaction
+            else:
+                # Grab the parameters needed to build and sign the transaction object
+                if (tx_proposer_address == self.ctx.service_account["address"].hex()):
+                    proposer_address = self.ctx.service_account["address"]
+                    proposer_key_id = self.ctx.service_account["key_id"]
+                    proposer_signer = self.ctx.service_account["signer"]
+                else:
+                    for account in self.ctx.accounts:
+                        if(tx_proposer_address == account["address"].hex()):
+                            proposer_address = account["address"]
+                            proposer_key_id = account["key_id"]
+                            proposer_signer = account["signer"]
 
-            # Done. Return it
+                if (tx_payer_address == self.ctx.service_account["address"].hex()):
+                    payer_address = self.ctx.service_account["address"]
+                    payer_key_id = self.ctx.service_account["key_id"]
+                    payer_signer = self.ctx.service_account["signer"]
+                else:
+                    for account in self.ctx.accounts:
+                        if(tx_payer_address == account["address"].hex()):
+                            payer_address = account["address"]
+                            payer_key_id = account["key_id"]
+                            payer_signer = account["signer"]
+                
+                authorizers = []
+                for tx_authorizer in tx_authorizers:
+                    if (tx_authorizer == self.ctx.service_account["address"].hex()):
+                        authorizers.append(self.ctx.service_account["address"])
+                    else:
+                        for account in self.ctx.accounts:
+                            if (tx_authorizer == account["address"].hex()):
+                                authorizers.append(account["address"])
+                
+                # Validate the proposer object
+                if (proposer_address == None or proposer_key_id == None or proposer_signer == None):
+                    raise Exception(f"Unable to configure proposer object for account {tx_proposer_address}. The account is not configured for network {self.ctx.access_node_host}:{self.ctx.access_node_port}")
+                
+                proposer = await client.get_account_at_latest_block(
+                    address=proposer_address.bytes
+                )
 
-            return tx_object
+                proposal_key = ProposalKey(
+                    key_address=proposer_address,
+                    key_id=proposer_key_id,
+                    key_sequence_number=proposer.keys[0].sequence_number
+                )
+
+                # Build the Tx object
+                tx_object: Tx = Tx(
+                    code=tx_code,
+                    reference_block_id=latest_block.id,
+                    payer=payer_address,
+                    proposal_key=proposal_key
+                )
+
+                # Add the arguments to the object
+                for argument in tx_arguments:
+                    tx_object = tx_object.add_arguments(argument)
+
+                # Add authorisers in the cadence.Address format
+                for authorizer in authorizers:
+                    tx_object.add_authorizers(authorizer)
+                
+                # In the case where the payer, proposer, and authoriser are different entities, the payer signs the envelope
+                tx_object = tx_object.with_envelope_signature(
+                    address=payer_address,
+                    key_id=payer_key_id,
+                    signer=payer_signer
+                )
+
+                # And the proposer signs the payload. I guess this is the signature that goes into the "prepare" block
+                tx_object = tx_object.with_payload_signature(
+                    address=proposer_address,
+                    key_id=proposer_key_id,
+                    signer=proposer_signer
+                )
+
+                # Done
+                return tx_object
+
     
     async def submitTransaction(self, tx_object: Tx) -> entities.TransactionResultResponse:
         """
@@ -255,21 +362,38 @@ class TransactionRunner():
         return election_destroyed_events
     
 
-    async def createVoteBox(self, tx_signer_address: str, tx_payer_address: str) -> list[dict[str:str]]:
+    async def createVoteBox(self, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = []) -> list[dict[str:str]]:
         """Function to create a votebox resource into the the account that is supposed to sign this transaction.
 
         :param tx_signer_address (str): The address of the account that is going to digitally sign this transaction.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
 
         :return (dict[str:str]): The function returns the parameters from the VoteBoxCreated event in the format
         {
             "voter_address": str
         }
         """
+        # Validate signature inputs
+        if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizer_address) == 0)):
+            error_msg = "ERROR: Missing signature elements to run the transaction:\n"
+            if (tx_proposer_address == None):
+                error_msg += "tx_proposer_address\n"
+            
+            if (tx_payer_address == None):
+                error_msg += "tx_payer_address\n"
+
+            if (len(tx_authorizer_address) == 0):
+                error_msg += "tx_authorizer_address\n"
+
+            raise Exception(error_msg)
+        
         tx_name: str = "02_create_vote_box"
         # This transaction needs no arguments to run
         tx_arguments: list = []
 
-        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizers=tx_authorizer_address)
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         
@@ -279,10 +403,13 @@ class TransactionRunner():
         return votebox_created_events
     
 
-    async def deleteVoteBox(self, tx_signer_address: str) -> list[dict[str:str]]:
+    async def deleteVoteBox(self, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = []) -> list[dict[str:str]]:
         """Function to delete a votebox resource from the account storage for the user that digitally signs this transaction.
 
         :param tx_signer_address (str): The address of the account that is going to digitally sign this transaction.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
 
         :return (dict[str:str]): The function returns the parameters from the VoteBoxBurned event in the format
         {
@@ -291,12 +418,27 @@ class TransactionRunner():
             "voter_address": str
         }
         """
+        # Validate signature inputs
+        if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx-authorizer_address) == 0)):
+            error_msg = "ERROR: Missing signature elements to run the transaction:\n"
+
+            if (tx_proposer_address == None):
+                error_msg += "tx_proposer_address\n"
+
+            if (tx_payer_address == None):
+                error_msg += "tx_payer_address\n"
+
+            if (len(tx_authorizer_address) == 0):
+                error_msg += "tx_authorizer_address"
+            
+            raise Exception(error_msg)
+
         tx_name: str = "08_destroy_votebox"
 
         # No arguments needed for this one as well
         tx_arguments: list = []
 
-        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizers=tx_authorizer_address)
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
@@ -333,31 +475,52 @@ class TransactionRunner():
         return ballot_created_event
     
 
-    async def castBallot(self, election_id: int, new_option: str, tx_signer_address: str) -> None:
+    async def castBallot(self, election_id: int, new_option: str, tx_signer_address: str, tx_proposer_address: str, tx_payer_address: str, tx_authorizer_address: list[str]) -> None:
         """Function to set the option provided as the 'new_option' argument in a Ballot cast for the Election identified with the election_id provided, for a VoteBox in the account that digitally signs this transaction.
 
         :param election_id (int): The election identifier to select the ballot to cast.
         :param new_option (str): The new value to set the ballot's option to.
         :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
         """
+        # Validate signature inputs
+        if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizer_address) == 0)):
+            error_msg = "ERROR: Missing signature elements to run the transaction:\n"
+            
+            if (tx_proposer_address == None):
+                error_msg += "tx_proposer_address\n"
+
+            if (tx_payer_address == None):
+                error_msg += "tx_payer_address\n"
+
+            if (len(tx_authorizer_address) == 0):
+                error_msg += "tx_authorizer_address\n"
+
+            raise Exception(error_msg)
+
         tx_name: str = "04_cast_ballot"
         tx_arguments: list = [
             cadence.UInt64(election_id),
             cadence.String(new_option)
         ]
 
-        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizers=tx_authorizer_address)
 
         await self.submitTransaction(tx_object=tx_object)
 
         log.info(f"Voter {tx_signer_address} cast a new option for election {election_id}")
 
     
-    async def submitBallot(self, election_id: int, tx_signer_address: str) -> list[dict[str:int]]:
+    async def submitBallot(self, election_id: int, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = []) -> list[dict[str:int]]:
         """Function to submit a ballot in votebox from  the transaction signer address to the election with the id provided as argument.
 
         :param election_id (int): The election identifier to select the ballot to submit.
         :tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
 
         :return (dict[str:int]): The function returns the parameters from the BallotSubmitted event in the format
         {
@@ -365,12 +528,26 @@ class TransactionRunner():
             "election_id": int
         }
         """
+        # Validate signature inputs
+        if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizer_address) == 0)):
+            error_msg = "ERROR: Missing signature elements to run the transaction:\n"
+            if (tx_proposer_address == None):
+                error_msg += "tx_proposer_address\n"
+
+            if (tx_payer_address == None):
+                error_msg += "tx_payer_address\n"
+
+            if (len(tx_authorizer_address) == 0):
+                error_msg += "tx_authorizer_address\n"
+            
+            raise Exception(error_msg)
+
         tx_name: str = "05_submit_ballot"
         tx_arguments: list = [
             cadence.UInt64(election_id)
         ]
 
-        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizers=tx_authorizer_address)
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
@@ -460,6 +637,7 @@ class TransactionRunner():
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
         await self.submitTransaction(tx_object=tx_object)
+
     
     async def cleanupVoteBooth(self, tx_signer_address: str) -> None:
         """Function to delete every resource and active capability currently stored and active in the tx_signer_address account. This includes all Elections, active and otherwise, BallotPrinterAdmin, and Election index.
@@ -538,11 +716,14 @@ class TransactionRunner():
             log.info(f"Account '{account}' ({current_accounts[account]["address"]}) balance = {current_accounts[account]["balance"]} FLOW")
 
     
-    async def destroyVoteBoxBallot(self, election_id: int, tx_signer_address: str) -> dict[str:int]:
+    async def destroyVoteBoxBallot(self, election_id: int, tx_signer_address: str, tx_proposer_address: str, tx_payer_address: str, tx_authorizer_address: list[str]) -> dict[str:int]:
         """Function to destroy a single Ballot from a VoteBox in the tx_signer_address account, stored internally under the election_id key provided.
 
         :param election_id (int): The identifier for the Election that this Ballot should be associated to.
         :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
 
         :return (dict[str:int]): The function returns the parameters from the BallotBurned event emitted in the format
         {
@@ -550,9 +731,23 @@ class TransactionRunner():
             "linked_election_id": int
         }
         """
+        # Validate signature inputs
+        if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizer_address) == 0)):
+            error_msg = "ERROR: Missing signature elements to run the transaction:\n"
+            if( tx_proposer_address == None):
+                error_msg += "tx_proposer_address\n"
+            
+            if (tx_payer_address == None):
+                error_msg += "tx_payer_address\n"
+
+            if (len(tx_authorizer_address) == 0):
+                error_msg += "tx_authorizer_address\n"
+            
+            raise Exception(error_msg)
+
         tx_name: str = "10_destroy_votebox_ballot"
         tx_arguments: list = [cadence.UInt64(election_id)]
-        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizers=tx_authorizer_address)
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
@@ -562,10 +757,13 @@ class TransactionRunner():
             log.info(f"Ballot {ballot_burned_event["ballot_id"]} attached to election {ballot_burned_event["linked_election_id"]}")
 
 
-    async def cleanupVoteBox(self, tx_signer_address: str) -> list[dict[str:int]]:
+    async def cleanupVoteBox(self, tx_signer_address: str, tx_proposer_address: str, tx_payer_address: str, tx_authorizer_address: list[str]) -> list[dict[str:int]]:
         """Function to cleanup the VoteBox resource retrieved from the account that signs the transaction. What this function does is to check the list of activeElectionIds from the ElectionIndex in the VoteBooth contract and validate that every Ballot currently stored in the VoteBox matched an active election. Does that don't are considered inactive and are burned on the spot.
 
         :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
 
         :return (list[dict[str:int]]): The function returns a list with the parameters for all the BallotBurned events emitted during the cleanup process in the format
         [
@@ -575,9 +773,24 @@ class TransactionRunner():
         }
         ] 
         """
+        # Validate signature inputs
+        if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizer_address) == 0)):
+            error_msg = "ERROR: Missing signature elements to run the transaction:\n"
+
+            if (tx_proposer_address == None):
+                error_msg += "tx_proposer_address\n"
+
+            if (tx_payer_address == None):
+                error_msg += "tx_payer_address\n"
+
+            if (len(tx_authorizer_address) == 0):
+                error_msg += "tx_authorizer_address"
+            
+            raise Exception(error_msg)
+
         tx_name: str = "11_cleanup_votebox"
         tx_arguments: list = []
-        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizers=tx_authorizer_address)
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 

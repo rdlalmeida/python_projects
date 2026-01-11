@@ -1,0 +1,18 @@
+0x192440c99cb17282
+
+cfc9328c6b5dc25016f63fdf63dfd6c9dbd639c972ef661d00c3be931084e14a
+
+270db86c0666cd4a2ef9b21aa2c719a91e89a633f88c957400ced4caee6f01eeb52f4f8129e348258db9057968633330b74477e797e90900715fe41554cd62fa
+
+"account06": {
+    "address": "0x192440c99cb17282",
+    "key": {
+        "type": "file",
+        "location": "./keys/account06.pkey",
+        "signatureAlgorithm": "ECDSA_P256",
+        "hashAlgorithm": "SHA3_256"
+    }
+}
+
+
+await current_election.create_votebox(tx_signer_address=None, tx_proposer_address=ctx.accounts[1]["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(),tx_authorizer_address=[ctx.accounts[1]["address"].hex()])

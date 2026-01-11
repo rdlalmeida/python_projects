@@ -657,3 +657,60 @@ class ScriptRunner():
                 return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result)
             else:
                 return {}
+            
+
+    async def profile_all_accounts(self, program_stage: str = None) -> None:
+        """
+        Simple function to abstract and automate the characterisation of all configured accounts, i.e., all the one indicated in the "accounts" section of this project's flow.json file. The function require no inputs and returns no data. All results are printed to stdout.
+        """
+        if (program_stage):
+            print(program_stage)
+                
+        print("|---------------------------------------------------------------------------------------------- |")
+        print("| Account       |            Balance                    |                    Storage            |")
+        print("|-----------------------------------------------------------------------------------------------|")
+        print("|               | default       | available             | capacity              | used          |")
+        print("|-----------------------------------------------------------------------------------------------|")
+        
+        ctx = account_config.AccountConfig()
+        accounts = ctx.getAccounts()
+
+        for account_entry in accounts:
+
+            account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=accounts[account_entry])
+            account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=accounts[account_entry])
+
+            if (account_entry == "emulator"):
+                print(f"|{account_entry}\t|{account_balance["default"]}\t|{account_balance["available"]}\t|{account_storage["capacity"]}\t|{account_storage["used"]}\t|")
+                print("|-----------------------------------------------------------------------------------------------|")
+            else:
+                print(f"|{account_entry}\t|{account_balance["default"]}\t|{account_balance["available"]}\t\t|{account_storage["capacity"]}\t\t|{account_storage["used"]}\t\t|")
+                print("|-----------------------------------------------------------------------------------------------|")
+        
+        print("\n")
+
+
+    async def profile_all_accounts_csv(self, program_stage: str = None) -> None:
+        """
+        This function profiles all configured accounts in the system, i.e., the one indicated in flow.json, but this time printing them in a CSV (comma separated values) to make it easy to import into other tools to do statistical analysis, plot graphs, etc. This version accepts one single string argument to indicate where in the main program the account profiling was done. This function prints the account profiles using the format
+        
+        <account_name>,<program_stage>,<default_balance(float)>,<available_balance(float)>,<capacity_storage(int)>,<used_storage)int>
+
+        Using one line per account. This function is the only one using the "print" function, therefore, running the main script and forwarding all output to a file (using > or >>), will write all this data in a handy file ready to be imported.
+
+        :param program_state(str): If provided, this item is added to the line describing the current account profile. If not, the whole entry is omitted from the final result
+        """
+        ctx = account_config.AccountConfig()
+        accounts = ctx.getAccounts()
+
+        for account_entry in accounts:
+            # Get account data
+            account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=accounts[account_entry])
+            account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=accounts[account_entry])
+
+            # Print the account info in a single line, using the csv format
+            if (program_stage != None):
+                print(f"{account_entry},{program_stage},{account_balance["default"]},{account_balance["available"]},{account_storage["capacity"]},{account_storage["used"]}")
+            else:
+                print(f"{account_entry},{account_balance["default"]},{account_balance["available"]},{account_storage["capacity"]},{account_storage["used"]}")
+                

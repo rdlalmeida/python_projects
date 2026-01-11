@@ -103,26 +103,32 @@ class Election(object):
         self.election_id = None
     
 
-    async def create_votebox(self, tx_signer_address) -> None:
+    async def create_votebox(self, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = None) -> None:
         """Function to create a new VoteBox resource in the tx_signer_address account provided.
 
         :param tx_signer_address (str): The account address to use to digitally sign the transaction.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
         """
         log.info(f"Creating a new VoteBox for account {tx_signer_address}")
         
-        votebox_created_events: list[dict[str:str]] = await self.tx_runner.createVoteBox(tx_signer_address=tx_signer_address)
+        votebox_created_events: list[dict[str:str]] = await self.tx_runner.createVoteBox(tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address)
 
         for votebox_created_event in votebox_created_events:
             log.info(f"Successfully created a VoteBox for account {votebox_created_event["voter_address"]}")
 
     
-    async def destroy_votebox(self, tx_signer_address) -> None:
+    async def destroy_votebox(self, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = None) -> None:
         """Function to destroy a VoteBox resource from the account in the tx_signer_address account provided.
 
         :param tx_signer_address (str): The account address to use to digitally sign the transaction.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
         """
         log.info(f"Destroying ")
-        votebox_destroyed_events: list[dict] = await self.tx_runner.deleteVoteBox(tx_signer_address=tx_signer_address)
+        votebox_destroyed_events: list[dict] = await self.tx_runner.deleteVoteBox(tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address)
         
         for votebox_destroyed_event in votebox_destroyed_events:
             log.info(f"Successfully deleted a VoteBox for account {votebox_destroyed_event["voter_address"]}, with {votebox_destroyed_event["active_ballots"]} active ballots still in it. This VoteBox was used to vote in {len(votebox_destroyed_event["elections_voted"])} elections:")
@@ -152,10 +158,13 @@ class Election(object):
             log.error(e)
 
     
-    async def cast_ballot(self, option_to_set: str, tx_signer_address: str) -> int:
+    async def cast_ballot(self, option_to_set: str, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = None) -> int:
         """Function to cast a Ballot stored in the VoteBox resource in the account from the tx_signer_address provided with the encrypted and salted version of the option provided, as long as a Ballot exists for the election_id configured in the current Election object. This function also salts and encrypts the option provided before setting it in the Ballot.option in question.
         :param option_to_set (str): The option to set the Ballot to, as defined in the election options set values.
         :param tx_signer_address (str): The account address to use to digitally sign the transaction.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
 
         :return (int): The salting process requires the generation of a random integer to append to the option before encrypting it. If successful 
         """
@@ -183,7 +192,7 @@ class Election(object):
 
         base64_option: str = base64.b64encode(encrypted_salted_option)
 
-        await self.tx_runner.castBallot(election_id=self.election_id, new_option=str(base64_option, encoding=self.encoding), tx_signer_address=tx_signer_address)
+        await self.tx_runner.castBallot(election_id=self.election_id, new_option=str(base64_option, encoding=self.encoding), tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address)
 
         log.info(f"Successfully cast a Ballot for account {tx_signer_address} and for election {self.election_id}")
 
@@ -191,16 +200,19 @@ class Election(object):
         return option_salt
     
 
-    async def submit_ballot(self, tx_signer_address: str) -> None:
+    async def submit_ballot(self, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = None) -> None:
         """Function to submit a previously cast Ballot from the VoteBox from the tx_signer_address account. This sends the Ballot to the Election configured in it (this one) to be tallied at a future date.
 
         :param tx_signer_address (str): The account address to use to digitally sign the transaction.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
         """
         if (self.election_id == None):
             raise Exception(f"ERROR: This Election instance does not have an active election yet!")
         
         # The submitBallot function can trigger either a BallotSubmitted or a BallotReplaced event depending on the current state 
-        ballot_submitted_events: list[dict[str:int]] = await self.tx_runner.submitBallot(election_id=self.election_id, tx_signer_address=tx_signer_address)
+        ballot_submitted_events: list[dict[str:int]] = await self.tx_runner.submitBallot(election_id=self.election_id, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address)
 
         for ballot_submitted_event in ballot_submitted_events:
             # Test the dictionary structure returned to determine which event was triggered
@@ -531,22 +543,28 @@ class Election(object):
         log.info(f"Account {account_address} FLOW balance: {current_account_balance}")
 
     
-    async def deleteVoteBox(self, tx_signer_address: str) -> None:
+    async def deleteVoteBox(self, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: str = None) -> None:
         """Function to destroy a VoteBox resource from the account whose address is provided in the tx_signer_address argument.
 
         :param tx_signer_address (str): The address of the account that has the VoteBox resource stored in their account and can digitally sign the transaction to delete it.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
         """
-        votebox_deleted_events: list[dict[str:str]] = await self.tx_runner.deleteVoteBox(tx_signer_address=tx_signer_address)
+        votebox_deleted_events: list[dict[str:str]] = await self.tx_runner.deleteVoteBox(tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address)
 
         for votebox_deleted_event in votebox_deleted_events:
             log.info(f"Successfully deleted a VoteBox for account {votebox_deleted_event["voter_address"]} with {votebox_deleted_event["active_ballots"]} active ballots still in it. This VoteBox was used to vote in {len(votebox_deleted_event["elections_voted"])} elections")
 
     
-    async def deleteVoteBooth(self, tx_signer_address: str) -> None:
+    async def deleteVoteBooth(self, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: str = None) -> None:
         """Function to clean the storage account for the tx_signer_address parameter provided, namely, to destroy the ElectionIndex and VoteBoothBallotPrinterAdmin resources.
 
         :param tx_signer_address (str): The address of the account that has the VoteBooth related resources in the storage account.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
         """
-        await self.tx_runner.cleanupVoteBooth(tx_signer_address=tx_signer_address)
+        await self.tx_runner.cleanupVoteBooth(tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address)
 
         log.info(f"Successfully cleaned up the VoteBooth contract from account {tx_signer_address}")
