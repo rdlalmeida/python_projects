@@ -27,22 +27,25 @@ config.read(config_path)
 # Path for the buffer file
 temp_path: Path = Path(os.getcwd()).joinpath("temp_file.cdc")
 
+def main(env: str = "local"):
+    if (len(sys.argv) > 1):
+        input_env: str = sys.argv[1].lower().strip()
 
-def main(env: str = "local") -> None:
+    if (input_env == "local"):
+        env = "local"
+    elif (input_env == "remote"):
+        env = "remote"
+    else:
+        log.warning(f"WARNING: Invalid input provided '{input_env}'. Defaulting to 'local'")
+
+    set_environment(env=env)
+
+def set_environment(env: str = "local") -> None:
     """
     Main function for this module. This is the entry point for a function that scans every .cdc file in this project folder, reads it line by line and switches the imports on and off depending on the environment mode set, namely, "local" for the local emulator, or "testnet" for remote development.
     
     :param env (str): The environment to set the Cadence files to. This function expects and validates only two options, namely, "local" and "testnet"
-    """
-    # Check if any arguments were provided with this call
-    if (len(sys.argv) > 1):
-        try:
-            # Grab the argument in sys.argv[1] since I know that sys.argv[0]
-            env = sys.argv[1].lower().strip()
-        except Exception:
-            env = "local"
-            log.warning(f"No valid inputs arguments detected. Defaulting to environment '{env}'")
-
+    """    
     # Grab the paths of all cdc files into dedicated arrays
     cadence_contracts: list[Path] = []
     cadence_scripts: list[Path] = []
@@ -91,7 +94,7 @@ def main(env: str = "local") -> None:
             print(f"Processing script '{script}'...")
             switchToLocal(source_path=script)
 
-    elif (env.lower() == "testnet"):
+    elif (env.lower() == "remote"):
         # Process each file in the contracts, transactions, and scripts array
         print("Switching project contracts to remote mode: ")
         for contract in cadence_contracts:
@@ -108,11 +111,7 @@ def main(env: str = "local") -> None:
         for script in cadence_scripts:
             switchToRemote(source_path=script)
     else:
-        raise Exception(f"ERROR: Invalid environment option provided: {env}. Please use either 'local' or 'testnet' to continue")
-    
-    test_transaction: Path = Path(os.getcwd()).joinpath("cadence", "transactions", "13_test_transaction.cdc")
-
-    switchToRemote(source_path=test_transaction)
+        raise Exception(f"ERROR: Invalid environment option provided: {env}. Please use either 'local' or 'remote' to continue")
 
 
 def switchToLocal(source_path: Path) -> None:
@@ -243,4 +242,5 @@ def switchToRemote(source_path: Path) -> None:
     file_stream.close()
     temp_stream.close()
 
-main()
+
+main(env="testnet")

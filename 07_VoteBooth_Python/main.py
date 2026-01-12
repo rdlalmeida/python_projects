@@ -4,7 +4,7 @@ from python_scripts.cadence_scripts import ScriptRunner
 from python_scripts.cadence_transactions import TransactionRunner
 from python_scripts.event_management import EventRunner
 from python_scripts.election_management import Election
-from python_scripts import contract_management
+from python_scripts import contract_management, set_cadence_environment
 import os, pathlib
 import configparser
 import random
@@ -104,7 +104,7 @@ async def main(election_index: int = 0) -> None:
     free_election: bool = True
 
     # 0. Setup the project contracts
-    if(True):
+    if(False):
         print(f"0.1 Accounts before contract deployment ")
         await script_runner.profile_all_accounts(program_stage="pre contract deployment")
 
@@ -130,7 +130,7 @@ async def main(election_index: int = 0) -> None:
         await tx_runner.fundAllAccounts(amount=amount, recipients=recipients, tx_signer_address=ctx.service_account["address"].hex())
 
     # 1. Setup an election with the data from the config file
-    if (True):
+    if (False):
         if (new_election):
 
             # current_election.election_id = 241892558110722
@@ -167,7 +167,7 @@ async def main(election_index: int = 0) -> None:
         await current_election.destroy_election(tx_signer_address=ctx.service_account["address"].hex())
 
     # 2. Create a VoteBox into each of the user accounts inside a loop
-    if (True):
+    if (False):
         if (free_election):
             for user_account in ctx.accounts:
                 await current_election.create_votebox(tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()])
@@ -218,7 +218,7 @@ async def main(election_index: int = 0) -> None:
                 await current_election.submit_ballot(tx_signer_address=user_account["address"].hex())
 
     # 5.1 Do the creating, casting, and submitting of ballots in one single configurable cycle. This one does the combined stuff from steps 3, 4, and 5 before.
-    if (True):
+    if (False):
         rounds: int = 20
 
         while (rounds > 0):
@@ -405,7 +405,7 @@ async def main(election_index: int = 0) -> None:
             await current_election.get_election_winner()
 
     # 8. Withdraw ballots and compute tally
-    if (True):
+    if (False):
         await script_runner.profile_all_accounts(program_stage="8.1. Accounts before tallying the election")
 
         election_results = await current_election.tally_election(private_encryption_key_name=election_private_encryption_keys_filenames[election_index], tx_signer_address=ctx.service_account["address"].hex())
