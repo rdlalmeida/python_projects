@@ -26,7 +26,7 @@
     $ flow transactions send cadence/transactions/00_fund_all_accounts.cdc --args-json '[
         {
             "type": "UFix64",
-            "value": "10.5"
+            "value": "1.0"
         },
         {
             "type": "Array",
@@ -74,7 +74,7 @@ transaction(amount: UFix64?, recipients: [Address]?) {
             "Unable to get a reference to the vault for account ".concat(signer.address.toString())
         )
         if (amount == nil) {
-            self.amount = 10.1
+            self.amount = 1.0
         }
         else {
             self.amount = amount!

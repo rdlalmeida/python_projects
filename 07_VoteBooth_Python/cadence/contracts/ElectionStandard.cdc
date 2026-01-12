@@ -6,11 +6,13 @@
     # Author: Ricardo Lopes Almeida - https://github.com/rdlalmeida
 **/
 
-// TODO: Add functions to validate that a random integer was found in an encrypted option.
+// Uncomment these lines for local testing, comment for testnet deploy
+// import Burner from 0xf8d6e0586b0a20c7
+// import BallotStandard from 0xf8d6e0586b0a20c7
 
-
-import Burner from 0xf8d6e0586b0a20c7
-import BallotStandard from 0xf8d6e0586b0a20c7
+// Uncomment these lines for remote (testnet) testing, comment for local deploy
+import "Burner"
+import "BallotStandard"
 
 access(all) contract ElectionStandard {
     // CUSTOM ENTITLEMENTS

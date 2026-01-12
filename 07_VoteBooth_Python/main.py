@@ -219,7 +219,7 @@ async def main(election_index: int = 0) -> None:
 
     # 5.1 Do the creating, casting, and submitting of ballots in one single configurable cycle. This one does the combined stuff from steps 3, 4, and 5 before.
     if (True):
-        rounds: int = 2
+        rounds: int = 20
 
         while (rounds > 0):
             log.info(f"ROUND #{rounds}")

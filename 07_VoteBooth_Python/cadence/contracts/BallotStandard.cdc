@@ -6,8 +6,13 @@
     @author: Ricardo Lopes Almeida - https://github.com/rdlalmeida
 **/
 
-import Burner from 0xf8d6e0586b0a20c7
-import Crypto from 0xf8d6e0586b0a20c7
+// Uncomment these lines for local testing, comment for testnet deploy
+// import Burner from 0xf8d6e0586b0a20c7
+// import Crypto from 0xf8d6e0586b0a20c7
+
+// Uncomment these lines for remote (testnet) testing, comment for local deploy
+import "Burner"
+import "Crypto"
 
 access(all) contract BallotStandard {
 // CUSTOM ENTITLEMENTS

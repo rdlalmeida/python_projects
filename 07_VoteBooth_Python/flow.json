@@ -4,28 +4,32 @@
             "source": "cadence/contracts/BallotStandard.cdc",
             "aliases": {
                 "testing": "0000000000000007",
-                "emulator": "f8d6e0586b0a20c7"
+                "emulator": "f8d6e0586b0a20c7",
+                "testnet": "04ae0cb4fed4bebd"
             }
         },
         "ElectionStandard": {
             "source": "cadence/contracts/ElectionStandard.cdc",
             "aliases": {
                 "testing": "0000000000000007",
-                "emulator": "f8d6e0586b0a20c7"
+                "emulator": "f8d6e0586b0a20c7",
+                "testnet": "04ae0cb4fed4bebd"
             }
         },
         "VoteBooth": {
             "source": "cadence/contracts/VoteBooth.cdc",
             "aliases": {
                 "testing": "0000000000000007",
-                "emulator": "f8d6e0586b0a20c7"
+                "emulator": "f8d6e0586b0a20c7",
+                "testnet": "04ae0cb4fed4bebd"
             }
         },
         "VoteBoxStandard": {
             "source": "cadence/contracts/VoteBoxStandard.cdc",
             "aliases": {
                 "testing": "0000000000000007",
-                "emulator": "f8d6e0586b0a20c7"
+                "emulator": "f8d6e0586b0a20c7",
+                "testnet": "04ae0cb4fed4bebd"
             }
         }
     },
@@ -157,7 +161,7 @@
             "address": "f8d6e0586b0a20c7",
             "key": {
                 "type": "file",
-                "location": "keys/emulator-account.pkey",
+                "location": "keys/local_emulator/emulator-account.pkey",
                 "signatureAlgorithm": "ECDSA_P256",
                 "hashAlgorithm": "SHA3_256"
             }
@@ -166,7 +170,7 @@
             "address": "0x179b6b1cb6755e31",
             "key": {
                 "type": "file",
-                "location": "./keys/account01.pkey",
+                "location": "./keys/local_emulator/account01.pkey",
                 "signatureAlgorithm": "ECDSA_P256",
                 "hashAlgorithm": "SHA3_256"
             }
@@ -175,7 +179,7 @@
             "address": "0xf3fcd2c1a78f5eee",
             "key": {
                 "type": "file",
-                "location": "./keys/account02.pkey",
+                "location": "./keys/local_emulator/account02.pkey",
                 "signatureAlgorithm": "ECDSA_P256",
                 "hashAlgorithm": "SHA3_256"
             }
@@ -184,7 +188,7 @@
             "address": "0xe03daebed8ca0615",
             "key": {
                 "type": "file",
-                "location": "./keys/account03.pkey",
+                "location": "./keys/local_emulator/account03.pkey",
                 "signatureAlgorithm": "ECDSA_P256",
                 "hashAlgorithm": "SHA3_256"
             }
@@ -193,7 +197,7 @@
             "address": "0x045a1763c93006ca",
             "key": {
                 "type": "file",
-                "location": "./keys/account04.pkey",
+                "location": "./keys/local_emulator/account04.pkey",
                 "signatureAlgorithm": "ECDSA_P256",
                 "hashAlgorithm": "SHA3_256"
             }
@@ -202,7 +206,106 @@
             "address": "0x120e725050340cab",
             "key": {
                 "type": "file",
-                "location": "./keys/account05.pkey",
+                "location": "./keys/local_emulator/account05.pkey",
+                "signatureAlgorithm": "ECDSA_P256",
+                "hashAlgorithm": "SHA3_256"
+            }
+        },
+        "flow_test_account00": {
+            "address": "0x678bb63d2ecf5ac2",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account00.pkey",
+                "signatureAlgorithm": "ECDSA_P256",
+                "hashAlgorithm": "SHA3_256"
+            }
+        },
+        "flow_test_account01": {
+            "address": "0x83ec0fe03f355a1d",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account01.pkey",
+                "signatureAlgorithm": "ECDSA_P256",
+                "hashAlgorithm": "SHA3_256"
+            }
+        },
+        "flow_test_account02": {
+            "address": "0x95b86ad3a631507c",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account02.pkey",
+                "signatureAlgorithm": "ECDSA_P256",
+                "hashAlgorithm": "SHA3_256"
+            }
+        },
+        "flow_test_account03": {
+            "address": "0x83ec0fe03f355a1d",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account01.pkey",
+                "signatureAlgorithm": "ECDSA_P256",
+                "hashAlgorithm": "SHA3_256"
+            }
+        },
+        "flow_test_account04": {
+            "address": "0x71dfd30eb7cb50a3",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account04.pkey",
+                "signatureAlgorithm": "ECDSA_P256",
+                "hashAlgorithm": "SHA3_256"
+            }
+        },
+        "flow_test_account05": {
+            "address": "0x7af5e1977b4e2e8a",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account05.pkey",
+                "signatureAlgorithm": "ECDSA_P256",
+                "hashAlgorithm": "SHA3_256"
+            }
+        },
+        "flow_test_account06": {
+            "address": "0x88c63d79f3b02434",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account06.pkey",
+                "signatureAlgorithm": "ECDSA_P256",
+                "hashAlgorithm": "SHA3_256"
+            }
+        },
+        "flow_test_account07": {
+            "address": "0x65413a9b5deb9e6e",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account07.pkey",
+                "signatureAlgorithm": "ECDSA_P256",
+                "hashAlgorithm": "SHA3_256"
+            }
+        },
+        "flow_test_account08": {
+            "address": "0x812683464c119eb1",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account08.pkey",
+                "signatureAlgorithm": "ECDSA_P256",
+                "hashAlgorithm": "SHA3_256"
+            }
+        },
+        "flow_test_account09": {
+            "address": "0x9772e675d51594d0",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account09.pkey",
+                "signatureAlgorithm": "ECDSA_P256",
+                "hashAlgorithm": "SHA3_256"
+            }
+        },
+        "flow_test_account10": {
+            "address": "0x04ae0cb4fed4bebd",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account10.pkey",
                 "signatureAlgorithm": "ECDSA_P256",
                 "hashAlgorithm": "SHA3_256"
             }
@@ -211,6 +314,14 @@
     "deployments": {
         "emulator": {
             "emulator-account": [
+                "BallotStandard",
+                "ElectionStandard",
+                "VoteBoxStandard",
+                "VoteBooth"
+            ]
+        },
+        "testnet": {
+            "flow_test_account10": [
                 "BallotStandard",
                 "ElectionStandard",
                 "VoteBoxStandard",

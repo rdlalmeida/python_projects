@@ -96,7 +96,7 @@ do
     echo "Account address = " $ACCOUNT_ADDRESS
 
     ######################## 3. Save the Private key to a file and add it to the .gitignore file
-    ACCOUNT_FILENAME="./keys/$ACCOUNT_NAME.pkey"
+    ACCOUNT_FILENAME="./keys/local_emulator/$ACCOUNT_NAME.pkey"
 
     # Even if a private key file with this name already exists, this command overwrites it. The | tr -d '\n' serves to remove any trailing newlines that can interfere with the emulator
     # reading the key in the file
