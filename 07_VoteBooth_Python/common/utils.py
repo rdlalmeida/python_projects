@@ -83,3 +83,45 @@ def convertPythonDictionaryToCadenceDictionary(python_dict: dict) -> cadence.Dic
 
     # Convert the list of KeyValuePairs into a cadence.Dictionary and return it
     return cadence.Dictionary(value=cadence_input)
+
+
+def processTransactionData(fees_deducted_events: list[dict], tokens_withdrawn_events: list[dict], tx_description: str, output_file_path: pathlib.Path) -> None:
+    """Function to automate the processing of transaction metrics that are interesting to characterise the system performance. These metrics are retrieved from the system through events. This function continues the processing by retrieving the data from the events, format it in a handy .csv format, and appends it to a file whose path is provided as argument. The idea is to have a nice data feed to build graphs and do all sort of post analysis.
+    
+    :param flow_fees_events (list[dict]): A list with all the FlowFees.FeesDeducted events to retrieve the gas paid in the transaction and the execution effort (computational effort) required by the computation. 
+    :param tokens_withdrawn_events (list[dict]): A list with all the FungibleToken.Withdrawn events related to the transaction to retrieve additional gas expenditure details.
+    :param tx_description (str): A descriptor for the data set, namely, a summary of what the transaction did, e.g., "create ballot", "tally election", etc.
+    :param output_file_path (pathlib.Path): A pathlib.Path object to the file to be used to write the analysis data.
+    """
+    # Test if the file pointed by the Path provided exists, create a new one if does not
+    if (os.path.isfile(output_file_path)):
+        # If the file already exists, open it in append mode
+        output_stream = open(output_file_path, "+a")
+    else:
+        # If not, create a new one
+        output_stream = open(output_file_path, "+x")
+        # And write the headers in the first line
+        new_line: str = f"Transaction Descriptor, fee amount, execution effort, inclusion effort, tokens withdrawn, from account, balance after\n"
+        output_stream.write(new_line)
+
+
+    # Process the FlowFees.FeesDeducted and FungibleToken.Withdrawn events at the same time since these are always emitted simultaneously. In case they aren't, I created this
+    # clever loop that omits missing events but guarantees that each pair of events is properly processed
+    for i in range(0,max(len(fees_deducted_events), len(tokens_withdrawn_events))):
+        new_line: str = ""
+        if (fees_deducted_events[i]):
+            new_line = f"{tx_description},{fees_deducted_events[i]["amount"]},{fees_deducted_events[i]["execution_effort"]},{fees_deducted_events[i]["inclusion_effort"]},"
+        else:
+            new_line = f"{tx_description},,,,"
+
+        if (tokens_withdrawn_events[i]):
+            new_line += f"{tokens_withdrawn_events[i]["amount"]},{tokens_withdrawn_events[i]["from"]},{tokens_withdrawn_events[i]["balance_after"]}\n"
+        else:
+            new_line += f",,\n"
+        
+        # Write the line to the stream and move to the next pair
+        output_stream.write(new_line)
+    
+    # All done. Close the output stream before exiting
+    output_stream.close()
+

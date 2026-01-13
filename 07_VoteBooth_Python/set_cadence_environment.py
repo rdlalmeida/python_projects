@@ -10,11 +10,12 @@ Problem: Flow testnet and other executable platforms no longer recognise this fo
 
 This is a shitty conundrum and the easiest way I could find to solve it is to create this python script to automate the comment and uncomment of imports in all .cdc files...
 """
-
 import sys, os
 import configparser
 from pathlib import Path
 from common import utils
+from flow_py_sdk import cadence
+
 import logging
 log = logging.getLogger(__name__)
 utils.configureLogging()
@@ -101,14 +102,14 @@ def set_environment(env: str = "local") -> None:
             print(f"Processing contract '{contract}'...")
             switchToRemote(source_path=contract)
 
-        print("Switching project transactions to remote mode: ")
+        print("\n\nSwitching project transactions to remote mode: ")
         for transaction in cadence_transactions:
             print(f"Processing transaction '{transaction}'...")
             switchToRemote(source_path=transaction)
 
-        print("Switching project scripts to remote mode: ")
-        print(f"Processing script '{script}'...")
+        print("\n\nSwitching project scripts to remote mode: ")
         for script in cadence_scripts:
+            print(f"Processing script '{script}'...")
             switchToRemote(source_path=script)
     else:
         raise Exception(f"ERROR: Invalid environment option provided: {env}. Please use either 'local' or 'remote' to continue")
@@ -152,18 +153,18 @@ def switchToLocal(source_path: Path) -> None:
             # Grab the contract name and test if it is one of the ones that are not deployed in the service_account
             if (contract_name == "FlowFees"):
                 # Append the rest of the import statement
-                current_line = f"import {contract_name} from 0x{config.get(section="testnet", option=contract_name)}\n"
+                current_line = f"import {contract_name} from 0x{config.get(section="emulator", option=contract_name)}\n"
             elif (contract_name == "FlowToken"):
-                current_line = f"import {contract_name} from 0x{config.get(section="testnet", option=contract_name)}\n"
+                current_line = f"import {contract_name} from 0x{config.get(section="emulator", option=contract_name)}\n"
             elif (contract_name == "FungibleToken"):
-                current_line = f"import {contract_name} from 0x{config.get(section="testnet", option=contract_name)}\n"
+                current_line = f"import {contract_name} from 0x{config.get(section="emulator", option=contract_name)}\n"
             elif (contract_name == "Burner"):
-                current_line = f"import {contract_name} from 0x{config.get(section="testnet", option=contract_name)}\n"
+                current_line = f"import {contract_name} from 0x{config.get(section="emulator", option=contract_name)}\n"
             elif (contract_name == "Crypto"):
-                current_line = f"import {contract_name} from 0x{config.get(section="testnet", option=contract_name)}\n"
+                current_line = f"import {contract_name} from 0x{config.get(section="emulator", option=contract_name)}\n"
             else:
                 # Default to the service account
-                current_line = f"import {contract_name} from 0x{config.get(section="testnet", option="service_account")}\n"
+                current_line = f"import {contract_name} from 0x{config.get(section="emulator", option="service_account")}\n"
         
         # Write the line to the temp file
         temp_stream.write(current_line)
@@ -243,4 +244,4 @@ def switchToRemote(source_path: Path) -> None:
     temp_stream.close()
 
 
-main(env="testnet")
+main(env="local")

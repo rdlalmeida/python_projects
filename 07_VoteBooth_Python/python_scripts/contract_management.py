@@ -14,6 +14,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from common.account_config import AccountConfig
 from python_scripts.event_management import EventRunner
+from python_scripts.cadence_scripts import ScriptRunner
 from common import utils
 from pathlib import Path
 
@@ -23,6 +24,11 @@ log = logging.getLogger(__name__)
 utils.configureLogging()
 # logging.basicConfig(level=logging.DEBUG)
 # log.setLevel("DEBUG")
+
+# TODO: Continue the profiling of accounts for the rest of the contracts
+# TODO: Propagate the output path through the rest of the system
+# TODO: Repeat the process for the resetNetwork
+
 
 # Dictionary to control the project contracts to be deployed. The entries with the value = True are deployed, the ones with False are ignored.
 project_files = {
@@ -66,6 +72,7 @@ class DeployContract():
         self.config.read(config_path)
 
         self.event_runner: EventRunner = EventRunner()
+        self.script_runner: ScriptRunner = ScriptRunner()
         self.encoding = self.config.get(section="encryption", option="encoding")
 
         
@@ -202,25 +209,70 @@ class DeployContract():
                 log.info("Done!")
 
 
-    async def deployProjectContracts(self):
+    async def deployProjectContracts(self, output_file_path: Path = None) -> dict[str: dict[str: dict]]:
         """
             Function to deploy (or update) all project, i.e., non-dependency, contracts. The project contracts are defined in the project_files dictionary. The boolean value in each entry determines if the contract is to be deployed in the current run or not.
             NOTE: The project contracts have a rigid dependency structure that requires these to be deployed in the following order:
                 BallotStandard -> ElectionStandard -> VoteBoxStandard -> VoteBooth
             As such, in order to guarantee this, I cannot deploy them in a for loop or something of the sort and I need to force the deployment order from above.
+
+            :param output_file_path (pathlib.Path): If provided, any functions that provided statistical output send their results to this file instead. If not, the results are printed to the stdout instead
+            :return dict[str: dict[str: dict]]: This function returns a dictionary with all the relevant events, namely, the FungibleToken.Withdrawn and FlowFees.FeesDeducted events, in a properly ordered dictionary with the format
+            process_events = 
+            {
+                "BallotStandard": 
+                    {
+                        "tokens_withdrawn_events": list[dict],
+                        "fees_deducted_events": list[dict]
+                    },
+                "ElectionStandard":
+                    {
+                        "tokens_withdrawn_events": list[dict],
+                        "fees_deducted_events": list[dict]
+                    },
+                "VoteBoxStandard":
+                    {
+                        "tokens_withdrawn_events": list[dict],
+                        "fees_deducted_events": list[dict]
+                    },
+                "VoteBooth":
+                    {
+                        "tokens_withdrawn_events": list[dict],
+                        "fees_deducted_events": list[dict],
+                        "election_index_created_events": list[dict],
+                        "votebooth_printer_admin_created_events": list[dict]
+                    }
+            }
         """
         # 1. Deploy the base contract BallotStandard
         contract_path = Path(self.config.get("project", "BallotStandard"))
         contract_source = open(contract_path)
 
+        tx_response: entities.TransactionResultResponse = None
+
+        process_events: dict[str: dict[str: dict]] = {}
+
         log.info("1. Deploying the BallotStandard project contract...")
+        # Profile the accounts involved
+        await self.script_runner.profile_all_accounts_csv(program_stage="Backed contracts - pre deploy", output_file_path=output_file_path)
         try:
-            await self.run(contract_name="BallotStandard", contract_source=contract_source.read(), update=True)
+            tx_response = await self.run(contract_name="BallotStandard", contract_source=contract_source.read(), update=True)
             log.info("BallotStandard contract deployed successfully!")
         except Exception as e:
             log.error("Unable to deploy the BallotStandard contract: ")
             log.error(e)
             exit(-1)
+        
+        # Take a snapshot of the same accounts after deploying the contract
+        await self.script_runner.profile_all_accounts_csv(program_stage="BallotStandard - post deploy", output_file_path=output_file_path)
+
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
+
+        process_events["BallotStandard"] = {
+            "tokens_withdrawn_events": tokens_withdrawn_events,
+            "fees_deducted_events": fees_deducted_events
+        }
 
         # 2. Deploy the base contract ElectionStandard
         contract_path = Path(self.config.get("project", "ElectionStandard"))
@@ -228,12 +280,22 @@ class DeployContract():
 
         log.info("2. Deploying the ElectionStandard project contract...")
         try:
-            await self.run(contract_name="ElectionStandard", contract_source=contract_source.read(), update=True)
+            tx_response = await self.run(contract_name="ElectionStandard", contract_source=contract_source.read(), update=True)
             log.info("ElectionStandard contract deployed successfully!")
         except Exception as e:
             log.error("Unable to deploy the ElectionStandard contract: ")
             log.error(e)
             exit(-1)
+
+        await self.script_runner.profile_all_accounts_csv(program_stage="ElectionStandard - post deploy", output_file_path=output_file_path)
+
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
+
+        process_events["ElectionStandard"] = {
+            "tokens_withdrawn_events": tokens_withdrawn_events,
+            "fees_deducted_events": fees_deducted_events
+        }
 
         # 3. Deploy the base contract VoteBoxStandard
         contract_path = Path(self.config.get("project", "VoteBoxStandard"))
@@ -241,12 +303,23 @@ class DeployContract():
 
         log.info("3. Deploying the VoteBoxStandard project contract...")
         try:
-            await self.run(contract_name="VoteBoxStandard", contract_source=contract_source.read(), update=True)
+            tx_response = await self.run(contract_name="VoteBoxStandard", contract_source=contract_source.read(), update=True)
             log.info("VoteBoxStandard contract deployed successfully!")
         except Exception as e:
             log.error("Unable to deploy the VoteBoxStandard contract: ")
             log.error(e)
             exit(-1)
+        
+        await self.script_runner.profile_all_accounts_csv(program_stage="VoteBoxStandard - post deploy", output_file_path=output_file_path)
+
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
+
+        process_events["VoteBoxStandard"] = {
+            "tokens_withdrawn_events": tokens_withdrawn_events,
+            "fees_deducted_events": fees_deducted_events
+        }
+
 
         # 4. Deploy the base contract VoteBooth. This one needs an Bool argument provided to it as well
         contract_path = Path(self.config.get("project", "VoteBooth"))
@@ -257,11 +330,13 @@ class DeployContract():
             tx_response: entities.TransactionResultResponse = await self.run(contract_name="VoteBooth", contract_source=contract_source.read(), update=True)
             log.info("VoteBooth contract deployed successfully!")
 
+            await self.script_runner.profile_all_accounts_csv(program_stage="VoteBooth - post deploy", output_file_path=output_file_path)
+
             # After deploying the last contract of the project, I should run the EventRunner class constructor again to update the deployment addresses
             # that are needed to process the events properly. This needs to happen before running any of the event capturing routines or it will fail
             self.event_runner.configureDeployerAddress()
 
-            election_index_created_events: list[dict[str:str]] = await self.event_runner.getElectionIndexCreatedEvents(tx_response=tx_response)
+            election_index_created_events: list[dict] = await self.event_runner.getElectionIndexCreatedEvents(tx_response=tx_response)
 
             for election_index_created_event in election_index_created_events:
                 log.info(f"ElectionIndex created for account {election_index_created_event["account_address"]}")
@@ -271,19 +346,59 @@ class DeployContract():
             for votebooth_printer_admin_created_event in votebooth_printer_admin_created_events:
                 log.info(f"VoteBoothPrinterAdmin created for account {votebooth_printer_admin_created_event["account_address"]}")
 
+            tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+            fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
+
+            process_events["VoteBooth"] = {
+                "tokens_withdrawn_events": tokens_withdrawn_events,
+                "feeds_deducted_events": fees_deducted_events,
+                "election_index_created_events": election_index_created_events,
+                "votebooth_printer_admin_created_events": votebooth_printer_admin_created_events
+            }
+
         except Exception as e:
             log.error("Unable to deploy the VoteBooth contract: ")
             log.error(e)
             exit(-1)
+        
+        return process_events
 
 
-    async def deployProject(self):
+    async def deployProject(self, output_file_path: Path = None) -> dict[str: dict[str: dict]]:
         """
         This function aggregates the DeployContract and UpdateContract (which I already combined into one) but to deploy all dependencies and all project contracts respective the defined order to produce a network environment ready to be used.
+        :param output_file_path (pathlib.Path): If provided, any functions that provided statistical output send their results to this file instead. If not, the results are printed to the stdout instead
+        :return dict[str: dict[str: dict]]: This function returns a dictionary with all the relevant events, namely, the FungibleToken.Withdrawn and FlowFees.FeesDeducted events, in a properly ordered dictionary with the format
+        process_events = 
+        {
+            "BallotStandard": 
+                {
+                    "tokens_withdrawn_events": list[dict],
+                    "fees_deducted_events": list[dict]
+                },
+            "ElectionStandard":
+                {
+                    "tokens_withdrawn_events": list[dict],
+                    "fees_deducted_events": list[dict]
+                },
+            "VoteBoxStandard":
+                {
+                    "tokens_withdrawn_events": list[dict],
+                    "fees_deducted_events": list[dict]
+                },
+            "VoteBooth":
+                {
+                    "tokens_withdrawn_events": list[dict],
+                    "fees_deducted_events": list[dict],
+                    "election_index_destroyed_events": list[dict],
+                    "votebooth_printer_admin_destroyed_events": list[dict]
+                }
+        }
         """
         log.info(f"Deploying all project contracts for network {self.ctx.access_node_host}:{self.ctx.access_node_port}...")
-        await self.deployProjectContracts()
+        process_events: dict[str: dict[str: dict]] = await self.deployProjectContracts(output_file_path=output_file_path)
         log.info("All project contracts were deployed successfully!")
+        return process_events
 
 
 class DeleteContract():
@@ -296,7 +411,8 @@ class DeleteContract():
         self.config: configparser.ConfigParser = configparser.ConfigParser()
         self.config.read(config_path)
 
-        self.event_runner = EventRunner()
+        self.event_runner: EventRunner = EventRunner()
+        self.script_runner: ScriptRunner = ScriptRunner()
 
     # The contract removal function only needs the contract name
     async def run(self, contract_name: str) -> entities.TransactionResultResponse:
@@ -345,17 +461,75 @@ class DeleteContract():
 
 
 
-    async def deleteProjectContracts(self):
+    async def deleteProjectContracts(self, output_file_path: Path = None) -> dict[str: dict[str: dict]]:
         """
             Function to deploy all project contracts as defined in the project_files dictionary.
+            :param output_file_path (pathlib.Path): If provided, any functions that provided statistical output send their results to this file instead. If not, the results are printed to the stdout instead
+            :return dict[str: dict[str: dict]]: This function returns a dictionary with all the relevant events, namely, the FungibleToken.Withdrawn and FlowFees.FeesDeducted events, in a properly ordered dictionary with the format
+            process_events = 
+            {
+                "BallotStandard": 
+                    {
+                        "tokens_withdrawn_events": list[dict],
+                        "fees_deducted_events": list[dict]
+                    },
+                "ElectionStandard":
+                    {
+                        "tokens_withdrawn_events": list[dict],
+                        "fees_deducted_events": list[dict]
+                    },
+                "VoteBoxStandard":
+                    {
+                        "tokens_withdrawn_events": list[dict],
+                        "fees_deducted_events": list[dict]
+                    },
+                "VoteBooth":
+                    {
+                        "tokens_withdrawn_events": list[dict],
+                        "fees_deducted_events": list[dict],
+                        "election_index_destroyed_events": list[dict],
+                        "votebooth_printer_admin_destroyed_events": list[dict]
+                    }
+            }
         """
         # Update the event_runner deployed addresses before attempting any event capture
-        self.event_runner.configureDeployerAddress() 
+        self.event_runner.configureDeployerAddress()
+        tx_response: entities.TransactionResultResponse = None
 
+        process_events: dict[str: dict[str: dict]] = {}
+        
+        # Profile the accounts before deleting the contracts from account storage
+        await self.script_runner.profile_all_accounts_csv(program_stage="Contract backend - pre removal", output_file_path=output_file_path)
+        
         for project_contract in project_files:
             log.info(f"Deleting '{project_contract}' from network {self.ctx.access_node_host}:{self.ctx.access_node_port} for account {self.ctx.service_account["address"]}")
-            await self.run(contract_name=project_contract)
+            tx_response = await self.run(contract_name=project_contract)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"{project_contract} - post deletion", output_file_path=output_file_path)
+
             log.info(f"Contract '{project_contract}' deleted successfully!")
+
+            # Capture and process related events
+
+            tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+            fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
+
+            process_events[project_contract] = {
+                "tokens_withdrawn_events": tokens_withdrawn_events,
+                "fees_deducted_events": fees_deducted_events
+            }
+            if (project_contract == "VoteBooth"):
+                # This contract requires the capture of ElectionIndexDestroyed and VoteBoothPrinterAdminDestroyed events
+                election_index_destroyed_events: list[dict] = await self.event_runner.getElectionIndexDestroyedEvents(tx_response=tx_response)
+                votebooth_printer_admin_destroyed_events: list[dict] = await self.event_runner.getVoteBoothPrinterAdminDestroyedEvents(tx_response=tx_response)
+
+                process_events[project_contract].update(
+                    {
+                        "election_index_destroyed_events": election_index_destroyed_events, 
+                        "votebooth_printer_admin_destroyed_events": votebooth_printer_admin_destroyed_events
+                    }
+                )
+            
+        return process_events
 
 
     async def deleteProjectDependencies(self):
@@ -370,21 +544,49 @@ class DeleteContract():
             log.info(f"Dependency '{project_dependency}' deleted successfully!")
 
 
-    async def resetNetwork(self):
+    async def resetNetwork(self, output_file_path: Path = None) -> dict[str: dict[str: dict]]:
         """
-        This function aggregates the 'deleteProjectContracts' and 'deleteProjectDependencies' function to clear the configured network from all contracts and respective dependencies
+        This function aggregates the 'deleteProjectContracts' and 'deleteProjectDependencies' function to clear the configured network from all contracts and respective dependencies.
+        :param output_file_path (pathlib.Path): If provided, any functions that provided statistical output send their results to this file instead. If not, the results are printed to the stdout instead
+        :return dict[str: dict[str: dict]]: This function returns a dictionary with all the relevant events, namely, the FungibleToken.Withdrawn and FlowFees.FeesDeducted events, in a properly ordered dictionary with the format
+        process_events = 
+        {
+            "BallotStandard": 
+                {
+                    "tokens_withdrawn_events": list[dict],
+                    "fees_deducted_events": list[dict]
+                },
+            "ElectionStandard":
+                {
+                    "tokens_withdrawn_events": list[dict],
+                    "fees_deducted_events": list[dict]
+                },
+            "VoteBoxStandard":
+                {
+                    "tokens_withdrawn_events": list[dict],
+                    "fees_deducted_events": list[dict]
+                },
+            "VoteBooth":
+                {
+                    "tokens_withdrawn_events": list[dict],
+                    "fees_deducted_events": list[dict],
+                    "election_index_destroyed_events": list[dict],
+                    "votebooth_printer_admin_destroyed_events": list[dict]
+                }
+        }
         """
         log.info(f"Deleting all project contracts from network {self.ctx.access_node_host}:{self.ctx.access_node_port}...")
-        await self.deleteProjectContracts()
+        process_events: dict[str: dict[str: dict]] = await self.deleteProjectContracts(output_file_path=output_file_path)
         log.info("All project contracts deleted successfully!")
+
 
         # print(f"Deleting all project dependencies from network {self.ctx.access_node_host}:{self.ctx.access_node_port}...")
         # await self.deleteProjectDependencies()
         # print("All project dependencies deleted successfully!")
+        return process_events
 
 
-
-async def main(op: str = "deploy"):
+async def main(op: str = "deploy", output_file_path: Path = None) -> dict[str: dict[str: dict]]:
     option = op
     if (len(sys.argv) > 1):
         try:
@@ -396,14 +598,16 @@ async def main(op: str = "deploy"):
     if (option == "deploy"):
         log.info(f"Setting up network...")
         contract_deployer: DeployContract = DeployContract()
-        await contract_deployer.deployProject()
+        process_events: dict[str: dict[str: dict]] = await contract_deployer.deployProject(output_file_path=output_file_path)
         log.info(f"Project successfully set up!")
+        return process_events
     elif (option == "clear"):
         log.info("Clearing up the network...")
         contract_deleter: DeleteContract = DeleteContract()
         contract_deleter.event_runner.configureDeployerAddress()
-        await contract_deleter.resetNetwork()
+        process_events: dict[str: dict[str: dict]] = await contract_deleter.resetNetwork(output_file_path=output_file_path)
         log.info(f"Project network cleared successfully!")
+        return process_events
     else:
         if (option == ""):
             log.warning(f"Missing option", end="")

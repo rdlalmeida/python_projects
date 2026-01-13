@@ -1,5 +1,5 @@
 /**
-    This script automates the retrieval of the electionId for the Election identified with the electionId provided. Seems redundant but this validates an important contract -> resource -> reference circuit. Since I can invoke this function either directly from an &ElectionStandard.ElectionPublic reference or from a &VoteBoxStandard.VoteBoxPublic one as well, I want this one script to be able to do both. Retrieving this data from the ElectionStandard.ElectionPublic only requires a valid electionId, but the one from the &VoteBoxStandard.VoteBoxPublic needs the address to the user account provided as well. As such, each of the following scripts accept two inputs, the second one is set as an optional (the voter address). If both inputs are provided, this script runs the &VoteBoxStandard.VoteBoxPublic version. If the voter address is a nil instead, then the &ElectionStandard.ElectionPublic one is invoked instead.
+ ""
     NOTE: When the &VoteBoxStandard.VoteBoxPublic version only works if the VoteBox has a Ballot in store for the electionId provided. If not, the function returns nil
 
     @param electionId (UInt64) The election identifier for the Election resource whose parameter is to be returned to.

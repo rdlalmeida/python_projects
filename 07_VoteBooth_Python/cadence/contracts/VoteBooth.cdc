@@ -1,22 +1,14 @@
 /**
     Main contract that takes all the Interfaces defined thus far and sets up the whole resource based process.
     
-    This contract establishes all the resources from the interfaces imported but it also has to deal with an interesting limitation of Cadence. Well, it is not a proper technical limitation, but more of a "avoid this if possible" condition, which is having a Collection of Elections, while Elections are also Collections already by themselves. Though there's nothing in Cadence that prevents that, the documentation advises developers to avoid this if possible. And I wanted to because it is going to mess with idea of delegating ElectionPublic capabilities through Ballots. As such, I'm going to use this contract to come up with an automatic way to create and manage Elections without using a Collection.
+ ""
 
     @author: Ricardo Lopes Almeida - https://github.com/rdlalmeida
 **/
-
-// Uncomment these lines for local testing, comment for testnet deploy
-// import Burner from 0xf8d6e0586b0a20c7
-// import BallotStandard from 0xf8d6e0586b0a20c7
-// import ElectionStandard from 0xf8d6e0586b0a20c7
-// import VoteBoxStandard from 0xf8d6e0586b0a20c7
-
-// Uncomment these lines for remote (testnet) testing, comment for local deploy
-import "Burner"
-import "BallotStandard"
-import "ElectionStandard"
-import "VoteBoxStandard"
+import Burner from 0xf8d6e0586b0a20c7
+import BallotStandard from 0xf8d6e0586b0a20c7
+import ElectionStandard from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0xf8d6e0586b0a20c7
 
 access(all) contract VoteBooth {
     // CUSTOM PATHS
@@ -346,7 +338,7 @@ access(all) contract VoteBooth {
     // ---------------------------------------------------------------- BALLOT PRINTER ADMIN BEGIN -------------------------------------------------------------
     access(all) resource VoteBoothPrinterAdmin: Burner.Burnable {
         /**
-            This function is the only process to create new Ballots in this context. I've made the BallotStandard contract such that anyone can import it and use the resource in their own version of this election platform. But for this instance in particular, the only entry point to create a new Ballot is through one of these BallotPrinterAdmin resources.
+import resources. from 0xf8d6e0586b0a20c7
 
             @param newLinkedElectionId (UInt64) The electionId to the Election resource that this Ballot can be submitted to.
             @param newElectionCapability (Capability<&{ElectionStandard.ElectionPublic}>) A Capability to retrieve the public reference to the Election associated to this Ballot.

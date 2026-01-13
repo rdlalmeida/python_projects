@@ -483,29 +483,6 @@ class ScriptRunner():
                 raise ScriptError(script_name=name)
             
             return bool(script_result.value)
-        
-
-    # async def getAccountBalance(self, account_address: str) -> float:
-    #     """Function to retrieve the account balance, in FLOW tokens, of the account whose address is provided as input.
-
-    #     :param account_address (str): The address of the account whose balance is to be retrieved.
-
-    #     :return (float): This function returns the balance amount in FLOW tokens for the account provided.
-    #     """
-    #     name = "17_get_account_balance"
-    #     arguments = [cadence.Address.from_hex(account_address)]
-
-    #     script_object: Script = self.getScript(script_name=name, script_arguments=arguments)
-
-    #     async with flow_client(
-    #         host=self.ctx.access_node_host, port=self.ctx.access_node_port
-    #     ) as client:
-    #         script_result = await client.execute_script(script=script_object)
-
-    #         if (not script_result):
-    #             raise ScriptError(script_name=name)
-
-    #         return float(script_result.__str__())
 
 
     async def getElectionWinner(self, election_id: int) -> dict[str:int]:
@@ -690,7 +667,7 @@ class ScriptRunner():
         print("\n")
 
 
-    async def profile_all_accounts_csv(self, program_stage: str = None) -> None:
+    async def profile_all_accounts_csv(self, program_stage: str = None, output_file_path: pathlib.Path = None) -> None:
         """
         This function profiles all configured accounts in the system, i.e., the one indicated in flow.json, but this time printing them in a CSV (comma separated values) to make it easy to import into other tools to do statistical analysis, plot graphs, etc. This version accepts one single string argument to indicate where in the main program the account profiling was done. This function prints the account profiles using the format
         
@@ -699,18 +676,41 @@ class ScriptRunner():
         Using one line per account. This function is the only one using the "print" function, therefore, running the main script and forwarding all output to a file (using > or >>), will write all this data in a handy file ready to be imported.
 
         :param program_state(str): If provided, this item is added to the line describing the current account profile. If not, the whole entry is omitted from the final result
+        :param output_file_path (pathlib.Path): If provided, this routine dumps the line to the file and omits the stdout
         """
         ctx = account_config.AccountConfig()
         accounts = ctx.getAccounts()
+
+        # Check if the file pointed by the path exists and proceed accordingly
+        if (output_file_path):
+            # If a file path was provided
+            if (os.path.isfile(output_file_path)):
+                # And the file already exists, open it in append mode
+                output_stream = open(output_file_path, "+a")
+            else:
+                # Create a new one
+                output_stream = open(output_file_path, "+x")
 
         for account_entry in accounts:
             # Get account data
             account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=accounts[account_entry])
             account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=accounts[account_entry])
+            new_line: str = ""
 
             # Print the account info in a single line, using the csv format
             if (program_stage != None):
-                print(f"{account_entry},{program_stage},{account_balance["default"]},{account_balance["available"]},{account_storage["capacity"]},{account_storage["used"]}")
+                new_line = f"{program_stage},{account_entry},{account_balance["default"]},{account_balance["available"]},{account_storage["capacity"]},{account_storage["used"]}"
             else:
-                print(f"{account_entry},{account_balance["default"]},{account_balance["available"]},{account_storage["capacity"]},{account_storage["used"]}")
+                new_line = f"{account_entry},{account_balance["default"]},{account_balance["available"]},{account_storage["capacity"]},{account_storage["used"]}"
+
+            if (output_stream):
+                # If an output stream is present, dump the new line into it
+                output_stream.write(new_line)
+            else:
+                # Otherwise print it to stdout
+                print(new_line)
+
+        # Check if an output stream was created and close it if so
+        if (output_stream):
+            output_stream.close() 
                 

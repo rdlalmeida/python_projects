@@ -275,7 +275,7 @@ class TransactionRunner():
             raise e
 
 
-    async def createElection(self, election_name: str, election_ballot: str, election_options: dict[int: str], election_public_key: str, election_storage_path: str, election_public_path: str, tx_signer_address: str) -> list[dict]:
+    async def createElection(self, election_name: str, election_ballot: str, election_options: dict[int: str], election_public_key: str, election_storage_path: str, election_public_path: str, tx_signer_address: str) -> tuple[list[dict], list[dict], list[dict]]:
         """Function to create a new Election in the project environment.
 
         :param election_name (str): The name of election to create
@@ -284,11 +284,24 @@ class TransactionRunner():
         :param public_key (str): The public encryption key associated to the election created.
         :param election_storage_path (str): The storage path to where the election created should be saved to.
         :param election_public_path (str): The public path to where the public election capability should be published to.:
-        :return (dict): If successful, this function returns a dictionary with the ElectionCreated event parameters:
+        :return: If successful, this function returns dictionaries with the ElectionCreated event parameters:
         {
             "election_id": int,
             "election_name": str
         }
+        FungibleToken.Withdrawn event parameters:
+        {
+            "amount": float,
+            "balance_after": float,
+            "from": str
+        }
+        And FlowFees event parameters:
+        {
+            "amount": float,
+            "execution_effort": float,
+            "inclusion_effort": float
+        }
+        in a tuple format
         """
         
         tx_name: str = "01_create_election"
@@ -332,11 +345,13 @@ class TransactionRunner():
 
         # Grab only the latest ElectionCreated event
         election_created_events: list[dict] = await self.event_runner.getElectionCreatedEvents(tx_response=tx_response)
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
-        return election_created_events
+        return (election_created_events, tokens_withdrawn_events, fees_deducted_events)
     
 
-    async def deleteElection(self, election_id: int, tx_signer_address: str) -> list[dict[str:int]]:
+    async def deleteElection(self, election_id: int, tx_signer_address: str) -> tuple[list[dict], list[dict], list[dict]]:
         """Function to delete an election identified by the id provided from the current environment.
 
         :param election_id (int): The identifier for the election to delete
@@ -347,6 +362,19 @@ class TransactionRunner():
             "election_id": int,
             "ballots_stored": int
         }
+        FungibleToken.Withdrawn event parameters:
+        {
+            "amount": float,
+            "balance_after": float,
+            "from": str
+        }
+        And FlowFees event parameters:
+        {
+            "amount": float,
+            "execution_effort": float,
+            "inclusion_effort": float
+        }
+        in a tuple format
         """
         tx_name: str = "07_destroy_election"
 
@@ -358,11 +386,13 @@ class TransactionRunner():
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
         election_destroyed_events: list[dict] = await self.event_runner.getElectionDestroyedEvents(tx_response=tx_response)
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
-        return election_destroyed_events
+        return (election_destroyed_events, tokens_withdrawn_events, fees_deducted_events)
     
 
-    async def createVoteBox(self, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = []) -> list[dict[str:str]]:
+    async def createVoteBox(self, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = []) -> tuple[list[dict], list[dict], list[dict]]:
         """Function to create a votebox resource into the the account that is supposed to sign this transaction.
 
         :param tx_signer_address (str): The address of the account that is going to digitally sign this transaction.
@@ -374,6 +404,19 @@ class TransactionRunner():
         {
             "voter_address": str
         }
+        FungibleToken.Withdrawn event parameters:
+        {
+            "amount": float,
+            "balance_after": float,
+            "from": str
+        }
+        And FlowFees event parameters:
+        {
+            "amount": float,
+            "execution_effort": float,
+            "inclusion_effort": float
+        }
+        in a tuple format
         """
         # Validate signature inputs
         if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizer_address) == 0)):
@@ -399,11 +442,13 @@ class TransactionRunner():
         
         # Grab the VoteBoxCreated event list
         votebox_created_events: list[dict[str:str]] = await self.event_runner.getVoteBoxCreatedEvents(tx_response=tx_response)
+        token_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
-        return votebox_created_events
+        return (votebox_created_events, token_withdrawn_events, fees_deducted_events)
     
 
-    async def deleteVoteBox(self, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = []) -> list[dict[str:str]]:
+    async def deleteVoteBox(self, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = []) -> tuple[list[dict], list[dict], list[dict]]:
         """Function to delete a votebox resource from the account storage for the user that digitally signs this transaction.
 
         :param tx_signer_address (str): The address of the account that is going to digitally sign this transaction.
@@ -417,6 +462,19 @@ class TransactionRunner():
             "active_ballots": int,
             "voter_address": str
         }
+        FungibleToken.Withdrawn event parameters:
+        {
+            "amount": float,
+            "balance_after": float,
+            "from": str
+        }
+        And FlowFees event parameters:
+        {
+            "amount": float,
+            "execution_effort": float,
+            "inclusion_effort": float
+        }
+        in a tuple format
         """
         # Validate signature inputs
         if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx-authorizer_address) == 0)):
@@ -442,12 +500,14 @@ class TransactionRunner():
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
-        votebox_destroyed_event:dict = await self.event_runner.getVoteBoxBurnedEvents(tx_response=tx_response)
+        votebox_destroyed_events: list[dict] = await self.event_runner.getVoteBoxBurnedEvents(tx_response=tx_response)
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
-        return votebox_destroyed_event
+        return (votebox_destroyed_events, tokens_withdrawn_events, fees_deducted_events)
     
 
-    async def createBallot(self, election_id: int, recipient_address: str, tx_signer_address: str) -> list[dict[str:int]]:
+    async def createBallot(self, election_id: int, recipient_address: str, tx_signer_address: str) -> tuple[list[dict], list[dict], list[dict]]:
         """Function to create and deposit a ballot resource into the votebox in the account identified by the recipient address.
 
         :param election_id (int): The identifier for the Election that this Ballot should be associated to.
@@ -459,6 +519,19 @@ class TransactionRunner():
             "ballot_id": int,
             "linked_election_id": int
         }
+        FungibleToken.Withdrawn event parameters:
+        {
+            "amount": float,
+            "balance_after": float,
+            "from": str
+        }
+        And FlowFees event parameters:
+        {
+            "amount": float,
+            "execution_effort": float,
+            "inclusion_effort": float
+        }
+        in a tuple format
         """
         tx_name: str = "03_create_ballot"
         tx_arguments: list = [
@@ -470,12 +543,14 @@ class TransactionRunner():
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
-        ballot_created_event: dict[str:int] = await self.event_runner.getBallotCreatedEvents(tx_response=tx_response)
+        ballot_created_events: list[dict] = await self.event_runner.getBallotCreatedEvents(tx_response=tx_response)
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
-        return ballot_created_event
+        return (ballot_created_events, tokens_withdrawn_events, fees_deducted_events)
     
 
-    async def castBallot(self, election_id: int, new_option: str, tx_signer_address: str, tx_proposer_address: str, tx_payer_address: str, tx_authorizer_address: list[str]) -> None:
+    async def castBallot(self, election_id: int, new_option: str, tx_signer_address: str, tx_proposer_address: str, tx_payer_address: str, tx_authorizer_address: list[str]) -> tuple[list[dict], list[dict]]:
         """Function to set the option provided as the 'new_option' argument in a Ballot cast for the Election identified with the election_id provided, for a VoteBox in the account that digitally signs this transaction.
 
         :param election_id (int): The election identifier to select the ballot to cast.
@@ -484,6 +559,19 @@ class TransactionRunner():
         :param tx_proposer_address (str): The address of the account that proposes the transaction.
         :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
         :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
+        :return (list[dict]): The function returns the parameters from the FungibleToken.Withdrawn event parameters:
+        {
+            "amount": float,
+            "balance_after": float,
+            "from": str
+        }
+        And FlowFees event parameters:
+        {
+            "amount": float,
+            "execution_effort": float,
+            "inclusion_effort": float
+        }
+        in a tuple format
         """
         # Validate signature inputs
         if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizer_address) == 0)):
@@ -508,12 +596,17 @@ class TransactionRunner():
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizers=tx_authorizer_address)
 
-        await self.submitTransaction(tx_object=tx_object)
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
         log.info(f"Voter {tx_signer_address} cast a new option for election {election_id}")
 
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
+
+        return (tokens_withdrawn_events, fees_deducted_events)
+
     
-    async def submitBallot(self, election_id: int, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = []) -> list[dict[str:int]]:
+    async def submitBallot(self, election_id: int, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = []) -> tuple[list[dict], list[dict], list[dict]]:
         """Function to submit a ballot in votebox from  the transaction signer address to the election with the id provided as argument.
 
         :param election_id (int): The election identifier to select the ballot to submit.
@@ -527,6 +620,26 @@ class TransactionRunner():
             "ballot_id": int,
             "election_id": int
         }
+        or the BallotReplaced events in the format
+        {
+            "old_ballot_id": int,
+            "new_ballot_id": int,
+            "election_id": int
+
+        }
+        and the FungibleToken.Withdrawn event parameters:
+        {
+            "amount": float,
+            "balance_after": float,
+            "from": str
+        }
+        And FlowFees event parameters:
+        {
+            "amount": float,
+            "execution_effort": float,
+            "inclusion_effort": float
+        }
+        in a tuple format
         """
         # Validate signature inputs
         if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizer_address) == 0)):
@@ -556,19 +669,23 @@ class TransactionRunner():
         # replaces a previously submitted one, then this transaction triggers the BallotReplaced instead
 
         # Start by grabbing the BallotSubmitted event for this transaction
-        ballot_submitted_events: list[dict[str:int]] = await self.event_runner.getBallotSubmittedEvents(tx_response=tx_response)
+        ballot_submitted_events: list[dict] = await self.event_runner.getBallotSubmittedEvents(tx_response=tx_response)
 
         # And the respective BallotReplaced event as well. If all goes well, I should have only one item in either one of these lists.
-        ballot_replaced_events: list[dict[str:int]] = await self.event_runner.getBallotReplacedEvents(tx_response=tx_response)
+        ballot_replaced_events: list[dict] = await self.event_runner.getBallotReplacedEvents(tx_response=tx_response)
+
+        # Retrieve the remaining events
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         # Case 1: I have one BallotSubmitted event and 0 BallotReplaced. The transaction submitted the first Ballot to the VoteBox resource
         if (len(ballot_submitted_events) > 0 and len(ballot_replaced_events) == 0):
             # All OK. Return the BallotSubmitted event details
-            return ballot_submitted_events
+            return (ballot_submitted_events, tokens_withdrawn_events, fees_deducted_events)
         
         # Case 2: I have 0 BallotSubmitted events and at least one BallotReplaced event. The transaction replaces an previously submitted Ballot.
         elif (len(ballot_submitted_events) == 0 and len(ballot_replaced_events) > 0):
-            return ballot_replaced_events
+            return (ballot_replaced_events, tokens_withdrawn_events, fees_deducted_events)
         # Any other case is an error. Raise the respective Exception
         elif (len(ballot_submitted_events) > 0 and len(ballot_replaced_events) > 0):
             # Got both events at once. This is an Error
@@ -581,13 +698,26 @@ class TransactionRunner():
             raise Exception(f"ERROR: Ballot submission for account {tx_signer_address} failed!")
         
     
-    async def tallyElection(self, election_id: int, tx_signer_address: str) -> list[str]:
-        """Function to trigger the end of a running Election, the withdrawal of all submitted Ballots, and the computation of results.
+    async def tallyElection(self, election_id: int, tx_signer_address: str) -> tuple[list[dict], list[dict], list[dict]]:
+        """
+        Function to trigger the end of a running Election, the withdrawal of all submitted Ballots, and the computation of results.
 
         :param election_id (int): The election identifier for the election to be tallied.
         :param tx_signer_address (str): The address of the account that can digitally sign this transaction.
 
-        :return (list[str]): This function returns the array of ballot options for the election tallied, still encrypted, to be returned for further processing
+        :return (list[str]): The function returns the FungibleToken.Withdrawn event parameters:
+        {
+            "amount": float,
+            "balance_after": float,
+            "from": str
+        }
+        And FlowFees event parameters:
+        {
+            "amount": float,
+            "execution_effort": float,
+            "inclusion_effort": float
+        }
+        in a tuple format
         """
         tx_name: str = "06_tally_election"
         tx_arguments: list = [cadence.UInt64(election_id)]
@@ -596,20 +726,33 @@ class TransactionRunner():
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
-        ballots_withdrawn_events: list[dict[str:int]] = await self.event_runner.getBallotsWithdrawnEvents(tx_response=tx_response)
+        ballots_withdrawn_events: list[dict] = await self.event_runner.getBallotsWithdrawnEvents(tx_response=tx_response)
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
-        if (len(ballots_withdrawn_events) > 0):
-            return ballots_withdrawn_events[0]
-    
-    async def finishElection(self, election_id: int, election_results: dict[str:int], ballot_receipts: list[int], tx_signer_address: str) -> bool:
+        return (ballots_withdrawn_events, tokens_withdrawn_events, fees_deducted_events)
+
+
+    async def finishElection(self, election_id: int, election_results: dict[str:int], ballot_receipts: list[int], tx_signer_address: str) -> tuple[list[dict], list[dict]]:
         """This function finishes an election by setting the election_results dictionary provided, with each election option as key and the number of votes gathered by each option as value.
 
         :param election_id (int): The election identifier for the election to be finished.
         :param election_results (dict[str:int]): The set of election results in the format [election_option: vote_count]
         :param ballot_receipts (list[int]): The list with the ballot receipts as extracted from their encrypted ballot options.
         :param tx_signer_address (str): The address of the account that can digitally sign this transaction.:
-        
-        :return (bool): If the election was finished correctly, this function returns true. Otherwise, an exception should be raised somewhere...
+        :return: The function returns the FungibleToken.Withdrawn event parameters:
+        {
+            "amount": float,
+            "balance_after": float,
+            "from": str
+        }
+        And FlowFees event parameters:
+        {
+            "amount": float,
+            "execution_effort": float,
+            "inclusion_effort": float
+        }
+        in a tuple format
         """
         tx_name: str = "12_finish_election"
         
@@ -636,14 +779,45 @@ class TransactionRunner():
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
-        await self.submitTransaction(tx_object=tx_object)
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
+
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
+
+        return (tokens_withdrawn_events, fees_deducted_events)
 
     
-    async def cleanupVoteBooth(self, tx_signer_address: str) -> None:
+    async def cleanupVoteBooth(self, tx_signer_address: str) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict]]:
         """Function to delete every resource and active capability currently stored and active in the tx_signer_address account. This includes all Elections, active and otherwise, BallotPrinterAdmin, and Election index.
 
         :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
-        :return (None): This function should trigger a series of events, namely, ElectionIndexDestroyed, VoteBoothPrinterAdminDestroyed, and a series of ElectionDestroyed as well. As such, all the result printing happens at the end of this function, to prevent having to return a weird compounded dictionary.
+
+        :return: The function returns the FungibleToken.Withdrawn event parameters:
+        {
+            "amount": float,
+            "balance_after": float,
+            "from": str
+        }
+        The FlowFees event parameters:
+        {
+            "amount": float,
+            "execution_effort": float,
+            "inclusion_effort": float
+        },
+        the ElectionDestroyed events parameters:
+        {
+            "election_id": int,
+            "ballots_stored": int
+        },
+        the ElectionIndexDestroyed events parameters:
+        {
+            "account_address": str
+        },
+        and the VoteBoothPrinterAdminDestroyed events parameters:
+        {
+            "account_address": str
+        }
+        in a tuple format
         """
         tx_name: str = "09_cleanup_votebooth"
         tx_arguments: list = []
@@ -652,9 +826,11 @@ class TransactionRunner():
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
         # Grab all the events
-        election_destroyed_events: dict[str:int] = await self.event_runner.getElectionDestroyedEvents(tx_response=tx_response)
-        election_index_destroyed_events: dict[str:str] = await self.event_runner.getElectionIndexDestroyedEvents(tx_response=tx_response)
-        votebooth_printer_admin_destroyed: dict[str:str] = await self.event_runner.getVoteBoothPrinterAdminDestroyedEvents(tx_response=tx_response)
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
+        election_destroyed_events: list[dict] = await self.event_runner.getElectionDestroyedEvents(tx_response=tx_response)
+        election_index_destroyed_events: list[dict] = await self.event_runner.getElectionIndexDestroyedEvents(tx_response=tx_response)
+        votebooth_printer_admin_destroyed_events: list[dict] = await self.event_runner.getVoteBoothPrinterAdminDestroyedEvents(tx_response=tx_response)
 
         # It is easier to do all the log.info printing from this side
         log.info(f"Successfully deleted {len(election_destroyed_events)} Elections from the VoteBooth contract in account {tx_signer_address}:")
@@ -662,7 +838,9 @@ class TransactionRunner():
             log.info(election_destroyed_event["election_id"])
 
         log.info(f"Successfully destroyed the ElectionIndex from account {election_index_destroyed_events[0]["account_address"]}")
-        log.info(f"Successfully destroyed the VoteBoothPrinterAdmin from account {votebooth_printer_admin_destroyed[0]["account_address"]}")
+        log.info(f"Successfully destroyed the VoteBoothPrinterAdmin from account {votebooth_printer_admin_destroyed_events[0]["account_address"]}")
+
+        return(tokens_withdrawn_events, fees_deducted_events, election_destroyed_events, election_index_destroyed_events, votebooth_printer_admin_destroyed_events)
 
     
     async def fundAllAccounts(self, amount: float, recipients: list[str], tx_signer_address: str) -> None:
@@ -716,7 +894,7 @@ class TransactionRunner():
             log.info(f"Account '{account}' ({current_accounts[account]["address"]}) balance = {current_accounts[account]["balance"]} FLOW")
 
     
-    async def destroyVoteBoxBallot(self, election_id: int, tx_signer_address: str, tx_proposer_address: str, tx_payer_address: str, tx_authorizer_address: list[str]) -> dict[str:int]:
+    async def destroyVoteBoxBallot(self, election_id: int, tx_signer_address: str, tx_proposer_address: str, tx_payer_address: str, tx_authorizer_address: list[str]) -> tuple[list[dict], list[dict], list[dict]]:
         """Function to destroy a single Ballot from a VoteBox in the tx_signer_address account, stored internally under the election_id key provided.
 
         :param election_id (int): The identifier for the Election that this Ballot should be associated to.
@@ -730,6 +908,19 @@ class TransactionRunner():
             "ballot_id": int,
             "linked_election_id": int
         }
+        FungibleToken.Withdrawn event parameters:
+        {
+            "amount": float,
+            "balance_after": float,
+            "from": str
+        }
+        And FlowFees event parameters:
+        {
+            "amount": float,
+            "execution_effort": float,
+            "inclusion_effort": float
+        }
+        in a tuple format
         """
         # Validate signature inputs
         if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizer_address) == 0)):
@@ -751,13 +942,17 @@ class TransactionRunner():
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
-        ballots_burned_events: list[dict[str:int]] = await self.event_runner.getBallotBurnedEvents(tx_response=tx_response)
+        ballots_burned_events: list[dict] = await self.event_runner.getBallotBurnedEvents(tx_response=tx_response)
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         for ballot_burned_event in ballots_burned_events:
             log.info(f"Ballot {ballot_burned_event["ballot_id"]} attached to election {ballot_burned_event["linked_election_id"]}")
+        
+        return (ballots_burned_events, tokens_withdrawn_events, fees_deducted_events)
 
 
-    async def cleanupVoteBox(self, tx_signer_address: str, tx_proposer_address: str, tx_payer_address: str, tx_authorizer_address: list[str]) -> list[dict[str:int]]:
+    async def cleanupVoteBox(self, tx_signer_address: str, tx_proposer_address: str, tx_payer_address: str, tx_authorizer_address: list[str]) -> tuple[list[dict], list[dict], list[dict]]:
         """Function to cleanup the VoteBox resource retrieved from the account that signs the transaction. What this function does is to check the list of activeElectionIds from the ElectionIndex in the VoteBooth contract and validate that every Ballot currently stored in the VoteBox matched an active election. Does that don't are considered inactive and are burned on the spot.
 
         :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
@@ -771,7 +966,20 @@ class TransactionRunner():
             "ballot_id": int,
             "linked_election_id": int
         }
-        ] 
+        ]
+                :return: The function returns the FungibleToken.Withdrawn event parameters:
+        {
+            "amount": float,
+            "balance_after": float,
+            "from": str
+        }
+        And FlowFees event parameters:
+        {
+            "amount": float,
+            "execution_effort": float,
+            "inclusion_effort": float
+        }
+        in a tuple format
         """
         # Validate signature inputs
         if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizer_address) == 0)):
@@ -794,7 +1002,11 @@ class TransactionRunner():
 
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
 
-        ballot_burned_events: list[dict[str:int]] = await self.event_runner.getBallotBurnedEvents(tx_response=tx_response)
+        ballot_burned_events: list[dict] = await self.event_runner.getBallotBurnedEvents(tx_response=tx_response)
+        tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+        fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         for ballot_burned_event in ballot_burned_events:
             log.info(f"Ballot {ballot_burned_event["ballot_id"]} attached to election {ballot_burned_event["linked_election_id"]}")
+
+        return (ballot_burned_events, tokens_withdrawn_events, fees_deducted_events)

@@ -5,16 +5,9 @@
 
     # Author: Ricardo Lopes Almeida - https://github.com/rdlalmeida
 **/
-
-// Uncomment these lines for local testing, comment for testnet deploy
-// import Burner from 0xf8d6e0586b0a20c7
-// import BallotStandard from 0xf8d6e0586b0a20c7
-// import ElectionStandard from 0xf8d6e0586b0a20c7
-
-// Uncomment these lines for remote (testnet) testing, comment for local deploy
-import "Burner"
-import "BallotStandard"
-import "ElectionStandard"
+import Burner from 0xf8d6e0586b0a20c7
+import BallotStandard from 0xf8d6e0586b0a20c7
+import ElectionStandard from 0xf8d6e0586b0a20c7
 
 access(all) contract VoteBoxStandard {
     // CUSTOM PATHS
@@ -433,9 +426,9 @@ access(all) contract VoteBoxStandard {
         }
 
         /**
-            This function is supposed to be exposed publicly by the VoteBoxPublic resource interface and should be used by the ElectionAdministration to deposit newly minted Ballots so that the VoteBox owner can cast them. It is impossible for an ElectionAdministrator to retrieve an authorized reference to a VoteBox resource in storage since the resource is not stored in his/her Administrator account. As such, this function needs to be set as access(all) to have even the slightest hope of working. But this opens it to all sorts of shenanigans from dishonest people. Anyone is able to import the BallotStandard contract, mint a new Ballot and deposit that Ballot into this VoteBox. To prevent this, all I can do at this point is ensuring contract consistency among the contracts that I can "see" from this point.
+ ""
 
-            In that regard, I've set a "deployerAddress" parameter at the root of every contract in this project. The idea is, as long as all the contracts that I can see from where I am, i.e., the set of contracts imported at the top of the current contract, have the same deployerAddress, there is a strong chance that I'm getting Ballots and Elections from where I'm supposed to get them. This verification guarantees that all contracts imported from this contract, as well as this contract, were deployed into the same account.
+ ""
 
             @param ballot (@BallotStandard.Ballot) The Ballot resource to deposit in this VoteBox
         **/

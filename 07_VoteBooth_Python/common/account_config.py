@@ -84,7 +84,7 @@ class AccountConfig(object):
                         private_key_hex=private_key
                     )
                 }
-            else: 
+            elif (not account.__contains__("flow_test")):
                 # Otherwise set it as another "normal" account.
                 # NOTE: The key_id field refers to the index of the key in question, given that accounts can have multiple encryption keys stored. But 
                 # the first key, as it is this case, has index = 0.

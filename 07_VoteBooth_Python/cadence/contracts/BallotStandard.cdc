@@ -6,13 +6,9 @@
     @author: Ricardo Lopes Almeida - https://github.com/rdlalmeida
 **/
 
-// Uncomment these lines for local testing, comment for testnet deploy
-// import Burner from 0xf8d6e0586b0a20c7
-// import Crypto from 0xf8d6e0586b0a20c7
-
 // Uncomment these lines for remote (testnet) testing, comment for local deploy
-import "Burner"
-import "Crypto"
+import Burner from 0xf8d6e0586b0a20c7
+import Crypto from 0xf8d6e0586b0a20c7
 
 access(all) contract BallotStandard {
 // CUSTOM ENTITLEMENTS
@@ -122,7 +118,7 @@ access(all) contract BallotStandard {
             BallotStandard.Ballot resource constructor. This is the standard resource constructor to build new Ballot resources.
 
             @param _linkedElectionId (UInt64) The election identifier to the Election resource this Ballot is associated to, i.e., where it can be submitted to.
-            @param _electionCapability (Capability) A capability value to the public interface of the Election resource associated to this Ballot. At this level, to avoid the circular referencing that happens if I import the ElectionStandard into this one, I'm setting this parameter as just a broader Capability value, but the idea is to set this with a specific Capability<&{ElectionStandard.ElectionPublic}> to retrieve an ElectionPublic reference from this Ballot directly.
+ ""
             @param voterAddress (Address) The account address of the voter that is going to receive this Ballot in its VoteBox resource. This Ballot sets this value internally through the resource constructor to ensure that only the voter identified by this address can mutate and submit it.
 
             @returns (@BallotStandard.Ballot) If successful, this function returns a fresh @BallotStandard.Ballot back to the caller.

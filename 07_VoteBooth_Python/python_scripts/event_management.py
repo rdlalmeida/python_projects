@@ -1,16 +1,12 @@
 from flow_py_sdk import(
     flow_client,
-    ProposalKey,
-    Tx, 
     cadence,
     entities
 )
 
 import configparser
-import sys
 import os
 import pathlib
-import asyncio
 
 from common import utils, account_config
 from python_scripts import cadence_scripts
@@ -55,10 +51,10 @@ class EventRunner():
     async def getEventsByName(self, event_name: str, event_num: int) -> list[cadence.Event]:
         """Function to retrieve a list with the latest-n  events with the name provided as input from the event queue.
 
-        @param event_name: str - The name of the events to retrieve from the queue.
-        @param event_num: int - The number of event of the given name to return.
-
-        @return list Returns a list with the even_num-most recent events with event_name from the networks's event queue. 
+        :param event_name (str): The name of the events to retrieve from the queue.
+        :param event_num (int): The number of event of the given name to return.:
+        
+        :return (list): Returns a list with the even_num-most recent events with event_name from the networks's event queue. 
         """
         async with flow_client(
             host=self.ctx.access_node_host, port=self.ctx.access_node_port
@@ -88,11 +84,11 @@ class EventRunner():
     
 
     async def getBallotCreatedEvents(self, tx_response: entities.TransactionResultResponse) -> dict[str:int]:
-        """Function to return the latest event_num BallotCreated events from the event queue
+        """Function to return the latest BallotStandard.BallotCreated events from the event queue
 
-        @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict[str:int] Returns the event parameters in the format
+        :return (dict[str:int]): Returns the event parameters in the format
         {
             "ballot_id": int,
             "linked_election_id": int
@@ -114,11 +110,11 @@ class EventRunner():
 
 
     async def getBallotBurnedEvents(self, tx_response: entities.TransactionResultResponse) -> dict[str:int]:
-        """Function to return the latest event_num BallotBurned events from the event queue
+        """Function to return the latest BallotStandard.BallotBurned events from the event queue
 
-        @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict[str:int] Returns the event parameters in the format
+        :return (dict[str:int]): Returns the event parameters in the format
         {
             "ballot_id": int,
             "linked_election_id: int
@@ -140,11 +136,11 @@ class EventRunner():
 
 
     async def getBallotSubmittedEvents(self, tx_response: entities.TransactionResultResponse) -> dict[str:int]:
-        """Function to return the latest event_num BallotSubmitted events from the event queue
+        """Function to return the latest ElectionStandard.BallotSubmitted events from the event queue
 
-        @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict[str:int] Returns the event parameters in the format
+        :return (dict[str:int]): Returns the event parameters in the format
         {
             "ballot_id": int,
             "election_id": int
@@ -166,11 +162,11 @@ class EventRunner():
 
     
     async def getBallotReplacedEvents(self, tx_response: entities.TransactionResultResponse) -> dict[str:int]:
-        """Function to return the latest event_num BallotReplaced events from the event queue.
+        """Function to return the latest ElectionStandard.BallotReplaced events from the event queue.
 
-        @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict[str:int] Returns the event parameters in the format
+        :return (dict[str:int]): Returns the event parameters in the format
         {
             "old_ballot_id": int,
             "new_ballot_id": int,
@@ -194,11 +190,11 @@ class EventRunner():
 
     
     async def getBallotRevokedEvents(self, tx_response: entities.TransactionResultResponse) -> dict[str:int]:
-        """Function to return the latest event_num BallotRevoked events from the event queue.
+        """Function to return the latest ElectionStandard.BallotRevoked events from the event queue.
 
-        @tx_response TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict[str:int] Returns the event parameters in the format
+        :return (dict[str:int]): Returns the event parameters in the format
         {
             "ballot_id": int,
             "election_id": int
@@ -220,11 +216,11 @@ class EventRunner():
 
     
     async def getBallotsWithdrawnEvents(self, tx_response: entities.TransactionResultResponse) -> dict[str: int]:
-        """Function to return the latest event_num BallotsWithdrawn events from the event queue.
+        """Function to return the latest ElectionStandard.BallotsWithdrawn events from the event queue.
 
-        @tx_response TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict[str:int] Returns the event parameters in the format
+        :return (dict[str:int]): Returns the event parameters in the format
         {
             "ballots_withdrawn": int,
             "election_id": int
@@ -246,11 +242,11 @@ class EventRunner():
 
     
     async def getElectionCreatedEvents(self, tx_response: entities.TransactionResultResponse) -> dict:
-        """Function to return the latest event_num ElectionCreated events from the event queue.
+        """Function to return the latest ElectionStandard.ElectionCreated events from the event queue.
 
-        @tx_response TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict Returns the event parameters in the format
+        :return (dict): Returns the event parameters in the format
         {
             "election_id": int,
             "election_name": str
@@ -272,11 +268,11 @@ class EventRunner():
 
 
     async def getElectionDestroyedEvents(self, tx_response: entities.TransactionResultResponse) -> dict[str:int]:
-        """Function to return the latest event_num ElectionDestroyed events from the event queue.
+        """Function to return the latest ElectionStandard.ElectionDestroyed events from the event queue.
 
-        @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict[str:int] Returns the event parameters in the format
+        :return (dict[str:int]): Returns the event parameters in the format
         {
             "election_id": int,
             "ballots_stored": int
@@ -297,11 +293,11 @@ class EventRunner():
 
     
     async def getNonNilResourceReturnedEvents(self, tx_response: entities.TransactionResultResponse) -> dict[str:str]:
-        """Function to return the latest event_num NonNilResourceReturned events from the event queue.
+        """Function to return the latest ElectionStandard.NonNilResourceReturned events from the event queue.
 
-        @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict[str:str] Returns the event parameters in the format
+        :return (dict[str:str]): Returns the event parameters in the format
         {
             "resource_type": str
         }
@@ -321,11 +317,11 @@ class EventRunner():
 
     
     async def getVoteBoxCreatedEvents(self, tx_response: entities.TransactionResultResponse) -> dict[str:str]:
-        """Function to return the latest event_num VoteBoxCreated events from the event queue.
+        """Function to return the latest VoteBoxStandard.VoteBoxCreated events from the event queue.
 
-        @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict[str:str] Returns the event parameters in the format
+        :return (dict[str:str]): Returns the event parameters in the format
         {
             "voter_address": str
         }
@@ -345,11 +341,11 @@ class EventRunner():
 
     
     async def getVoteBoxBurnedEvents(self, tx_response: entities.TransactionResultResponse) -> dict:
-        """Function to return the latest event_num VoteBoxBurned events from the event queue.
+        """Function to return the latest VoteBoxStandard.VoteBoxBurned events from the event queue.
 
-        @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict Returns the event parameters in the format
+        :return (dict): Returns the event parameters in the format
         {
             "elections_voted": list[int],
             "active_ballots": int,
@@ -376,11 +372,11 @@ class EventRunner():
 
     
     async def getElectionIndexCreatedEvents(self, tx_response: entities.TransactionResultResponse) -> dict[str:str]:
-        """Function to return the latest event_num ElectionIndexCreated events from the event queue.
+        """Function to return the latest VoteBooth.ElectionIndexCreated events from the event queue.
 
-        @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict[str:str] Returns the event parameters in the format
+        :return (dict[str:str]): Returns the event parameters in the format
         {
             "account_address": str
         }
@@ -400,11 +396,11 @@ class EventRunner():
 
     
     async def getElectionIndexDestroyedEvents(self, tx_response: entities.TransactionResultResponse) -> dict[str:str]:
-        """Function to return the latest event_num ElectionIndexDestroyed events from the event queue.
+        """Function to return the latest VoteBooth.ElectionIndexDestroyed events from the event queue.
 
-        @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
         
-        @return dict[str:str] Returns the event parameters in the format
+        :return (dict[str:str]): Returns the event parameters in the format
         {
             "account_address": str
         }
@@ -424,11 +420,11 @@ class EventRunner():
 
     
     async def getVoteBoothPrinterAdminCreatedEvents(self, tx_response: entities.TransactionResultResponse) -> dict[str:str]:
-        """Function to return the latest event_num VoteBoothPrinterAdminCreated events from the event queue.
+        """Function to return the latest VoteBooth.VoteBoothPrinterAdminCreated events from the event queue.
 
-        @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict[str:str] Returns the event parameters in the format
+        :return (dict[str:str]): Returns the event parameters in the format
         {
             "account_address": str
         }
@@ -448,11 +444,11 @@ class EventRunner():
 
 
     async def getVoteBoothPrinterAdminDestroyedEvents(self, tx_response: entities.TransactionResultResponse) -> dict[str:str]:
-        """Function to return the latest event_num VoteBoothPrinterAdminDestroyed events from the event queue.
+        """Function to return the latest Votebooth.VoteBoothPrinterAdminDestroyed events from the event queue.
 
-        @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
 
-        @return dict[str:str] Returns the event parameters in the format
+        :return (dict[str:str]): Returns the event parameters in the format
         {
             "account_address": str
         }
@@ -472,11 +468,11 @@ class EventRunner():
     
 
     async def getTokensDepositedEvents(self, tx_response: entities.TransactionResultResponse) -> dict:
-        """Function to return the latest event_num FlowToken.TokensDeposited events from the event queue.
+        """Function to return the latest FlowToken.TokensDeposited events from the event queue.
 
-        @param tx_response: entities.TransactionResultResponse - The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
         
-        @return dict Returns the event parameters in the format
+        :return (dict): Returns the event parameters in the format
         {
             "amount": float,
             "to": str
@@ -495,3 +491,58 @@ class EventRunner():
                 tokens_deposited_events.append(tokens_deposited_event)
 
         return tokens_deposited_events
+
+
+    async def getFungibleTokenWithdrawnEvents(self, tx_response: entities.TransactionResultResponse) -> dict:
+        """ Function to return the latest FungibleToken.Withdrawn events from a transaction response.
+        
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :return (dict): Returns the event parameters in the format
+        {
+            "amount": float,
+            "balance_after": float,
+            "from": str
+        }
+        """
+        event_name: str = f"A.{self.fungible_token_deployer_address}.FungibleToken.Withdrawn"
+
+        tokens_withdrawn_events: list[dict] = []
+
+        for event in tx_response.events:
+            if(event.type == event_name):
+                tokens_withdrawn_event: dict = {}
+                tokens_withdrawn_event["amount"] = event.value.fields["amount"].__str__()
+                tokens_withdrawn_event["balance_after"] = event.value.fields["balanceAfter"].__str__()
+                tokens_withdrawn_event["from"] = event.value.fields["from"].value.hex()
+
+                tokens_withdrawn_events.append(tokens_withdrawn_event)
+        
+        return tokens_withdrawn_events
+    
+
+    async def getFlowFeesFeesDeductedEvents(self, tx_response: entities.TransactionResultResponse) -> dict:
+        """Function to return the latest FlowFees.FeesDeducted events from a transaction response.
+        
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transactions whose events are to be retrieved from.
+        :return (dict): Returns the event parameters in the format
+        {
+            "amount": float,
+            "execution_effort": float,
+            "inclusion_effort": float
+        }
+        """
+
+        event_name: str = f"A.{self.flow_fees_deployer_address}.FlowFees.FeesDeducted"
+
+        fees_deducted_events: list[dict] = []
+
+        for event in tx_response.events:
+            if (event.type == event_name):
+                fees_deducted_event: dict = {}
+                fees_deducted_event["amount"] = event.value.fields["amount"].__str__()
+                fees_deducted_event["execution_effort"] = event.value.fields["executionEffort"].__str__()
+                fees_deducted_event["inclusion_effort"] = event.value.fields["inclusionEffort"].__str__()
+
+                fees_deducted_events.append(fees_deducted_event)
+        
+        return fees_deducted_events            
