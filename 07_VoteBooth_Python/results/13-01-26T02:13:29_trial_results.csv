@@ -1,5 +1,0 @@
-Transaction Descriptor, fee amount, execution effort, inclusion effort, tokens withdrawn, from account, balance after
-Clearing contract BallotStandard,0.00001000,0.00000005,1.00000000,0.00001000,f8d6e0586b0a20c7,999999994.98037000
-Clearing contract ElectionStandard,0.00001000,0.00000005,1.00000000,0.00001000,f8d6e0586b0a20c7,999999994.98035000
-Clearing contract VoteBoxStandard,0.00001000,0.00000005,1.00000000,0.00001000,f8d6e0586b0a20c7,999999994.98033000
-Clearing contract VoteBooth,0.00001000,0.00000005,1.00000000,0.00001000,f8d6e0586b0a20c7,999999994.98031000
