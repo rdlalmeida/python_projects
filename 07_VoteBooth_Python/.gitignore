@@ -10,5 +10,6 @@ keys/
 ./keys/account05.pkey
 node_modules
 virtualenv
-./flowdb
-./flowdb_bck
+flowdb/
+flowdb_bck/
+results/

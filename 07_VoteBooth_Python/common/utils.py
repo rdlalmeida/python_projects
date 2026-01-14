@@ -3,6 +3,7 @@ import configparser
 import os
 import pathlib
 from flow_py_sdk import cadence
+import datetime
 
 config_path = pathlib.Path(os.getcwd()).joinpath("common", "config.ini")
 config = configparser.ConfigParser()
@@ -85,11 +86,12 @@ def convertPythonDictionaryToCadenceDictionary(python_dict: dict) -> cadence.Dic
     return cadence.Dictionary(value=cadence_input)
 
 
-def processTransactionData(fees_deducted_events: list[dict], tokens_withdrawn_events: list[dict], tx_description: str, output_file_path: pathlib.Path) -> None:
+def processTransactionData(fees_deducted_events: list[dict], tokens_withdrawn_events: list[dict], elapsed_time: int, tx_description: str, output_file_path: pathlib.Path) -> None:
     """Function to automate the processing of transaction metrics that are interesting to characterise the system performance. These metrics are retrieved from the system through events. This function continues the processing by retrieving the data from the events, format it in a handy .csv format, and appends it to a file whose path is provided as argument. The idea is to have a nice data feed to build graphs and do all sort of post analysis.
     
     :param flow_fees_events (list[dict]): A list with all the FlowFees.FeesDeducted events to retrieve the gas paid in the transaction and the execution effort (computational effort) required by the computation. 
     :param tokens_withdrawn_events (list[dict]): A list with all the FungibleToken.Withdrawn events related to the transaction to retrieve additional gas expenditure details.
+    :param elapsed_time (int): The time that the transaction required to fully execute, in nanoseconds.
     :param tx_description (str): A descriptor for the data set, namely, a summary of what the transaction did, e.g., "create ballot", "tally election", etc.
     :param output_file_path (pathlib.Path): A pathlib.Path object to the file to be used to write the analysis data.
     """
@@ -101,7 +103,7 @@ def processTransactionData(fees_deducted_events: list[dict], tokens_withdrawn_ev
         # If not, create a new one
         output_stream = open(output_file_path, "+x")
         # And write the headers in the first line
-        new_line: str = f"Transaction Descriptor, fee amount, execution effort, inclusion effort, tokens withdrawn, from account, balance after\n"
+        new_line: str = f"Transaction Descriptor, Timestamp, Tx Execution Time (ns), Fee Amount (FLOW), Execution Effort, Inclusion Effort, Tokens Withdrawn (FLOW), From Account, Balance After (FLOW)\n"
         output_stream.write(new_line)
 
 
@@ -110,9 +112,9 @@ def processTransactionData(fees_deducted_events: list[dict], tokens_withdrawn_ev
     for i in range(0,max(len(fees_deducted_events), len(tokens_withdrawn_events))):
         new_line: str = ""
         if (fees_deducted_events[i]):
-            new_line = f"{tx_description},{fees_deducted_events[i]["amount"]},{fees_deducted_events[i]["execution_effort"]},{fees_deducted_events[i]["inclusion_effort"]},"
+            new_line = f"{tx_description},{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}, {elapsed_time},{fees_deducted_events[i]["amount"]},{fees_deducted_events[i]["execution_effort"]},{fees_deducted_events[i]["inclusion_effort"]},"
         else:
-            new_line = f"{tx_description},,,,"
+            new_line = f"{tx_description},{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")},{elapsed_time},,,,"
 
         if (tokens_withdrawn_events[i]):
             new_line += f"{tokens_withdrawn_events[i]["amount"]},{tokens_withdrawn_events[i]["from"]},{tokens_withdrawn_events[i]["balance_after"]}\n"

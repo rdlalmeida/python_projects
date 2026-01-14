@@ -8,6 +8,7 @@ import configparser
 from common import utils, account_config
 import pathlib
 import os
+import datetime
 
 # Setup logging capabilities
 import logging
@@ -667,7 +668,7 @@ class ScriptRunner():
         print("\n")
 
 
-    async def profile_all_accounts_csv(self, program_stage: str = None, output_file_path: pathlib.Path = None) -> None:
+    async def profile_all_accounts_csv(self, program_stage: str, output_file_path: pathlib.Path = None) -> None:
         """
         This function profiles all configured accounts in the system, i.e., the one indicated in flow.json, but this time printing them in a CSV (comma separated values) to make it easy to import into other tools to do statistical analysis, plot graphs, etc. This version accepts one single string argument to indicate where in the main program the account profiling was done. This function prints the account profiles using the format
         
@@ -690,18 +691,17 @@ class ScriptRunner():
             else:
                 # Create a new one
                 output_stream = open(output_file_path, "+x")
+                # Create the header line
+                new_line: str = "Program Stage, Timestamp, Account Address, Default Balance, Available Balance, Storage Capacity, Used Storage\n"
+                output_stream.write(new_line)
 
         for account_entry in accounts:
             # Get account data
             account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=accounts[account_entry])
             account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=accounts[account_entry])
-            new_line: str = ""
 
             # Print the account info in a single line, using the csv format
-            if (program_stage != None):
-                new_line = f"{program_stage},{account_entry},{account_balance["default"]},{account_balance["available"]},{account_storage["capacity"]},{account_storage["used"]}"
-            else:
-                new_line = f"{account_entry},{account_balance["default"]},{account_balance["available"]},{account_storage["capacity"]},{account_storage["used"]}"
+            new_line = f"{program_stage},{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")},{account_entry},{account_balance["default"]},{account_balance["available"]},{account_storage["capacity"]},{account_storage["used"]}\n"
 
             if (output_stream):
                 # If an output stream is present, dump the new line into it

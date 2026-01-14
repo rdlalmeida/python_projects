@@ -100,10 +100,10 @@ async def main(election_index: int = 0) -> None:
     current_election: Election = Election()
     ctx = account_config.AccountConfig()
 
-    gas_results_filename: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_gas_computation_results.csv"
+    gas_results_filename: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{config.get(section="network", option="current")}_gas_computation_results.csv"
     gas_results_file_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("results", gas_results_filename)
 
-    storage_results_filename: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_storage_results.csv"
+    storage_results_filename: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{config.get(section="network", option="current")}_storage_results.csv"
     storage_results_file_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("results", storage_results_filename)
 
     new_election: bool = True
@@ -112,24 +112,13 @@ async def main(election_index: int = 0) -> None:
 
     # 1. Setup the project contracts
     if(True):
-        process_events: dict[str: dict[str: dict]] = None
-
-        await script_runner.profile_all_accounts(program_stage="1. pre contract removal")
-
         log.info("Rebuilding project contracts...")
-      
-        process_events = await contract_management.main(op="clear", output_file_path=gas_results_file_path)
-
-        for contract_name in process_events:
-            utils.processTransactionData(fees_deducted_events=process_events[contract_name]["fees_deducted_events"], tokens_withdrawn_events=process_events[contract_name]["tokens_withdrawn_events"], tx_description=f"Clearing contract {contract_name}", output_file_path=storage_results_file_path)
-
-        await script_runner.profile_all_accounts(program_stage="1. post contract removal")
+        await contract_management.main(op="clear", gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
         log.info("Re-deploying project contracts...")
-        process_events = await contract_management.main(op="deploy", output_file_path=gas_results_file_path)
+        await contract_management.main(op="deploy", gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
         # log.info("Done!")
 
-        await script_runner.profile_all_accounts(program_stage="1. post contract deployment")
         exit(0)
 
     # 1.1. Fund all test accounts
