@@ -8,16 +8,15 @@
 import ElectionStandard from 0xf8d6e0586b0a20c7
 import VoteBooth from 0xf8d6e0586b0a20c7
 
-access(all) fun main(electionId: UInt64): {String:Int} {
+access(all) fun main(electionId: UInt64): {String:Int}? {
     let electionPublicRef: &{ElectionStandard.ElectionPublic} = VoteBooth.getElectionPublicReference(electionId: electionId) ??
     panic(
         "Unable to get a valid &{ElectionStandard.ElectionPublic} from the VoteBooth contract for election `electionId.toString()`"
     )
 
     if (!electionPublicRef.isElectionFinished()) {
-        panic(
-            "ERROR: Election `electionId.toString()` has not been finalized yet! Cannot process its results!"
-        )
+        // Return a nil if the election is still ongoing
+        return nil
     }
 
     let electionResults: {String: Int} = electionPublicRef.getElectionResults()

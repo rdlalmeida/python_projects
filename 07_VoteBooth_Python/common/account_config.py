@@ -44,67 +44,130 @@ class AccountConfig(object):
             )
 
         for account in data["accounts"]:
-            # Load the required parameters while testing the formatting of the JSON file
-            if (data["accounts"][account]["key"]["hashAlgorithm"]):
-                hash_algorithm = HashAlgo.from_string(data["accounts"][account]["key"]["hashAlgorithm"])
-            else: 
-                hash_algorithm = HashAlgo.from_string("SHA_256")
+            # Check which network is being used
+            if (config.get(section="network", option="current") == "emulator"):
+                # Pre select the emulator exclusive accounts. All testnet bound accounts are prefixed with "flow_test". Use this to filter them out
+                if (account == "emulator-account" or not account.__contains__("flow_test")):
+                    # Load the required parameters while testing the formatting of the JSON file
+                    if (data["accounts"][account]["key"]["hashAlgorithm"]):
+                        hash_algorithm = HashAlgo.from_string(data["accounts"][account]["key"]["hashAlgorithm"])
+                    else: 
+                        hash_algorithm = HashAlgo.from_string("SHA_256")
 
-            if (data["accounts"][account]["key"]["signatureAlgorithm"]):
-                signature_algorithm = SignAlgo.from_string(data["accounts"][account]["key"]["signatureAlgorithm"])
+                    if (data["accounts"][account]["key"]["signatureAlgorithm"]):
+                        signature_algorithm = SignAlgo.from_string(data["accounts"][account]["key"]["signatureAlgorithm"])
+                    else:
+                        signature_algorithm = SignAlgo.from_string("ECDSA_P256")
+
+                    if (data["accounts"][account]["key"]["location"]):
+                        private_key = open(data["accounts"][account]["key"]["location"]).readline()
+                    else:
+                        private_key = data["accounts"][account]["key"]
+
+                    # Turns out that the constructor for the InMemorySigner class does not like hexadecimal values prefixed with the usual '0x'
+                    # I need to test the current format of the private_key string and remove these characters if they are present
+                    if (private_key[0:2] == "0x"):
+                        # Skip the first 2 characters of the key string
+                        private_key = private_key[2:]
+                    
+                    # Repeat the process for the account addresses as well
+                    account_address = data["accounts"][account]["address"]
+
+                    if (account_address[0:2] == "0x"):
+                        account_address = account_address[2:]
+
+                    # The service account needs a special treatment
+                    if (account == "emulator-account"):
+                        # If the account in question is the emulator-bound account, set this one apart from the rest as the service account
+                        self.service_account = {
+                            "name": account,
+                            "address": Address.from_hex(account_address),
+                            "key_id": 0,
+                            "signer": InMemorySigner(
+                                hash_algo=hash_algorithm,
+                                sign_algo=signature_algorithm,
+                                private_key_hex=private_key
+                            )
+                        }
+                    elif (not account.__contains__("flow_test")):
+                        # Otherwise set it as another "normal" account.
+                        # NOTE: The key_id field refers to the index of the key in question, given that accounts can have multiple encryption keys stored. But 
+                        # the first key, as it is this case, has index = 0.
+                        # NOTE: The user accounts have an additional "receipts" dictionary to be filled with a format {election_id: [random_vals]} where, for each 
+                        # election voted, this parameter keeps a record of all the random values used to add salt to the Ballot option, which is also used to 
+                        # verify Ballots. I'm keeping these in an array because, for testing purposes only, at some point I want users to be able to submit
+                        # multiple ballots into a single election. But in regular operation, there should be only one item per one of these arrays
+                        self.accounts.append(
+                            {
+                                "name": account,
+                                "address": Address.from_hex(account_address),
+                                "key_id": 0,
+                                "signer": InMemorySigner(
+                                    hash_algo=hash_algorithm,
+                                    sign_algo=signature_algorithm,
+                                    private_key_hex=private_key
+                                ),
+                                "receipts": {}
+                            }
+                        )
+            elif(config.get(section="network", option="current") == "testnet"):
+                # Filter out for the testnet-bound accounts, which are named as "flow_test_account..."
+                if (account.__contains__("flow_test")):
+                    # Save all the common parameters to their own variables for now
+                    if (data["accounts"][account]["key"]["hashAlgorithm"]):
+                        hash_algorithm = HashAlgo.from_string(data["accounts"][account]["key"]["hashAlgorithm"])
+                    else:
+                        hash_algorithm = HashAlgo.from_string("SHA_256")
+
+                    if (data["accounts"][account]["key"]["signatureAlgorithm"]):
+                        signature_algorithm = SignAlgo.from_string(data["accounts"][account]["key"]["signatureAlgorithm"])
+                    else:
+                        signature_algorithm = SignAlgo.from_string("ECDSA_P256")
+
+                    if (data["accounts"][account]["key"]["location"]):
+                        private_key = open(data["accounts"][account]["key"]["location"]).readline()
+                    else:
+                        private_key = data["accounts"][account]["key"]
+
+                    # Format the private key parameter, if needed
+                    if (private_key[0:2] == "0x"):
+                        private_key = private_key[2:]
+
+                    # And the account address as well
+                    account_address = data["accounts"][account]["address"]
+
+                    if (account_address[0:2] == "0x"):
+                        account_address = account_address[2:]
+
+                    # In this case, flow_test_account10 was selected to work as the service account. Set this up
+                    if (account == "flow_test_account10"):
+                        self.service_account = {
+                            "name": "service_account",
+                            "address": Address.from_hex(account_address),
+                            "key_id": 0,
+                            "signer": InMemorySigner(
+                                hash_algo=hash_algorithm,
+                                sign_algo=signature_algorithm,
+                                private_key_hex=private_key
+                            )
+                        }
+                    else:
+                        # Process the rest of the test accounts
+                        self.accounts.append(
+                            {
+                                "name": account,
+                                "address": Address.from_hex(account_address),
+                                "key_id": 0,
+                                "signer": InMemorySigner(
+                                    hash_algo=hash_algorithm,
+                                    sign_algo=signature_algorithm,
+                                    private_key_hex=private_key
+                                ),
+                                "receipts": {}
+                            }
+                        )
             else:
-                signature_algorithm = SignAlgo.from_string("ECDSA_P256")
-
-            if (data["accounts"][account]["key"]["location"]):
-                private_key = open(data["accounts"][account]["key"]["location"]).readline()
-            else:
-                private_key = data["accounts"][account]["key"]
-
-            # Turns out that the constructor for the InMemorySigner class does not like hexadecimal values prefixed with the usual '0x'
-            # I need to test the current format of the private_key string and remove these characters if they are present
-            if (private_key[0:2] == "0x"):
-                # Skip the first 2 characters of the key string
-                private_key = private_key[2:]
-            
-            # Repeat the process for the account addresses as well
-            account_address = data["accounts"][account]["address"]
-
-            if (account_address[0:2] == "0x"):
-                account_address = account_address[2:]
-
-            if (account == "emulator-account"):
-                # If the account in question is the emulator account, set this one apart from the rest as the service account
-                self.service_account = {
-                    "name": account,
-                    "address": Address.from_hex(account_address),
-                    "key_id": 0,
-                    "signer": InMemorySigner(
-                        hash_algo=hash_algorithm,
-                        sign_algo=signature_algorithm,
-                        private_key_hex=private_key
-                    )
-                }
-            elif (not account.__contains__("flow_test")):
-                # Otherwise set it as another "normal" account.
-                # NOTE: The key_id field refers to the index of the key in question, given that accounts can have multiple encryption keys stored. But 
-                # the first key, as it is this case, has index = 0.
-                # NOTE: The user accounts have an additional "receipts" dictionary to be filled with a format {election_id: [random_vals]} where, for each 
-                # election voted, this parameter keeps a record of all the random values used to add salt to the Ballot option, which is also used to 
-                # verify Ballots. I'm keeping these in an array because, for testing purposes only, at some point I want users to be able to submit
-                # multiple ballots into a single election. But in regular operation, there should be only one item per one of these arrays
-                self.accounts.append(
-                    {
-                        "name": account,
-                        "address": Address.from_hex(data["accounts"][account]["address"]),
-                        "key_id": 0,
-                        "signer": InMemorySigner(
-                            hash_algo=hash_algorithm,
-                            sign_algo=signature_algorithm,
-                            private_key_hex=private_key
-                        ),
-                        "receipts": {}
-                    }
-                )
+                raise Exception(f"ERROR: Unable to configure accounts for unrecognisable network {config.get(section="network", option="current")}.")
     
     def addReceipt(self, voter_address: str, election_id: int, ballot_receipt: int) -> None:
         """This function adds a ballot receipt, which is the random value used as salt for encrypting the Ballot option, to the entry of the voter that cast the ballot in the first place. This function detects if the current user entry already has a key for the election_id provided or not. If so, it appends the provided ballot_receipt to it. Otherwise it creates a new one. If the voter_address provided does not exists in the current account list, this function raises and exception.
@@ -221,12 +284,13 @@ class AccountConfig(object):
 
         network_accounts = {}
 
-        network_accounts["emulator"] = self.service_account["address"].hex()
+        network_accounts["service"] = self.service_account["address"].hex()
 
         for account in self.accounts:
             network_accounts[account["name"]] = account["address"].hex()
         
         return network_accounts
+    
     
 def getFlowClient(ctx:AccountConfig) -> flow_client:
     new_client = flow_client(

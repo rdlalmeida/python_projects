@@ -437,7 +437,12 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return script_result.value.value
+            # Test if a value was returned. If the VoteBox does not have a Ballot for the electionId provided, the script returns None
+            if (script_result.value == None):
+                log.warning(f"Account {votebox_address} does not have any Ballots stored for Election {election_id}")
+                return 0
+            else:
+                return script_result.value.value
     
 
     async def getElectionResults(self, election_id: int) -> dict[str: int]:
@@ -506,10 +511,14 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
 
-            if (len(script_result.value) > 0):
-                return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result)
+            if (script_result.value == None):
+                log.warning(f"Election {election_id} is not yet finished!")
+                return {}
+            elif (len(script_result.value.value) > 0):
+                return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result.value)
             else:
                 return {}
+
             
     
     async def getElectionEncryptedBallots(self, election_id: int) -> list[str]:
@@ -637,9 +646,11 @@ class ScriptRunner():
                 return {}
             
 
-    async def profile_all_accounts(self, program_stage: str = None) -> None:
+    async def profile_all_accounts(self, program_stage: str = None, account: str = None) -> None:
         """
         Simple function to abstract and automate the characterisation of all configured accounts, i.e., all the one indicated in the "accounts" section of this project's flow.json file. The function require no inputs and returns no data. All results are printed to stdout.
+        :param program_state(str): If provided, this item is added to the line describing the current account profile. If not, the whole entry is omitted from the final result
+        :param account (str): If provided, this function prints a single line to the to the account indicated, if it exists. Otherwise, it profiles all accounts at once.
         """
         if (program_stage):
             print(program_stage)
@@ -653,22 +664,33 @@ class ScriptRunner():
         ctx = account_config.AccountConfig()
         accounts = ctx.getAccounts()
 
-        for account_entry in accounts:
+        if (account and (account in accounts.values)):
+                account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=account)
+                account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=account)
 
-            account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=accounts[account_entry])
-            account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=accounts[account_entry])
+                if (account == "emulator"):
+                    print(f"|{account}\t|{account_balance["default"]}\t|{account_balance["available"]}\t|{account_storage["capacity"]}\t|{account_storage["used"]}\t|")
+                    print("|-----------------------------------------------------------------------------------------------|")
+                else:
+                    print(f"|{account}\t|{account_balance["default"]}\t|{account_balance["available"]}\t\t|{account_storage["capacity"]}\t\t|{account_storage["used"]}\t\t|")
+                    print("|-----------------------------------------------------------------------------------------------|")
+        else:
+            for account_entry in accounts:
 
-            if (account_entry == "emulator"):
-                print(f"|{account_entry}\t|{account_balance["default"]}\t|{account_balance["available"]}\t|{account_storage["capacity"]}\t|{account_storage["used"]}\t|")
-                print("|-----------------------------------------------------------------------------------------------|")
-            else:
-                print(f"|{account_entry}\t|{account_balance["default"]}\t|{account_balance["available"]}\t\t|{account_storage["capacity"]}\t\t|{account_storage["used"]}\t\t|")
-                print("|-----------------------------------------------------------------------------------------------|")
+                account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=accounts[account_entry])
+                account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=accounts[account_entry])
+
+                if (account_entry == "emulator"):
+                    print(f"|{account_entry}\t|{account_balance["default"]}\t|{account_balance["available"]}\t|{account_storage["capacity"]}\t|{account_storage["used"]}\t|")
+                    print("|-----------------------------------------------------------------------------------------------|")
+                else:
+                    print(f"|{account_entry}\t|{account_balance["default"]}\t|{account_balance["available"]}\t\t|{account_storage["capacity"]}\t\t|{account_storage["used"]}\t\t|")
+                    print("|-----------------------------------------------------------------------------------------------|")
         
         print("\n")
 
 
-    async def profile_all_accounts_csv(self, program_stage: str, output_file_path: pathlib.Path = None) -> None:
+    async def profile_all_accounts_csv(self, program_stage: str, output_file_path: pathlib.Path = None, account: str = None) -> None:
         """
         This function profiles all configured accounts in the system, i.e., the one indicated in flow.json, but this time printing them in a CSV (comma separated values) to make it easy to import into other tools to do statistical analysis, plot graphs, etc. This version accepts one single string argument to indicate where in the main program the account profiling was done. This function prints the account profiles using the format
         
@@ -678,6 +700,7 @@ class ScriptRunner():
 
         :param program_state(str): If provided, this item is added to the line describing the current account profile. If not, the whole entry is omitted from the final result
         :param output_file_path (pathlib.Path): If provided, this routine dumps the line to the file and omits the stdout
+        :param account (str): If provided, this function prints a single line to the to the account indicated, if it exists. Otherwise, it profiles all accounts at once.
         """
         ctx = account_config.AccountConfig()
         accounts = ctx.getAccounts()
@@ -695,22 +718,37 @@ class ScriptRunner():
                 new_line: str = "Program Stage, Timestamp, Account Address, Default Balance, Available Balance, Storage Capacity, Used Storage\n"
                 output_stream.write(new_line)
 
-        for account_entry in accounts:
+        if (account and (account in accounts.values)):
             # Get account data
-            account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=accounts[account_entry])
-            account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=accounts[account_entry])
+            account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=account)
+            account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=account)
 
             # Print the account info in a single line, using the csv format
-            new_line = f"{program_stage},{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")},{account_entry},{account_balance["default"]},{account_balance["available"]},{account_storage["capacity"]},{account_storage["used"]}\n"
+            new_line = f"{program_stage},{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")},{account},{account_balance["default"]},{account_balance["available"]},{account_storage["capacity"]},{account_storage["used"]}\n"
 
             if (output_stream):
                 # If an output stream is present, dump the new line into it
                 output_stream.write(new_line)
             else:
                 # Otherwise print it to stdout
-                print(new_line)
+                print(new_line)        
+        else:
+            for account_entry in accounts:
+                # Get account data
+                account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=accounts[account_entry])
+                account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=accounts[account_entry])
+
+                # Print the account info in a single line, using the csv format
+                new_line = f"{program_stage},{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")},{account_entry},{account_balance["default"]},{account_balance["available"]},{account_storage["capacity"]},{account_storage["used"]}\n"
+
+                if (output_stream):
+                    # If an output stream is present, dump the new line into it
+                    output_stream.write(new_line)
+                else:
+                    # Otherwise print it to stdout
+                    print(new_line)
 
         # Check if an output stream was created and close it if so
         if (output_stream):
-            output_stream.close() 
+            output_stream.close()
                 

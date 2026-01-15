@@ -9,6 +9,9 @@ import os, pathlib
 import configparser
 import random
 import datetime
+import time
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import logging
 log = logging.getLogger(__name__)
@@ -30,6 +33,9 @@ event_runner = EventRunner()
 # TODO: Implement the Ballot revoke mechanics by processing Ballots set with "default" as the option
 # TODO: Modify project/contracts to allow multiple votes per account (add entropy to the index string to submit to the Election resource) to allow 
 # bulk submissions of ballots and test this project for bottlenecks. Otherwise I need to create a new account per new vote, which is not ideal.
+
+# TODO: Split the create election, voteboxes, ballot processing, and election termination in separate files.
+# TODO: Create a result file per account (the printing function already has an account filter)
 
 election_names: list[str] = [
     "A. Bullfights",
@@ -92,6 +98,10 @@ election_public_paths: list[str] = [
     "PublicElection03"
 ]
 
+# TODO: Run this main and solve the issues
+# TODO: Implement the threading module
+# TODO: Test this in testnet
+
 async def main(election_index: int = 0) -> None:
     """
     Main entry point for this project
@@ -119,8 +129,6 @@ async def main(election_index: int = 0) -> None:
         await contract_management.main(op="deploy", gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
         # log.info("Done!")
 
-        exit(0)
-
     # 1.1. Fund all test accounts
     if (False):
         amount: float = 10.4
@@ -134,21 +142,20 @@ async def main(election_index: int = 0) -> None:
     # 2. Setup an election with the data from the config file
     if (True):
         if (new_election):
-            
-            await script_runner.profile_all_accounts_csv(program_stage=f"Election {election_names[election_index]} - before creation ", output_file_path=storage_results_file_path)
-            # current_election.election_id = 241892558110722
-            # current_election.election_public_encryption_key = open(election_public_encryption_keys[election_index]).read()
 
-            (_, tokens_withdrawn_events, fees_deducted_events) = await current_election.create_election(
+            await current_election.create_election(
                 new_election_name=election_names[election_index],
                 new_election_ballot=election_ballots[election_index],
                 new_election_options=election_options[election_index],
                 new_election_public_key=open(election_public_encryption_keys[election_index]).read(),
                 new_election_storage_path=election_storage_paths[election_index],
                 new_election_public_path=election_public_paths[election_index],
-                new_tx_signer_address=ctx.service_account["address"].hex()
+                free_election=free_election,
+                new_tx_signer_address=ctx.service_account["address"].hex(),
+                gas_results_file_path=gas_results_file_path,
+                storage_results_file_path=storage_results_file_path
             )
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, tx_description=f"Election {election_names[election_index]} - after creation", output_file_path=gas_results_file_path)
+
         else:
             current_active_elections: list[int] = await script_runner.getActiveElections()
 
@@ -162,165 +169,173 @@ async def main(election_index: int = 0) -> None:
             current_election.election_id = current_active_elections.pop()
 
             current_election.election_public_encryption_key = await script_runner.getPublicEncryptionKey(election_id=current_election.election_id)
-        
 
-        await script_runner.profile_all_accounts_csv(program_stage=f"Election {election_names[election_index]} - after creation", output_file_path=storage_results_file_path)
 
     # 2.1 Destroy the current election
     if (False):
-        await script_runner.profile_all_accounts_csv(program_stage=f"Election {election_names[election_index]} - before deletion", output_file_path=storage_results_file_path)
-
-        (_, tokens_withdrawn_events, fees_deducted_events) = await current_election.destroy_election(tx_signer_address=ctx.service_account["address"].hex())
-        utils.processTransactionData(tokens_withdrawn_events=tokens_withdrawn_events, fees_deducted_events=fees_deducted_events, tx_description=f"Election {election_names[election_index]} deleted", output_file_path=gas_results_file_path)
-
-        await script_runner.profile_all_accounts_csv(program_stage=f"Election {election_names[election_index]} - after_deletion", output_file_path=storage_results_file_path)
+        await current_election.destroy_election(tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
     # 3. Create a VoteBox into each of the user accounts inside a loop
-    if (False):
-        if (free_election):
-            await script_runner.profile_all_accounts_csv(program_stage="VoteBox - before creation", output_file_path=storage_results_file_path)
+    if (True):
+        if (current_election.free):
             for user_account in ctx.accounts:
-                (_, tokens_withdrawn_events, fees_deducted_events) = await current_election.create_votebox(tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()])
-                
-                utils.processTransactionData(tokens_withdrawn_events=tokens_withdrawn_events, fees_deducted_events=fees_deducted_events, tx_description="VoteBox creation", output_file_path=gas_results_file_path)
+                await current_election.create_votebox(tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()], gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
         else:
             for user_account in ctx.accounts:
-                (_, tokens_withdrawn_events, fees_deducted_events) = await current_election.create_votebox(tx_signer_address=user_account["address"].hex())
-
-                utils.processTransactionData(tokens_withdrawn_events=tokens_withdrawn_events, fees_deducted_events=fees_deducted_events, tx_description="VoteBox creation", output_file_path=gas_results_file_path)
-        
-        await script_runner.profile_all_accounts_csv(program_stage ="VoteBox - after creation", output_file_path=storage_results_file_path)
+                await current_election.create_votebox(tx_signer_address=user_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
 
     # 3.1 Destroy the VoteBox from the transaction signer's account
     if (False):
-        if (free_election):
-            await script_runner.profile_all_accounts_csv(program_stage="VoteBox - before deletion", output_file_path=storage_results_file_path)
-
+        if (current_election.free):
             for user_account in ctx.accounts:
-                (_, tokens_withdrawn_events, fees_deducted_events) = await current_election.destroy_votebox(tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()])
-
-                utils.processTransactionData(tokens_withdrawn_events=tokens_withdrawn_events, fees_deducted_events=fees_deducted_events, tx_description="VoteBox deletion", output_file_path=gas_results_file_path)
+                await current_election.destroy_votebox(tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()], gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
         else:
             for user_account in ctx.accounts:
-                (_, tokens_withdrawn_events, fees_deducted_events) = await current_election.destroy_votebox(tx_signer_address=user_account["address"].hex())
-
-                utils.processTransactionData(tokens_withdrawn_events=tokens_withdrawn_events, fees_deducted_events=fees_deducted_events, tx_description="VoteBox deletion", output_file_path=gas_results_file_path)
-
-        await script_runner.profile_all_accounts_csv(program_stage="VoteBox - after deletion")
-
+                await current_election.destroy_votebox(tx_signer_address=user_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
+    
+    
 
     # 4. Mint a blank Ballot into the account provided, for the election in question
     if (False):
-        await script_runner.profile_all_accounts_csv(program_stage="Ballot mint - before", output_file_path=storage_results_file_path)
-
         for user_account in ctx.accounts:
-            (_, tokens_withdrawn_events, fees_deducted_events) = await current_election.mint_ballot_to_votebox(votebox_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex())
-
-            utils.processTransactionData(tokens_withdrawn_events=tokens_withdrawn_events, fees_deducted_events=fees_deducted_events, tx_description="Ballot minting", output_file_path=gas_results_file_path)
-        
-        await script_runner.profile_all_accounts_csv(program_stage="Ballot mint - after", output_file_path=storage_results_file_path)
+            await current_election.mint_ballot_to_votebox(votebox_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
     
     # 5. Cast the ballots for each of the user accounts to a random option from within the ones available for the election
     if (False):
-        await script_runner.profile_all_accounts_csv(program_stage="Ballot cast - before", output_file_path=storage_results_file_path)
-
         for user_account in ctx.accounts:
             random_index: int = random.randint(a=1, b=len(election_options[election_index]))
             random_option: dict[int:str] = election_options[election_index][random_index]
             
-            if (free_election):
-                (receipt, tokens_withdrawn_events, fees_deducted_events) = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()])
+            if (current_election.free):
+                receipt = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()], gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
             else:
                 # Cast the ballot and save the int ballot receipt returned
-                (receipt, tokens_withdrawn_events, fees_deducted_events) = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=user_account["address"].hex())
-            
-            utils.processTransactionData(tokens_withdrawn_events=tokens_withdrawn_events, fees_deducted_events=fees_deducted_events, tx_description="Ballot casting", output_file_path=gas_results_file_path)
+                receipt = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=user_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
             
             # Set the ballot receipt received to the user account object
             ctx.addReceipt(voter_address=user_account["address"].hex(),election_id=current_election.election_id, ballot_receipt=receipt)
 
             log.info(f"Voter {user_account["address"].hex()} ballot receipt for election {current_election.election_id} is '{receipt}'")
 
-            await script_runner.profile_all_accounts_csv(program_stage="Ballot cast - after", output_file_path=storage_results_file_path)
-
 
     # 6. Submit the cast ballots to the election
     if (False):
-        await script_runner.profile_all_accounts_csv(program_stage="Ballot submit - before", output_file_path=storage_results_file_path)
-
-        if (free_election):
+        if (current_election.free):
             for user_account in ctx.accounts:
-                (_, tokens_withdrawn_events, fees_deducted_events) = await current_election.submit_ballot(tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()])
+                await current_election.submit_ballot(tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()], gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
         else:
             for user_account in ctx.accounts:
-                (_, tokens_withdrawn_events, fees_deducted_events) = await current_election.submit_ballot(tx_signer_address=user_account["address"].hex())
-        
-        utils.processTransactionData(tokens_withdrawn_events=tokens_withdrawn_events, fees_deducted_events=fees_deducted_events, tx_description="Ballot submission", output_file_path=gas_results_file_path)
-
-        await script_runner.profile_all_accounts_csv(program_stage="Ballot submit - after", output_file_path=storage_results_file_path)
+                await current_election.submit_ballot(tx_signer_address=user_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
 
     # 7. Do the creating, casting, and submitting of ballots in one single configurable cycle. This one does the combined stuff from steps 3, 4, and 5 before.
     if (True):
-        rounds: int = 10
+        rounds: int = 1000
 
         while (rounds > 0):
             log.info(f"ROUND #{rounds}")
             # Create Ballots
             for user_account in ctx.accounts:
-                await current_election.mint_ballot_to_votebox(votebox_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex())
-
-            await script_runner.profile_all_accounts(program_stage="7.1. Accounts after ballot creation")
+                await current_election.mint_ballot_to_votebox(votebox_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
             # Cast Ballots
             for user_account in ctx.accounts:
                 random_index: int = random.randint(a=1, b=len(election_options[election_index]))
                 random_option: dict[int:str] = election_options[election_index][random_index]
                 
-                if (free_election):
+                if (current_election.free):
                     # Cast the ballot and let the service account pay for it
-                    receipt: int = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()])
+                    receipt: int = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()], gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
                 else:
                     # Cast the ballot and save the int ballot receipt returned
-                    receipt: int = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=user_account["address"].hex())
+                    receipt: int = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=user_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
                 
                 # Set the ballot receipt received to the user account object
                 ctx.addReceipt(voter_address=user_account["address"].hex(),election_id=current_election.election_id, ballot_receipt=receipt)
 
                 log.info(f"Voter {user_account["address"].hex()} ballot receipt for election {current_election.election_id} is '{receipt}'")
-            
-            await script_runner.profile_all_accounts(program_stage="7.2. Accounts after casting ballots")
 
             # Submit Ballots
             for user_account in ctx.accounts:
-                if (free_election):
-                    await current_election.submit_ballot(tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()])
+                if (current_election.free):
+                    await current_election.submit_ballot(tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()], gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
                 else:
-                    await current_election.submit_ballot(tx_signer_address=user_account["address"].hex())
-
-            await script_runner.profile_all_accounts(program_stage="7.3. Accounts after submitting ballots")
+                    await current_election.submit_ballot(tx_signer_address=user_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
                 
             rounds -= 1
+
+    #7.2 Run the same cycle as before, but using parallel threads
+    if (False):
+        rounds: int = 10
+        max_delay:int = 10
+        # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        async def process_ballot_account(voter_address: str) -> None:
+            """
+            Simple function to abstract the minting, casting, and submission of ballots. The idea is to have this function running on a separate thread, casting ballots continuously from one account. 
+            :param voter_address (str): The account address to use for this purpose.
+            """
+            
+            if (voter_address == ctx.service_account["address"].hex()):
+                raise Exception(f"ERROR: Service account {ctx.service_account["address"].hex()} is not able to vote")
+            
+            # Set the thread to sleep for a random value between 0 and the max value provided
+            time.sleep(random.randint(a=0, b=max_delay))
+
+            # Run this in a while loop
+            while(rounds > 0):
+                # Mint a new ballot to the account
+                await current_election.mint_ballot_to_votebox(votebox_address=voter_address, tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
+
+                # Cast the Ballot
+                random_index: int = random.randint(a=1, b=len(election_options[election_index]))
+                random_option: dict[int:str] = election_options[election_index][random_index]
+
+                if (current_election.free):
+                    receipt: int = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=None, tx_proposer_address=voter_address, tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[voter_address], gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
+                else:
+                    receipt: int = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=voter_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
+                
+                # Set the ballot receipt to the user account
+                ctx.addReceipt(voter_address=voter_address, election_id=current_election.election_id, ballot_receipt=receipt)
+
+                # Submit the Ballot
+                if (current_election.free):
+                    await current_election.submit_ballot(tx_signer_address=None, tx_proposer_address=voter_address, tx_payer_address=ctx.service_account["account".hex()], tx_authorizer_address=[voter_address], gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
+                else:
+                    await current_election.submit_ballot(tx_signer_address=voter_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
+
+                rounds -= 1
+        # --------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        voter_addresses: list[str] = []
+
+        for account in ctx.accounts:
+            voter_addresses.append(account["address"].hex())
+
+        log.info("Starting parallel threads")
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            results = executor.map(process_ballot_account, voter_addresses)
+
+        log.info("Threads done")
 
 
     # 8. Mint another round of Ballots to the user accounts, cast them again using a random option, and re-submit them to trigger the BallotReplaced event
     if (False):
         # Mint a new round of Ballots
         for user_account in ctx.accounts:
-            await current_election.mint_ballot_to_votebox(votebox_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex())
+            await current_election.mint_ballot_to_votebox(votebox_address=user_account["address"].hex(), tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
         # Cast the randomly as well
         for user_account in ctx.accounts:
             random_index: int = random.randint(a=1, b=len(election_options[election_index]))
             random_option: str = election_options[election_index][random_index]
 
-            if (free_election):
+            if (current_election.free):
                 # Cast the ballot and let the service account pay for it
-                receipt: int = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()])
+                receipt: int = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()], gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
             else:
                 # Cast the ballot and save the int ballot receipt returned
-                receipt: int = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=user_account["address"].hex())
+                receipt: int = await current_election.cast_ballot(option_to_set=random_option, tx_signer_address=user_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
             
             ctx.addReceipt(voter_address=user_account["address"].hex(), election_id=current_election.election_id, ballot_receipt=receipt)
 
@@ -328,7 +343,7 @@ async def main(election_index: int = 0) -> None:
 
         # Submit the new round of ballots and test that the BallotReplaced event was triggered
         for user_account in ctx.accounts:
-            await current_election.submit_ballot(tx_signer_address=user_account["address"].hex())
+            await current_election.submit_ballot(tx_signer_address=user_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
     # 9. Test out all the scripts just to be sure they work
     # Lemme create a handy dictionary to control the rest of this flow
@@ -450,20 +465,14 @@ async def main(election_index: int = 0) -> None:
 
     # 10. Withdraw ballots and compute tally
     if (True):
-        await script_runner.profile_all_accounts(program_stage="10.1 Accounts before tallying the election")
-
-        election_results = await current_election.tally_election(private_encryption_key_name=election_private_encryption_keys_filenames[election_index], tx_signer_address=ctx.service_account["address"].hex())
+        election_results = await current_election.tally_election(private_encryption_key_name=election_private_encryption_keys_filenames[election_index], tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
         log.info(f"Election {current_election.election_id} results: ")
         for result in election_results:
             log.info(f"Option '{result}': {election_results[result]} votes")
-
-        await script_runner.profile_all_accounts(program_stage="10.2 Accounts before finishing the election")
         
         # Set the election results to the election to finish it properly first
-        await current_election.finish_election(tx_signer_address=ctx.service_account["address"].hex())
-
-        await script_runner.profile_all_accounts(program_stage="10.3. Accounts  after finishing the election")
+        await current_election.finish_election(tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
         
         for user_account in ctx.accounts:
             for election_id in user_account["receipts"]:
@@ -484,18 +493,14 @@ async def main(election_index: int = 0) -> None:
         else:
             log.info(f"Election {current_election.election_id} is awaiting finish!")
 
-    # 10. Finish the election 
-    if (False):
-        await current_election.finish_election(tx_signer_address=ctx.service_account["address"].hex())
-
-    # 11. Clean up project from network
+    # 10. Clean up project from network
     if (False):
         # Destroy the VoteBoxes in each of the user accounts
         for user_account in ctx.accounts:
-            await current_election.deleteVoteBox(tx_signer_address=user_account["address"].hex())
+            await current_election.deleteVoteBox(tx_signer_address=user_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
         # Destroy the resources from the VoteBooth contract
-        await current_election.deleteVoteBooth(tx_signer_address=ctx.service_account["address"].hex())
+        await current_election.deleteVoteBooth(tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
 
     

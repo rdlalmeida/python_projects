@@ -332,14 +332,14 @@ class TransactionRunner():
         tx_object = tx_object.with_gas_limit(100000)
 
         if (storage_results_file_path):
-            self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_name} - pre creation", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_name} - pre creation", output_file_path=storage_results_file_path, account=tx_signer_address)
 
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         self.tx_end = time.time_ns()
 
         if (storage_results_file_path):
-            self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_name} - post creation", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_name} - post creation", output_file_path=storage_results_file_path, account=tx_signer_address)
 
         
         # Grab only the latest ElectionCreated event
@@ -373,14 +373,14 @@ class TransactionRunner():
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
         if (storage_results_file_path):
-            self.script_runner.profile_all_accounts_csv(program_stage=f"Election id {election_id} - pre destruction", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Election id {election_id} - pre destruction", output_file_path=storage_results_file_path, account=tx_signer_address)
         
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         self.tx_end = time.time_ns()
 
         if (storage_results_file_path):
-            self.script_runner.profile_all_accounts_csv(program_stage=f"Election id {election_id} - post destruction", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Election id {election_id} - post destruction", output_file_path=storage_results_file_path, account=tx_signer_address)
 
         election_destroyed_events: list[dict] = await self.event_runner.getElectionDestroyedEvents(tx_response=tx_response)
         tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
@@ -428,14 +428,14 @@ class TransactionRunner():
 
         voter_address: str = (tx_signer_address or tx_proposer_address)
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox account {voter_address} - pre creation", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox account {voter_address} - pre creation", output_file_path=storage_results_file_path, account=tx_proposer_address)
 
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         self.tx_end = time.time_ns()
 
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox account {voter_address} - post creation", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox account {voter_address} - post creation", output_file_path=storage_results_file_path, account=tx_proposer_address)
 
         # Grab the VoteBoxCreated event list
         votebox_created_events: list[dict[str:str]] = await self.event_runner.getVoteBoxCreatedEvents(tx_response=tx_response)
@@ -463,7 +463,7 @@ class TransactionRunner():
         }
         """
         # Validate signature inputs
-        if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx-authorizer_address) == 0)):
+        if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizer_address) == 0)):
             error_msg = "ERROR: Missing signature elements to run the transaction:\n"
 
             if (tx_proposer_address == None):
@@ -487,14 +487,14 @@ class TransactionRunner():
         voter_address: str = (tx_signer_address or tx_proposer_address)
 
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox account {voter_address} - pre destruction", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox account {voter_address} - pre destruction", output_file_path=storage_results_file_path, account=tx_proposer_address)
 
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         self.tx_end = time.time_ns()
 
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox account {voter_address} - post destruction", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox account {voter_address} - post destruction", output_file_path=storage_results_file_path, account=tx_proposer_address)
 
         votebox_destroyed_events: list[dict] = await self.event_runner.getVoteBoxBurnedEvents(tx_response=tx_response)
         tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
@@ -529,23 +529,25 @@ class TransactionRunner():
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot for account {recipient_address} - pre creation", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot for account {recipient_address} - pre creation", output_file_path=storage_results_file_path, account=tx_signer_address)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot for account {recipient_address} - pre creation", output_file_path=storage_results_file_path, account=recipient_address)
 
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         self.tx_end = time.time_ns()
 
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot for account {recipient_address} - post creation", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot for account {recipient_address} - post creation", output_file_path=storage_results_file_path, account=tx_signer_address)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot for account {recipient_address} - post creation", output_file_path=storage_results_file_path, account=recipient_address)
 
         ballot_created_events: list[dict] = await self.event_runner.getBallotCreatedEvents(tx_response=tx_response)
         tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Ballot for account {recipient_address} creation")
+            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Ballot for account {recipient_address} creation", output_file_path=gas_results_file_path)
 
-        return ballot_created_events[0]
+        return ballot_created_events
     
 
     async def castBallot(self, election_id: int, new_option: str, tx_signer_address: str, tx_proposer_address: str, tx_payer_address: str, tx_authorizer_address: list[str], gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
@@ -585,14 +587,14 @@ class TransactionRunner():
 
         voter_address = (tx_signer_address or tx_proposer_address)
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot from {voter_address} - pre cast", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot from {voter_address} - pre cast", output_file_path=storage_results_file_path, account=voter_address)
 
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         self.tx_end = time.time_ns()
 
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot from {voter_address} - post cast", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot from {voter_address} - post cast", output_file_path=storage_results_file_path, account=voter_address)
 
         log.info(f"Voter {voter_address} cast a new option for election {election_id}")
 
@@ -600,10 +602,10 @@ class TransactionRunner():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Voter {voter_address} ballot casting")
+            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Voter {voter_address} ballot casting", output_file_path=gas_results_file_path)
 
     
-    async def submitBallot(self, election_id: int, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = [], gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> tuple[int, int]:
+    async def submitBallot(self, election_id: int, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = [], gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> list[dict]:
         """Function to submit a ballot in votebox from  the transaction signer address to the election with the id provided as argument.
 
         :param election_id (int): The election identifier to select the ballot to submit.
@@ -613,7 +615,7 @@ class TransactionRunner():
         :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
         :param gas_results_file_path (pathlib.Path): A valid path to a file to where the gas calculations should be written into. If None is provided, the function skips the gas analysis.
         :param storage_results_file_path (pathlib.Path): A valid path to a file where the storage computations should be written into. If None is provided, the function skips the storage analysis.
-        :return (int, int): If successful, this function returns the ballotId and the linkedElectionId of the Ballot submitted in a tuple.
+        :return (list[dict]): If successful, this function returns either the BallotSubmitted or the BallotReplaced events, depending which operation was triggered.
         """
         # Validate signature inputs
         if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizer_address) == 0)):
@@ -639,14 +641,16 @@ class TransactionRunner():
         voter_address: str = (tx_signer_address or tx_proposer_address)
         
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot account {voter_address} - pre submission", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot account {voter_address} - pre submission", output_file_path=storage_results_file_path, account=tx_payer_address)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot account {voter_address} - pre submission", output_file_path=storage_results_file_path, account=tx_proposer_address)
 
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         self.tx_end = time.time_ns()
 
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot accounts {voter_address} - post submission", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot accounts {voter_address} - post submission", output_file_path=storage_results_file_path, account=tx_payer_address)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot accounts {voter_address} - post submission", output_file_path=storage_results_file_path, account=tx_proposer_address)
 
         # This transaction can trigger either a BallotSubmitted or a BallotReplaced event depending on the state of the user's VoteBox.
         # If no Ballots exist for the current_election_id, this submission triggers the BallotSubmitted event. But if this Ballot
@@ -668,11 +672,11 @@ class TransactionRunner():
         # Case 1: I have one BallotSubmitted event and 0 BallotReplaced. The transaction submitted the first Ballot to the VoteBox resource
         if (len(ballot_submitted_events) > 0 and len(ballot_replaced_events) == 0):
             # All OK. Return the BallotSubmitted event details
-            return (ballot_submitted_events[0]["ballot_id"], ballot_submitted_events[0]["election_id"])
+            return ballot_submitted_events
         
         # Case 2: I have 0 BallotSubmitted events and at least one BallotReplaced event. The transaction replaces an previously submitted Ballot.
         elif (len(ballot_submitted_events) == 0 and len(ballot_replaced_events) > 0):
-            return (ballot_replaced_events[0]["new_ballot_id"], ballot_replaced_events[0]["election_id"])
+            return ballot_replaced_events
         # Any other case is an error. Raise the respective Exception
         elif (len(ballot_submitted_events) > 0 and len(ballot_replaced_events) > 0):
             # Got both events at once. This is an Error
@@ -693,21 +697,22 @@ class TransactionRunner():
         :param tx_signer_address (str): The address of the account that can digitally sign this transaction.
         :param gas_results_file_path (pathlib.Path): A valid path to a file to where the gas calculations should be written into. If None is provided, the function skips the gas analysis.
         :param storage_results_file_path (pathlib.Path): A valid path to a file where the storage computations should be written into. If None is provided, the function skips the storage analysis.
+        :return (list[dict]): Returns the set of BallotWithdrawn events.
         """
         tx_name: str = "06_tally_election"
         tx_arguments: list = [cadence.UInt64(election_id)]
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
         tx_object = tx_object.with_gas_limit(100000)
-
+ 
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_id} - pre tally", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_id} - pre tally", output_file_path=storage_results_file_path, account=tx_signer_address)
 
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         self.tx_end = time.time_ns()
 
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_id} - post tally", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_id} - post tally", output_file_path=storage_results_file_path, account=tx_signer_address)
 
         ballots_withdrawn_events: list[dict] = await self.event_runner.getBallotsWithdrawnEvents(tx_response=tx_response)
         tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
@@ -716,7 +721,7 @@ class TransactionRunner():
         if (gas_results_file_path):
             utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Election {election_id} tally", output_file_path=gas_results_file_path)
 
-        log.info(f"{ballots_withdrawn_events[0]["ballots_withdrawn"]} Ballots withdrawn from Election {ballots_withdrawn_events[0]["election_id"]}")
+        return ballots_withdrawn_events
 
 
     async def finishElection(self, election_id: int, election_results: dict[str:int], ballot_receipts: list[int], tx_signer_address: str, storage_results_file_path: pathlib.Path = None, gas_results_file_path: pathlib.Path = None) -> None:
@@ -755,20 +760,20 @@ class TransactionRunner():
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
         
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_id} - pre finish", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_id} - pre finish", output_file_path=storage_results_file_path, account=tx_signer_address)
 
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         self.tx_end = time.time_ns()
 
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_id} - post finish", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_id} - post finish", output_file_path=storage_results_file_path, account=tx_signer_address)
 
         tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Election {election_id} finished")
+            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Election {election_id} finished", output_file_path=gas_results_file_path)
 
     
     async def cleanupVoteBooth(self, tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
@@ -783,14 +788,14 @@ class TransactionRunner():
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
 
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBooth - pre cleanup", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBooth - pre cleanup", output_file_path=storage_results_file_path, account=tx_signer_address)
 
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         self.tx_end = time.time_ns()
 
         if (storage_results_file_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBooth - post cleanup", output_file_path=storage_results_file_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBooth - post cleanup", output_file_path=storage_results_file_path, account=tx_signer_address)
 
         # Grab all the events
         tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
@@ -892,14 +897,14 @@ class TransactionRunner():
         voter_address: str = (tx_signer_address or tx_proposer_address)
 
         if (storage_results_input_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox from {voter_address}, Ballot from Election {election_id} - pre deletion", output_file_path=storage_results_input_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox from {voter_address}, Ballot from Election {election_id} - pre deletion", output_file_path=storage_results_input_path, account=tx_proposer_address)
 
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         self.tx_end = time.time_ns()
 
         if (storage_results_input_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox from {voter_address}, Ballot from Election {election_id} - post deletion", output_file_path=storage_results_input_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox from {voter_address}, Ballot from Election {election_id} - post deletion", output_file_path=storage_results_input_path, account=tx_proposer_address)
 
         ballots_burned_events: list[dict] = await self.event_runner.getBallotBurnedEvents(tx_response=tx_response)
         tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
@@ -945,14 +950,14 @@ class TransactionRunner():
         voter_address: str = (tx_signer_address or tx_proposer_address)
 
         if (storage_results_input_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox from account {voter_address} - pre cleanup", output_file_path=storage_results_input_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox from account {voter_address} - pre cleanup", output_file_path=storage_results_input_path, account=tx_proposer_address)
 
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
         self.tx_end = time.time_ns()
 
         if (storage_results_input_path):
-            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox from account {voter_address} - post cleanup", output_file_path=storage_results_input_path)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"VoteBox from account {voter_address} - post cleanup", output_file_path=storage_results_input_path, account=tx_proposer_address)
 
         ballot_burned_events: list[dict] = await self.event_runner.getBallotBurnedEvents(tx_response=tx_response)
         tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)

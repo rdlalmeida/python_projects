@@ -223,8 +223,6 @@ class DeployContract():
         tx_start: int = 0
         tx_end: int = 0
 
-        process_events: dict[str: dict[str: dict]] = {}
-
         log.info("1. Deploying the BallotStandard project contract...")
         try:
             if (storage_results_file_path):
@@ -245,7 +243,7 @@ class DeployContract():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description="BallotStandard deployment")
+            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description="BallotStandard deployment", output_file_path=gas_results_file_path)
 
         # 2. Deploy the base contract ElectionStandard
         contract_path = Path(self.config.get("project", "ElectionStandard"))

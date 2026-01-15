@@ -27,6 +27,7 @@ class Election(object):
         self.ballot_receipts: list[int] = None
         self.option_separator = config.get(section="encryption", option="separator")
         self.encoding = config.get(section="encryption", option="encoding")
+        self.free = False
 
         self.tx_runner = TransactionRunner()
         self.script_runner = ScriptRunner()
@@ -41,9 +42,10 @@ class Election(object):
             new_election_public_key: str,
             new_election_storage_path: str,
             new_election_public_path: str,
+            free_election: bool,
             new_tx_signer_address: str,
             gas_results_file_path: pathlib.Path = None,
-            storage_result_file_path: pathlib.Path = None
+            storage_results_file_path: pathlib.Path = None
         ) -> int:
         """Function to create a new Election into this class, if none is set so far. This class admits one and only one election per class instance. If the class's self.election_id is not None, this function fails to prevent it from replacing an active election.
 
@@ -53,6 +55,7 @@ class Election(object):
         :param election_public_key (str) The public encryption key to be associated with the election
         :param election_storage_path (str) A UNIX-type path to indicate the storage path where the election resource is to be stored.
         :param election_public_path (str) A UNIX-type path to indicate the public path where the public capability for this election is to be stored to.
+        :param free_election (bool): If True, this election is free, i.e., the service account pays for the transaction fees. If false, voters pay for transaction gas fees.
         :param tx_signer_address (str) The address for the account that can sign the transaction to create this election.
         :param gas_results_file_path (pathlib.Path): A valid path to a file to where the gas calculations should be written into. If None is provided, the function skips the gas analysis.
         :param storage_results_file_path (pathlib.Path): A valid path to a file where the storage computations should be written into. If None is provided, the function skips the storage analysis.
@@ -73,13 +76,14 @@ class Election(object):
             election_public_path=new_election_public_path,
             tx_signer_address=new_tx_signer_address,
             gas_results_file_path=gas_results_file_path,
-            storage_results_file_path=storage_result_file_path
+            storage_results_file_path=storage_results_file_path
         )
 
 
         log.info(f"Successfully created Election with id {election_id} and name '{new_election_name}'")
         
         self.election_id = election_id
+        self.free = free_election
 
         # Set the election_public_encryption_key internally as well for easier retrieval
         self.election_public_encryption_key = new_election_public_key
@@ -135,7 +139,8 @@ class Election(object):
             "voter_address": str
         }
         """
-        log.info(f"Creating a new VoteBox for account {tx_signer_address}")
+        voter_address: str = (tx_signer_address or tx_proposer_address)
+        log.info(f"Creating a new VoteBox for account {voter_address}")
         
         votebox_created_events = await self.tx_runner.createVoteBox(tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
@@ -216,6 +221,8 @@ class Election(object):
         elif (self.election_public_encryption_key == None):
             raise Exception(f"ERROR: This Election class does not have a public encryption key set yet!")
         
+        voter_address: str = (tx_signer_address or tx_proposer_address)
+        
         # Generate a random value between the limits defined in the config file
         option_salt: int = crypto_management.generate_random_salt()
 
@@ -236,7 +243,7 @@ class Election(object):
 
         await self.tx_runner.castBallot(election_id=self.election_id, new_option=str(base64_option, encoding=self.encoding), tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
-        log.info(f"Successfully cast a Ballot for account {tx_signer_address} and for election {self.election_id}")
+        log.info(f"Successfully cast a Ballot for account {voter_address} and for election {self.election_id}")
 
         # Return the random salt back to the function caller so it can be processed properly
         return option_salt
@@ -255,17 +262,19 @@ class Election(object):
             raise Exception(f"ERROR: This Election instance does not have an active election yet!")
         
         # The submitBallot function can trigger either a BallotSubmitted or a BallotReplaced event depending on the current state 
-        (ballot_submitted_events, tokens_withdrawn_events, fees_deducted_events) = await self.tx_runner.submitBallot(election_id=self.election_id, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
+        ballot_submitted_events = await self.tx_runner.submitBallot(election_id=self.election_id, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
+
+        voter_address: str = (tx_signer_address or tx_proposer_address)
 
         for ballot_submitted_event in ballot_submitted_events:
             # Test the dictionary structure returned to determine which event was triggered
             if "ballot_id" in ballot_submitted_event:
                 # If this element exists, I got a BallotSubmitted
-                log.info(f"Voter {tx_signer_address} successfully submitted ballot {ballot_submitted_event["ballot_id"]} to election {ballot_submitted_event["election_id"]}")
+                log.info(f"Voter {voter_address} successfully submitted ballot {ballot_submitted_event["ballot_id"]} to election {ballot_submitted_event["election_id"]}")
 
             elif "old_ballot_id" in ballot_submitted_event:
                 # If this element is present, I got a BallotReplaced instead
-                log.info(f"Voter {tx_signer_address} successfully replaced ballot {ballot_submitted_event["old_ballot_id"]} with ballot {ballot_submitted_event["new_ballot_id"]} for election {ballot_submitted_event["election_id"]}")
+                log.info(f"Voter {voter_address} successfully replaced ballot {ballot_submitted_event["old_ballot_id"]} with ballot {ballot_submitted_event["new_ballot_id"]} for election {ballot_submitted_event["election_id"]}")
             else:
                 # If both above verifications failed, raise an Exception because something else must have gone wrong.
                 raise Exception("ERROR: Submitted a ballot but it did not triggered a BallotSubmitted nor a BallotReplaced event!")
@@ -287,9 +296,10 @@ class Election(object):
         if (self.election_options == None):
             raise Exception(f"ERROR: Unable to tally Election {self.election_id} without a set of valid election options defined first.")
 
-        (ballots_withdrawn_event, tokens_withdrawn_events, fees_deducted_events) = await self.tx_runner.tallyElection(election_id=self.election_id, tx_signer_address=tx_signer_address)
+        ballots_withdrawn_events = await self.tx_runner.tallyElection(election_id=self.election_id, tx_signer_address=tx_signer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
-        log.info(f"Election {ballots_withdrawn_event["election_id"]} tallied after processing {ballots_withdrawn_event["ballots_withdrawn"]} ballots.")
+        for ballots_withdrawn_event in ballots_withdrawn_events:
+            log.info(f"Election {ballots_withdrawn_event["election_id"]} tallied after processing {ballots_withdrawn_event["ballots_withdrawn"]} ballots.")
 
         # Fetch the election results, namely the array of encrypted ballot options
         encrypted_ballots: list[str] = await self.script_runner.getElectionEncryptedBallots(election_id=self.election_id)
@@ -370,7 +380,7 @@ class Election(object):
                 
         # Set the election to finish with the election_results previously set in this class instance. There are no events emitted with this transaction so
         # there's no immediate point in capturing the transaction response
-        (tokens_withdrawn_events, fees_deducted_events) = await self.tx_runner.finishElection(election_id=self.election_id, election_results=self.election_results, ballot_receipts=self.ballot_receipts, tx_signer_address=tx_signer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
+        await self.tx_runner.finishElection(election_id=self.election_id, election_results=self.election_results, ballot_receipts=self.ballot_receipts, tx_signer_address=tx_signer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
         # Check that the election was indeed finished
         election_finished = await self.script_runner.isElectionFinished(election_id=self.election_id)
@@ -546,7 +556,10 @@ class Election(object):
         :param votebox_address (str): The address from where the the VoteBox resource reference is to be retrieved 
         """
         ballot_id: int = await self.script_runner.getBallotId(election_id=self.election_id, votebox_address=votebox_address)
-        log.info(f"Ballot id for election {self.election_id} and user {votebox_address}: {ballot_id}")
+        
+        if (ballot_id != 0):
+
+            log.info(f"Ballot id for election {self.election_id} and user {votebox_address}: {ballot_id}")
 
 
     async def get_election_results(self) -> None:
@@ -585,7 +598,7 @@ class Election(object):
 
         :param account_address (str): The address of the account whose balance is to retrieve.
         """
-        current_account_balance: float = await self.script_runner.getAccountBalance(account_address=account_address)
+        current_account_balance: float = await self.script_runner.getAccountBalance(recipient_address=account_address)
 
         log.info(f"Account {account_address} FLOW balance: {current_account_balance}")
 
@@ -613,7 +626,7 @@ class Election(object):
         return votebox_deleted_events
 
     
-    async def deleteVoteBooth(self, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: str = None, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> tuple[list[dict], list[dict], list[dict], list[dict], list[dict]]:
+    async def deleteVoteBooth(self, tx_signer_address: str = None, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
         """
         Function to clean the storage account for the tx_signer_address parameter provided, namely, to destroy the ElectionIndex and VoteBoothBallotPrinterAdmin resources.
 
@@ -624,8 +637,7 @@ class Election(object):
         :param gas_results_file_path (pathlib.Path): A valid path to a file to where the gas calculations should be written into. If None is provided, the function skips the gas analysis.
         :param storage_results_file_path (pathlib.Path): A valid path to a file where the storage computations should be written into. If None is provided, the function skips the storage analysis.
         """
-        (tokens_withdrawn_events, fees_deducted_events, election_destroyed_events, election_index_destroyed_events, votebooth_printer_admin_destroyed_events) = await self.tx_runner.cleanupVoteBooth(tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
+
+        await self.tx_runner.cleanupVoteBooth(tx_signer_address=tx_signer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
         log.info(f"Successfully cleaned up the VoteBooth contract from account {tx_signer_address}")
-
-        return (tokens_withdrawn_events, fees_deducted_events, election_destroyed_events, election_index_destroyed_events, votebooth_printer_admin_destroyed_events)
