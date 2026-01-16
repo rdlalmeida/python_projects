@@ -140,7 +140,7 @@ async def main(election_index: int = 0) -> None:
         await tx_runner.fundAllAccounts(amount=amount, recipients=recipients, tx_signer_address=ctx.service_account["address"].hex())
 
     # 2. Setup an election with the data from the config file
-    if (True):
+    if (False):
         if (new_election):
 
             await current_election.create_election(
@@ -176,7 +176,7 @@ async def main(election_index: int = 0) -> None:
         await current_election.destroy_election(tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
     # 3. Create a VoteBox into each of the user accounts inside a loop
-    if (True):
+    if (False):
         if (current_election.free):
             for user_account in ctx.accounts:
                 await current_election.create_votebox(tx_signer_address=None, tx_proposer_address=user_account["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(), tx_authorizer_address=[user_account["address"].hex()], gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
@@ -230,7 +230,7 @@ async def main(election_index: int = 0) -> None:
 
 
     # 7. Do the creating, casting, and submitting of ballots in one single configurable cycle. This one does the combined stuff from steps 3, 4, and 5 before.
-    if (True):
+    if (False):
         rounds: int = 1000
 
         while (rounds > 0):
@@ -367,7 +367,8 @@ async def main(election_index: int = 0) -> None:
             "15_get_election_results": True,
             "16_is_election_finished": True,
             "17_get_account_balance": True,
-            "18_get_election_winner": True
+            "18_get_election_winner": True,
+            "23_is_election_free": True
         }
 
         # selected_user: int = 1
@@ -463,8 +464,12 @@ async def main(election_index: int = 0) -> None:
         if (scripts_to_run["18_get_election_winner"]):
             await current_election.get_election_winner()
 
+        # 23_is_election_free
+        if (scripts_to_run["23_is_election_free"]):
+            await current_election.is_election_free()
+
     # 10. Withdraw ballots and compute tally
-    if (True):
+    if (False):
         election_results = await current_election.tally_election(private_encryption_key_name=election_private_encryption_keys_filenames[election_index], tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
         log.info(f"Election {current_election.election_id} results: ")

@@ -550,6 +550,29 @@ class ScriptRunner():
                 return encrypted_options
             else:
                 return []
+    
+
+    async def isElectionFree(self, election_id: int) -> bool:
+        """Function to retrieve the value of the 'is_free' flag from the Election with the id provided as argument.
+        
+        :param election_id (int): The election identifier for the election to be processed.
+
+        :return (bool): Returns the value of the flag, if an Election exists for the id provided.
+        """
+        name = "23_is_election_free"
+        arguments = [cadence.UInt64(election_id)]
+
+        script_object: Script = self.getScript(script_name=name, script_arguments=arguments)
+
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
+
+            if (not script_result or len(script_result) == 0):
+                raise ScriptError(script_name=name)
+            
+            return bool(script_result.value)
             
 
     async def isBallotReceiptValid(self, election_id: int, ballot_receipt: int) -> bool:
@@ -662,9 +685,9 @@ class ScriptRunner():
         print("|-----------------------------------------------------------------------------------------------|")
         
         ctx = account_config.AccountConfig()
-        accounts = ctx.getAccounts()
+        accounts = ctx.getAddresses()
 
-        if (account and (account in accounts.values)):
+        if (account and (account in accounts)):
                 account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=account)
                 account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=account)
 
@@ -703,7 +726,7 @@ class ScriptRunner():
         :param account (str): If provided, this function prints a single line to the to the account indicated, if it exists. Otherwise, it profiles all accounts at once.
         """
         ctx = account_config.AccountConfig()
-        accounts = ctx.getAccounts()
+        accounts = ctx.getAddresses()
 
         # Check if the file pointed by the path exists and proceed accordingly
         if (output_file_path):
@@ -718,7 +741,7 @@ class ScriptRunner():
                 new_line: str = "Program Stage, Timestamp, Account Address, Default Balance, Available Balance, Storage Capacity, Used Storage\n"
                 output_stream.write(new_line)
 
-        if (account and (account in accounts.values)):
+        if (account and (account in accounts)):
             # Get account data
             account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=account)
             account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=account)
@@ -735,8 +758,8 @@ class ScriptRunner():
         else:
             for account_entry in accounts:
                 # Get account data
-                account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=accounts[account_entry])
-                account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=accounts[account_entry])
+                account_balance: dict[str:float] = await self.getAccountBalance(recipient_address=account_entry)
+                account_storage: dict[str:int] = await self.getAccountStorage(recipient_address=account_entry)
 
                 # Print the account info in a single line, using the csv format
                 new_line = f"{program_stage},{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")},{account_entry},{account_balance["default"]},{account_balance["available"]},{account_storage["capacity"]},{account_storage["used"]}\n"

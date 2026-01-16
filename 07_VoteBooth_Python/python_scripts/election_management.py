@@ -74,6 +74,7 @@ class Election(object):
             election_public_key=new_election_public_key,
             election_storage_path=new_election_storage_path,
             election_public_path=new_election_public_path,
+            free_election=free_election,
             tx_signer_address=new_tx_signer_address,
             gas_results_file_path=gas_results_file_path,
             storage_results_file_path=storage_results_file_path
@@ -579,6 +580,15 @@ class Election(object):
         else:
             log.info(f"Election {self.election_id} is still running!")
 
+    async def is_election_free(self) -> None:
+        """Function to retrieve the free election status of the present election        
+        """
+        election_free: bool = await self.script_runner.isElectionFree(election_id=self.election_id)
+
+        if (election_free):
+            log.info(f"Election {self.election_id} is free!")
+        else:
+            log.info(f"Election {self.election_id} is NOT free!")
 
     async def get_election_winner(self) -> None:
         """Function to print out the winner of the current election, if set.

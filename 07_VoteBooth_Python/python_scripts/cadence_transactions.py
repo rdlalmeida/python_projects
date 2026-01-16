@@ -280,7 +280,7 @@ class TransactionRunner():
             raise e
 
 
-    async def createElection(self, election_name: str, election_ballot: str, election_options: dict[int: str], election_public_key: str, election_storage_path: str, election_public_path: str, tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> int:
+    async def createElection(self, election_name: str, election_ballot: str, election_options: dict[int: str], election_public_key: str, election_storage_path: str, election_public_path: str, free_election: bool,  tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> int:
         """Function to create a new Election in the project environment.
 
         :param election_name (str): The name of election to create
@@ -288,7 +288,8 @@ class TransactionRunner():
         :param election_options (dict[int: str]): A dictionary with the available options for the election just created.
         :param public_key (str): The public encryption key associated to the election created.
         :param election_storage_path (str): The storage path to where the election created should be saved to.
-        :param election_public_path (str): The public path to where the public election capability should be published to.:
+        :param election_public_path (str): The public path to where the public election capability should be published to.
+        :param free_election (bool): Set this parameter to True to have all transactions costs associated to this Election paid by the service account. If set to False, the voting costs are split between the voter and the election administration (service account).
         :param gas_results_file_path (pathlib.Path): A valid path to a file to where the gas calculations should be written into. If None is provided, the function skips the gas analysis.
         :param storage_results_file_path (pathlib.Path): A valid path to a file where the storage computations should be written into. If None is provided, the function skips the storage analysis.
         :return (int): If successful, this function returns the electionId of the new resource created
@@ -318,6 +319,7 @@ class TransactionRunner():
         cadence_election_public_key: cadence.String = cadence.String(value=election_public_key)
         cadence_election_storage_path: cadence.Path = cadence.Path(domain="storage", identifier=election_storage_path)
         cadence_election_public_path: cadence.Path = cadence.Path(domain="public", identifier=election_public_path)
+        cadence_free_election: cadence.Bool = cadence.Bool(value=free_election)
 
         tx_arguments: list = [
             cadence_election_name, 
@@ -325,7 +327,8 @@ class TransactionRunner():
             cadence_election_options,
             cadence_election_public_key,
             cadence_election_storage_path,
-            cadence_election_public_path
+            cadence_election_public_path,
+            cadence_free_election
         ]
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)

@@ -292,6 +292,21 @@ class AccountConfig(object):
         return network_accounts
     
     
+    def getAddresses(self) -> list[str]:
+        """
+        Simple function to return the account addresses, in a str format, in a handy list for comparison.        
+        :return list[str]: Returns the list of configured address for the active network.
+        """
+        account_addresses: list[str] = []
+
+        account_addresses.append(self.service_account["address"].hex())
+
+        for account in self.accounts:
+            account_addresses.append(account["address"].hex())
+        
+        return account_addresses
+    
+    
 def getFlowClient(ctx:AccountConfig) -> flow_client:
     new_client = flow_client(
         host=ctx.access_node_host, port=ctx.access_node_port

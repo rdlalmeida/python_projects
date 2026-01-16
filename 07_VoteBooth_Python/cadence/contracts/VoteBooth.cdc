@@ -338,7 +338,7 @@ access(all) contract VoteBooth {
     // ---------------------------------------------------------------- BALLOT PRINTER ADMIN BEGIN -------------------------------------------------------------
     access(all) resource VoteBoothPrinterAdmin: Burner.Burnable {
         /**
-import resources. from 0xf8d6e0586b0a20c7
+            This function is the only process to create new Ballots in this context. I've made the BallotStandard contract such that anyone can import it and use the resource in their own version of this election platform. But for this instance in particular, the only entry point to create a new Ballot is through one of these BallotPrinterAdmin resources.
 
             @param newLinkedElectionId (UInt64) The electionId to the Election resource that this Ballot can be submitted to.
             @param newElectionCapability (Capability<&{ElectionStandard.ElectionPublic}>) A Capability to retrieve the public reference to the Election associated to this Ballot.
@@ -489,6 +489,7 @@ import resources. from 0xf8d6e0586b0a20c7
             newPublicKey: String,
             newElectionStoragePath: StoragePath,
             newElectionPublicPath: PublicPath,
+            newFreeElection: Bool,
             deployerAccount: auth(Storage, Capabilities, ElectionStandard.ElectionAdmin) &Account
         ): UInt64 {
             // Start by creating the Election resource
@@ -499,7 +500,8 @@ import resources. from 0xf8d6e0586b0a20c7
                 newElectionOptions: newElectionOptions,
                 newPublicKey: newPublicKey,
                 newElectionStoragePath: newElectionStoragePath,
-                newElectionPublicPath: newElectionPublicPath
+                newElectionPublicPath: newElectionPublicPath,
+                newFreeElection: newFreeElection
             )
 
             let newElectionId: UInt64 = newElection.getElectionId()

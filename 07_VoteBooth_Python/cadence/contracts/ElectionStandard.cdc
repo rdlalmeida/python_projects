@@ -63,6 +63,7 @@ access(all) contract ElectionStandard {
         access(all) view fun isBallotReceiptValid(ballotReceipt: UInt64): Bool
         access(all) view fun getElectionResults(): {String: Int}
         access(all) view fun getEncryptedOptions(): [String]
+        access(all) view fun isElectionFree(): Bool
     }
 
     // The definition of the ElectionStandard.Election resource
@@ -126,6 +127,18 @@ access(all) contract ElectionStandard {
 
         // This array keeps a copy of the Ballot receipts, to allow functions that voters can use to check if their random integer is among the tallied Ballots
         access(self) var ballotReceipts: [UInt64]
+
+        // This flag is used to determine who pays the transaction fees associated with Election operation
+        access(self) let freeElection: Bool
+
+        /**
+            Getter function for the freeElection parameter. Returns the state of the contract flag.
+
+            @return Bool: True if the Election is set to have all transaction costs paid by the service account. False otherwise.
+        **/
+        access(all) view fun isElectionFree(): Bool {
+            return self.freeElection
+        }
 
         /**
             Setter function with the ElectionStandard.ElectionAdmin entitlement to set the election results of this Election, and to set the 'isFinished' flag to true, thus preventing Ballot from being submitted into this Election. Because the ballot options are encrypted, they need to go off chain to get decrypted and tallied. This function finishes the voting process.
@@ -874,6 +887,7 @@ access(all) contract ElectionStandard {
             @param _publicKey (String) The public encryption key that is to be used to encrypt the Ballot option from the frontend side.
             @param _electionStoragePath (StoragePath) A StoragePath-type item to where this Election resource is going to be stored into the voter's own account.
             @param _electionPublicPath (PublicPath) A PublicPath-type item where the public reference to this Election can be retrieved from.
+            @param _freeElection (Bool): Set this flag to true to have the service account paying for all transaction fees. Set it to false to split these between the voters and service account (election administrator)
 
             @return @ElectionStandard.Election If successful, this function returns the Election resource back to the user.
         **/
@@ -883,7 +897,8 @@ access(all) contract ElectionStandard {
             _electionOptions: {UInt8: String},
             _publicKey: String,
             _electionStoragePath: StoragePath,
-            _electionPublicPath: PublicPath
+            _electionPublicPath: PublicPath,
+            _freeElection: Bool
         ) {
             self.electionId = self.uuid
             self.name = _electionName
@@ -926,6 +941,8 @@ access(all) contract ElectionStandard {
 
             // Set the ballotReceipts to an empty array for now
             self.ballotReceipts = []
+
+            self.freeElection = _freeElection
         }
     }
 
@@ -939,6 +956,7 @@ access(all) contract ElectionStandard {
         @param newPublicKey (String) The public encryption key that is to be used to encrypt the Ballot option from the frontend side.
         @param newElectionStoragePath (StoragePath) A StoragePath-type item to where this Election resource is going to be stored into the voter's own account.
         @param newElectionPublicPath (PublicPath) A PublicPath-type item where the public reference to this Election can be retrieved from.
+        param _freeElection (Bool): Set this flag to true to have the service account paying for all transaction fees. Set it to false to split these between the voters and service account (election administrator)
 
         @return @ElectionStandard.Election If successful, this function returns the Election resource back to the user
     **/
@@ -948,7 +966,8 @@ access(all) contract ElectionStandard {
         newElectionOptions: {UInt8: String},
         newPublicKey: String,
         newElectionStoragePath: StoragePath,
-        newElectionPublicPath: PublicPath
+        newElectionPublicPath: PublicPath,
+        newFreeElection: Bool
     ): @ElectionStandard.Election {
         let newElection: @ElectionStandard.Election <- create ElectionStandard.Election(
             _electionName: newElectionName,
@@ -956,7 +975,8 @@ access(all) contract ElectionStandard {
             _electionOptions: newElectionOptions,
             _publicKey: newPublicKey,
             _electionStoragePath: newElectionStoragePath,
-            _electionPublicPath: newElectionPublicPath
+            _electionPublicPath: newElectionPublicPath,
+            _freeElection: newFreeElection
             )
 
             emit ElectionCreated(_electionId: newElection.getElectionId(), _electionName: newElectionName)
