@@ -13,12 +13,11 @@ This is a shitty conundrum and the easiest way I could find to solve it is to cr
 import sys, os
 import configparser
 from pathlib import Path
-from common import utils
-from flow_py_sdk import cadence
+from common.utils import Utils
 
 import logging
 log = logging.getLogger(__name__)
-utils.configureLogging()
+Utils.configureLogging()
 
 project_cwd = Path(os.getcwd())
 config_path = project_cwd.joinpath("common", "config.ini")

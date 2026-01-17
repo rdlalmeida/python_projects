@@ -7,7 +7,8 @@ from flow_py_sdk import (
 )
 
 import configparser
-from common import utils, account_config
+from common.utils import Utils
+from common.account_config import AccountConfig
 import pathlib
 import os
 import time
@@ -18,7 +19,7 @@ from python_scripts.cadence_scripts import ScriptRunner
 # Setup logging capabilities
 import logging
 log = logging.getLogger(__name__)
-utils.configureLogging()
+Utils.configureLogging()
 
 
 
@@ -44,7 +45,7 @@ class TransactionError(Exception):
 class TransactionRunner():
     def __init__(self) -> None:
         super().__init__()
-        self.ctx = account_config.AccountConfig()
+        self.ctx = AccountConfig()
         self.project_cwd = pathlib.Path(os.getcwd())
 
         config_path = self.project_cwd.joinpath("common", "config.ini")
@@ -332,7 +333,7 @@ class TransactionRunner():
         ]
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
-        tx_object = tx_object.with_gas_limit(100000)
+        tx_object = tx_object.with_gas_limit(int(self.config.get(section="gas", option="limit")))
 
         if (storage_results_file_path):
             await self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_name} - pre creation", output_file_path=storage_results_file_path, account=tx_signer_address)
@@ -351,7 +352,7 @@ class TransactionRunner():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Election {election_name} created", output_file_path=gas_results_file_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Election {election_name} created", output_file_path=gas_results_file_path)
         
         return election_created_events[0]["election_id"]
 
@@ -374,6 +375,7 @@ class TransactionRunner():
         tx_arguments: list = [cadence.UInt64(election_id)]
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
+        tx_object.with_gas_limit(gas_limit=int(self.config.get(section="gas", option="limit")))
 
         if (storage_results_file_path):
             await self.script_runner.profile_all_accounts_csv(program_stage=f"Election id {election_id} - pre destruction", output_file_path=storage_results_file_path, account=tx_signer_address)
@@ -390,10 +392,11 @@ class TransactionRunner():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Election id {election_id} destroyed", output_file_path=gas_results_file_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Election id {election_id} destroyed", output_file_path=gas_results_file_path)
 
-        return election_destroyed_events
-    
+        for election_destroyed_event in election_destroyed_events:
+            log.info(f"Election {election_destroyed_event["election_id"]} with {election_destroyed_event["ballots_stored"]} Ballots inside destroyed")
+
 
     async def createVoteBox(self, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = [], gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> list[dict]:
         """Function to create a votebox resource into the the account that is supposed to sign this transaction.
@@ -446,7 +449,10 @@ class TransactionRunner():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"VoteBox account {voter_address} creation", output_file_path=gas_results_file_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"VoteBox account {voter_address} creation", output_file_path=gas_results_file_path)
+
+        for votebox_created_event in votebox_created_events:
+            log.info(f"VoteBox created for account {votebox_created_event["voter_address"]}")
 
         return votebox_created_events
     
@@ -504,8 +510,10 @@ class TransactionRunner():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"VoteBox account {voter_address} deletion", output_file_path=gas_results_file_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"VoteBox account {voter_address} deletion", output_file_path=gas_results_file_path)
 
+        for votebox_destroyed_event in votebox_destroyed_events:
+            log.info(f"VoteBox destroyed for account {votebox_destroyed_event["voter_address"]}")
         return votebox_destroyed_events
     
 
@@ -548,7 +556,7 @@ class TransactionRunner():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Ballot for account {recipient_address} creation", output_file_path=gas_results_file_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Ballot for account {recipient_address} creation", output_file_path=gas_results_file_path)
 
         return ballot_created_events
     
@@ -599,13 +607,11 @@ class TransactionRunner():
         if (storage_results_file_path):
             await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot from {voter_address} - post cast", output_file_path=storage_results_file_path, account=voter_address)
 
-        log.info(f"Voter {voter_address} cast a new option for election {election_id}")
-
         tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Voter {voter_address} ballot casting", output_file_path=gas_results_file_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Voter {voter_address} ballot casting", output_file_path=gas_results_file_path)
 
     
     async def submitBallot(self, election_id: int, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizer_address: list[str] = [], gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> list[dict]:
@@ -670,7 +676,7 @@ class TransactionRunner():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Ballot account {voter_address} - submission", output_file_path=gas_results_file_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Ballot account {voter_address} - submission", output_file_path=gas_results_file_path)
 
         # Case 1: I have one BallotSubmitted event and 0 BallotReplaced. The transaction submitted the first Ballot to the VoteBox resource
         if (len(ballot_submitted_events) > 0 and len(ballot_replaced_events) == 0):
@@ -722,7 +728,7 @@ class TransactionRunner():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Election {election_id} tally", output_file_path=gas_results_file_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Election {election_id} tally", output_file_path=gas_results_file_path)
 
         return ballots_withdrawn_events
 
@@ -776,7 +782,7 @@ class TransactionRunner():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Election {election_id} finished", output_file_path=gas_results_file_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Election {election_id} finished", output_file_path=gas_results_file_path)
 
     
     async def cleanupVoteBooth(self, tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
@@ -808,7 +814,7 @@ class TransactionRunner():
         votebooth_printer_admin_destroyed_events: list[dict] = await self.event_runner.getVoteBoothPrinterAdminDestroyedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"VoteBooth - cleanup", output_file_path=gas_results_file_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"VoteBooth - cleanup", output_file_path=gas_results_file_path)
 
         # It is easier to do all the log.info printing from this side
         log.info(f"Successfully deleted {len(election_destroyed_events)} Elections from the VoteBooth contract in account {tx_signer_address}:")
@@ -914,7 +920,7 @@ class TransactionRunner():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_input_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"VoteBox from {voter_address}, Ballot from Election {election_id} deleted")
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"VoteBox from {voter_address}, Ballot from Election {election_id} deleted")
 
         for ballot_burned_event in ballots_burned_events:
             log.info(f"Ballot {ballot_burned_event["ballot_id"]} attached to election {ballot_burned_event["linked_election_id"]}")
@@ -967,7 +973,7 @@ class TransactionRunner():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_input_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"VoteBox from account {voter_address} cleanup", output_file_path=gas_results_input_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"VoteBox from account {voter_address} cleanup", output_file_path=gas_results_input_path)
 
         for ballot_burned_event in ballot_burned_events:
             log.info(f"Ballot {ballot_burned_event["ballot_id"]} attached to election {ballot_burned_event["linked_election_id"]}")

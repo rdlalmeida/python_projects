@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 import configparser
 import os
-from common import utils
+from common.utils import Utils
 
 from flow_py_sdk.cadence import Address
 from flow_py_sdk.signer import InMemorySigner, HashAlgo, SignAlgo
@@ -11,7 +11,7 @@ from flow_py_sdk import flow_client
 
 
 log = logging.getLogger(__name__)
-utils.configureLogging()
+Utils.configureLogging()
 
 project_cwd = Path(os.getcwd())
 config_path = project_cwd.joinpath("common", "config.ini")

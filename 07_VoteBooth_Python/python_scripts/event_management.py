@@ -8,12 +8,13 @@ import configparser
 import os
 import pathlib
 
-from common import utils, account_config
+from common.utils import Utils
+from common.account_config import AccountConfig
 from python_scripts import cadence_scripts
 
 import logging
 log = logging.getLogger(__name__)
-utils.configureLogging()
+Utils.configureLogging()
 
 
 class EventRunner():
@@ -25,7 +26,7 @@ class EventRunner():
         self.config = configparser.ConfigParser()
         self.config.read(config_path)
 
-        self.ctx = account_config.AccountConfig()
+        self.ctx = AccountConfig()
 
         self.script_runner = cadence_scripts.ScriptRunner()
 

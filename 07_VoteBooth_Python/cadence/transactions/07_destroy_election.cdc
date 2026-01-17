@@ -8,13 +8,13 @@ import VoteBooth from 0xf8d6e0586b0a20c7
 import ElectionStandard from 0xf8d6e0586b0a20c7
 
 transaction(electionId: UInt64) {
-    let electionIndexRef: &{VoteBooth.ElectionIndexPublic}
+    let electionIndexRef: &VoteBooth.ElectionIndex
     let electionStoragePath: StoragePath
     let electionPublicPath: PublicPath
     let electionToDestroy: @ElectionStandard.Election
 
-    prepare(signer: auth(LoadValue, UnpublishCapability) &Account) {
-        self.electionIndexRef = signer.capabilities.borrow<&{VoteBooth.ElectionIndexPublic}>(VoteBooth.electionIndexPublicPath) ??
+    prepare(signer: auth(Storage, LoadValue, UnpublishCapability) &Account) {
+        self.electionIndexRef = signer.storage.borrow<&VoteBooth.ElectionIndex>(from: VoteBooth.electionIndexStoragePath) ??
         panic(
             "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at `VoteBooth.electionIndexPublicPath.toString()` from account `signer.address.toString()`"
         )
@@ -36,8 +36,10 @@ transaction(electionId: UInt64) {
 
         // Unpublish all election capabilities
         let oldCapability: Capability? = signer.capabilities.unpublish(self.electionPublicPath)
-    }
 
+        // Remove the election entry from the ElectionIndex
+        let oldIndexEntry: {StoragePath: PublicPath}? = self.electionIndexRef.removeElectionFromIndex(electionId: electionId)
+    }
 
     execute {
         // Finish with destroying the Election loaded with the Burner contract to trigger the Election's burnCallback

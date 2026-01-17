@@ -5,7 +5,8 @@ from flow_py_sdk import (
 )
 
 import configparser
-from common import utils, account_config
+from common.utils import Utils
+from common.account_config import AccountConfig
 import pathlib
 import os
 import datetime
@@ -13,7 +14,7 @@ import datetime
 # Setup logging capabilities
 import logging
 log = logging.getLogger(__name__)
-utils.configureLogging()
+Utils.configureLogging()
 
 class ScriptError(Exception):
     """Custom Exception to be raised when a Flow script was not properly executed.
@@ -34,7 +35,7 @@ class ScriptError(Exception):
 class ScriptRunner():
     def __init__(self) -> None:
         super().__init__()
-        self.ctx = account_config.AccountConfig()
+        self.ctx = AccountConfig()
         self.project_cwd = pathlib.Path(os.getcwd())
 
         config_path = self.project_cwd.joinpath("common", "config.ini")
@@ -208,7 +209,7 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result.value)
+            return Utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result.value)
     
 
     async def getElectionId(self, election_id: int, votebox_address: str = None) -> int:
@@ -323,7 +324,7 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result.value)
+            return Utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result.value)
 
 
     async def getElectionStoragePath(self, election_id: int) -> str:
@@ -389,7 +390,7 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result)
+            return Utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result)
 
     
     async def getBallotOption(self, election_id: int, votebox_address: str) -> str:
@@ -466,7 +467,7 @@ class ScriptRunner():
             if (not script_result):
                 raise ScriptError(script_name=name)
             
-            return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result)
+            return Utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result)
 
     async def isElectionFinished(self, election_id: int) -> bool:
         """Function to retrieve the running state for the election resource identified by the election id provided as argument.
@@ -515,7 +516,7 @@ class ScriptRunner():
                 log.warning(f"Election {election_id} is not yet finished!")
                 return {}
             elif (len(script_result.value.value) > 0):
-                return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result.value)
+                return Utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result.value)
             else:
                 return {}
 
@@ -569,7 +570,7 @@ class ScriptRunner():
         ) as client:
             script_result = await client.execute_script(script=script_object)
 
-            if (not script_result or len(script_result) == 0):
+            if (not script_result):
                 raise ScriptError(script_name=name)
             
             return bool(script_result.value)
@@ -625,7 +626,7 @@ class ScriptRunner():
                 raise ScriptError(script_name=name)
             
             if (len(script_result.value) > 0):
-                account_balance = utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result)
+                account_balance = Utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result)
 
                 # The balance value returned is missing the decimal value at the 8th digit. Fix this before returning the value
                 scale_factor: int = 100000000
@@ -664,7 +665,7 @@ class ScriptRunner():
                 raise ScriptError(script_name=name)
             
             if (len(script_result.value) > 0):
-                return utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result)
+                return Utils.convertCadenceDictionaryToPythonDictionary(cadence_dict=script_result)
             else:
                 return {}
             
@@ -684,7 +685,7 @@ class ScriptRunner():
         print("|               | default       | available             | capacity              | used          |")
         print("|-----------------------------------------------------------------------------------------------|")
         
-        ctx = account_config.AccountConfig()
+        ctx = AccountConfig()
         accounts = ctx.getAddresses()
 
         if (account and (account in accounts)):
@@ -725,7 +726,7 @@ class ScriptRunner():
         :param output_file_path (pathlib.Path): If provided, this routine dumps the line to the file and omits the stdout
         :param account (str): If provided, this function prints a single line to the to the account indicated, if it exists. Otherwise, it profiles all accounts at once.
         """
-        ctx = account_config.AccountConfig()
+        ctx = AccountConfig()
         accounts = ctx.getAddresses()
 
         # Check if the file pointed by the path exists and proceed accordingly

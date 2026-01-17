@@ -1,6 +1,5 @@
 import flow_py_sdk
 import configparser
-import asyncio
 from common.account_config import AccountConfig
 from pathlib import Path
 

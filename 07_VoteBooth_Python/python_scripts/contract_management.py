@@ -10,19 +10,19 @@ from flow_py_sdk import(
 import configparser
 import asyncio
 import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from common.account_config import AccountConfig
 from python_scripts.event_management import EventRunner
 from python_scripts.cadence_scripts import ScriptRunner
-from common import utils
+from common.utils import Utils
 from pathlib import Path
 import time
 
 import logging
 
 log = logging.getLogger(__name__)
-utils.configureLogging()
+Utils.configureLogging()
 # logging.basicConfig(level=logging.DEBUG)
 # log.setLevel("DEBUG")
 
@@ -243,7 +243,7 @@ class DeployContract():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description="BallotStandard deployment", output_file_path=gas_results_file_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description="BallotStandard deployment", output_file_path=gas_results_file_path)
 
         # 2. Deploy the base contract ElectionStandard
         contract_path = Path(self.config.get("project", "ElectionStandard"))
@@ -270,7 +270,7 @@ class DeployContract():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description="ElectionStandard deployment", output_file_path=gas_results_file_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description="ElectionStandard deployment", output_file_path=gas_results_file_path)
 
         # 3. Deploy the base contract VoteBoxStandard
         contract_path = Path(self.config.get("project", "VoteBoxStandard"))
@@ -297,7 +297,7 @@ class DeployContract():
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
         if (gas_results_file_path):
-            utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description="VoteBoxStandard deployment", output_file_path=gas_results_file_path)
+            Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description="VoteBoxStandard deployment", output_file_path=gas_results_file_path)
 
         # 4. Deploy the base contract VoteBooth. This one needs an Bool argument provided to it as well
         contract_path = Path(self.config.get("project", "VoteBooth"))
@@ -335,7 +335,7 @@ class DeployContract():
             fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
             if (gas_results_file_path):
-                utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description="VoteBooth deployment", output_file_path=gas_results_file_path)
+                Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description="VoteBooth deployment", output_file_path=gas_results_file_path)
 
         except Exception as e:
             log.error("Unable to deploy the VoteBooth contract: ")
@@ -446,7 +446,7 @@ class DeleteContract():
             fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
             if (gas_results_file_path):
-                utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description=f"{project_contract} contract removal", output_file_path=gas_results_file_path)
+                Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description=f"{project_contract} contract removal", output_file_path=gas_results_file_path)
 
 
     async def deleteProjectDependencies(self):

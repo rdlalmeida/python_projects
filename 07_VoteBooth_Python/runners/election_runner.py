@@ -3,16 +3,17 @@ Script to create a new Election resource, using one of the pre-defined election 
 """
 import asyncio
 import os, sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pathlib
-from common import utils, account_config
+from common.utils import Utils
+from common.account_config import AccountConfig
 import configparser
 import datetime
 
 import logging
 log = logging.getLogger(__name__)
-utils.configureLogging()
+Utils.configureLogging()
 
-from python_scripts.election_management import Election
 from python_scripts.cadence_scripts import ScriptRunner
 from python_scripts.cadence_transactions import TransactionRunner
 
@@ -132,7 +133,7 @@ async def destroy_election(election_id: int, tx_signer_address: str, gas_results
     if (election_id not in active_election_ids):
         raise Exception(f"ERROR: Election {election_id} is not among the active ones. Cannot continue!")
 
-    await Election.destroy_election(tx_signer_address=tx_signer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
+    await tx_runner.deleteElection(election_id=election_id, tx_signer_address=tx_signer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
 
 if __name__ == "__main__":
@@ -177,7 +178,7 @@ if __name__ == "__main__":
             raise Exception(f"Election destroy ERROR: Invalid election_id provided: {election_id}. Please provide a positive value to continue!")
     
     # Grab a context object
-    ctx = account_config.AccountConfig()
+    ctx = AccountConfig()
     
     # Create the output files. Note that both functions in this module need the service account signature to run
     gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_election_gas_results.csv"
@@ -193,4 +194,4 @@ if __name__ == "__main__":
     if (operation == "create"):
         new_loop.run_until_complete(create_election(election_index=election_index, free_election=free_election, tx_signer_address=ctx.service_account["address"].hex(),gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path))
     else:
-        new_loop.run_util_complete(destroy_election(election_id=election_id, tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path))
+        new_loop.run_until_complete(destroy_election(election_id=election_id, tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path))

@@ -12,17 +12,18 @@ from flow_py_sdk import(
 import configparser
 import asyncio
 import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from pathlib import Path
-from common import utils, account_config
 from python_scripts.cadence_scripts import ScriptRunner
-from python_scripts.cadence_transactions import TransactionRunner
+from common.utils import Utils
+from common.account_config import AccountConfig
 from python_scripts.event_management import EventRunner
 import time
 import datetime
 
 import logging
 log = logging.getLogger(__name__)
-utils.configureLogging()
+Utils.configureLogging()
 
 project_cwd = Path(os.getcwd())
 config_path = project_cwd.joinpath("common", "config.ini")
@@ -57,7 +58,7 @@ async def deploy_contract(contract_name: str, contract_source: str, update: bool
         raise Exception(f"ERROR: Contract '{contract_name}' does not belong to the current project!")
     
     # Step 0: Get accounts
-    ctx = account_config.AccountConfig()
+    ctx = AccountConfig()
     
     # Step 1: Create a client to connect to the Flow blockchain
     # flow_client function creates a client using the host and port configured in the AccountConfig object provided
@@ -128,7 +129,7 @@ async def deploy_contract(contract_name: str, contract_source: str, update: bool
                 tokens_withdrawn_events: list[dict] = await event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
                 fees_deducted_events: list[dict] = await event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
-                utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description=f"{contract["name"]} deployment", output_file_path=gas_results_file_path)
+                Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description=f"{contract["name"]} deployment", output_file_path=gas_results_file_path)
 
             return tx_response
         except Exception as deploy_ex:
@@ -164,7 +165,7 @@ async def update_contract(contract_name: str, contract_source: str, gas_results_
         raise Exception(f"ERROR: Contract '{contract_name}' does not belong to the current project!")
     
     # Get the context object
-    ctx = account_config.AccountConfig()
+    ctx = AccountConfig()
     
     # Build the initial structures to submit a contract update
     contract = {
@@ -228,7 +229,7 @@ async def update_contract(contract_name: str, contract_source: str, gas_results_
                 tokens_withdrawn_events: list[dict] = await event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
                 fees_deducted_events: list[dict] = await event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
-                utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_event=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description=f"{contract["name"]} Update", output_file_path=gas_results_file_path)
+                Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_event=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description=f"{contract["name"]} Update", output_file_path=gas_results_file_path)
 
             log.info(f"Contract {contract["name"]} updated successfully to network at {ctx.access_node_host}:{ctx.access_node_port} for account {ctx.service_account["address"]}")
             return tx_response
@@ -251,7 +252,7 @@ async def delete_contract(contract_name: str, gas_results_file_path: Path = None
         raise Exception(f"ERROR: Contract '{contract_name}' does not belong to the current project!")
     
     # Get the current context
-    ctx = account_config.AccountConfig()
+    ctx = AccountConfig()
 
     tx_start: int = 0
     tx_end: int = 0
@@ -306,7 +307,7 @@ async def delete_contract(contract_name: str, gas_results_file_path: Path = None
                 tokens_withdrawn_events: list[dict] = await event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
                 fees_deducted_events: list[dict] = await event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
 
-                utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description=f"{contract_name} Deletion", output_file_path=gas_results_file_path)
+                Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description=f"{contract_name} Deletion", output_file_path=gas_results_file_path)
         except Exception as e:
             log.error(f"Unable to delete contract '{contract_name}' due to:")
             log.error(e)
@@ -327,7 +328,7 @@ if __name__ == "__main__":
     if (operation != "deploy" and operation != "clear"):
         raise Exception(f"ERROR: Invalid operation provided '{operation}'. Please provide 'deploy' or 'clear' to continue")
     
-    ctx = account_config.AccountConfig()
+    ctx = AccountConfig()
 
     gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_contract_gas_results.csv"
     gas_results_file_path: Path = Path(os.getcwd()).joinpath("results", gas_results_file_name)

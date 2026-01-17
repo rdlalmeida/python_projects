@@ -1,5 +1,6 @@
 import asyncio
-from common import utils, account_config
+from common.utils import Utils
+from common.account_config import AccountConfig
 from python_scripts.cadence_scripts import ScriptRunner
 from python_scripts.cadence_transactions import TransactionRunner
 from python_scripts.event_management import EventRunner
@@ -15,14 +16,14 @@ from concurrent.futures import ThreadPoolExecutor
 
 import logging
 log = logging.getLogger(__name__)
-utils.configureLogging()
+Utils.configureLogging()
 
 project_cwd = pathlib.Path(os.getcwd())
 config_path = project_cwd.joinpath("common", "config.ini")
 config = configparser.ConfigParser()
 config.read(config_path)
 
-ctx = account_config.AccountConfig()
+ctx = AccountConfig()
 
 accounts = ctx.getAccounts()
 
@@ -108,7 +109,7 @@ async def main(election_index: int = 0) -> None:
     """
 
     current_election: Election = Election()
-    ctx = account_config.AccountConfig()
+    ctx = AccountConfig()
 
     gas_results_filename: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{config.get(section="network", option="current")}_gas_computation_results.csv"
     gas_results_file_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("results", gas_results_filename)

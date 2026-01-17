@@ -13,3 +13,8 @@ virtualenv
 flowdb/
 flowdb_bck/
 results/
+./keys/local_emulator/account01.pkey
+./keys/local_emulator/account02.pkey
+./keys/local_emulator/account03.pkey
+./keys/local_emulator/account04.pkey
+./keys/local_emulator/account05.pkey

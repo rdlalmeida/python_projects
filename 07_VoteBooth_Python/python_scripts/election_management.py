@@ -2,8 +2,8 @@ import os, pathlib
 from python_scripts.cadence_scripts import ScriptRunner
 from python_scripts.cadence_transactions import TransactionRunner
 from python_scripts.event_management import EventRunner
-from python_scripts import crypto_management
-from common import utils
+from python_scripts.crypto_management import CryptoUtils
+from common.utils import Utils
 import configparser
 import base64
 from flow_py_sdk import cadence
@@ -11,7 +11,7 @@ from flow_py_sdk import cadence
 
 import logging
 log = logging.getLogger(__name__)
-utils.configureLogging()
+Utils.configureLogging()
 
 config = configparser.ConfigParser()
 config.read(pathlib.Path(os.getcwd()).joinpath("common", "config.ini"))
@@ -225,17 +225,17 @@ class Election(object):
         voter_address: str = (tx_signer_address or tx_proposer_address)
         
         # Generate a random value between the limits defined in the config file
-        option_salt: int = crypto_management.generate_random_salt()
+        option_salt: int = CryptoUtils.generate_random_salt()
 
         # Append the generated random to the option to set
         salted_option: str = option_to_set + self.option_separator + str(option_salt)
 
         # Encrypt this option with the public encryption key set in this class instance
         # Retrieve the RSAPublicKey object from the public key string
-        current_public_key = crypto_management.load_public_key_from_string(key_string=self.election_public_encryption_key)
+        current_public_key = CryptoUtils.load_public_key_from_string(key_string=self.election_public_encryption_key)
 
         # Use the reconstructed key to encrypt the salted option
-        encrypted_salted_option: str = crypto_management.encrypt_message(
+        encrypted_salted_option: str = CryptoUtils.encrypt_message(
             plaintext_message=salted_option,
             public_key=current_public_key
         )
@@ -306,7 +306,7 @@ class Election(object):
         encrypted_ballots: list[str] = await self.script_runner.getElectionEncryptedBallots(election_id=self.election_id)
 
         # Recover the private encryption key from the path provided
-        private_key = crypto_management.load_private_key_from_file(private_encryption_key_name)
+        private_key = CryptoUtils.load_private_key_from_file(private_encryption_key_name)
 
         # Decrypt the ballot options. These were base64 encoded initially, so they need to be decoded before decrypting
         decrypted_ballot_options: list[bytes] = []
@@ -316,7 +316,7 @@ class Election(object):
             bytes_ballot_option: bytes = bytes(encrypted_ballot, encoding=self.encoding)
             decoded_ballot_option = base64.b64decode(bytes_ballot_option)
 
-            decrypted_ballot_option: str = crypto_management.decrypt_message(ciphertext_message=decoded_ballot_option, private_key=private_key)
+            decrypted_ballot_option: str = CryptoUtils.decrypt_message(ciphertext_message=decoded_ballot_option, private_key=private_key)
 
             decrypted_ballot_options.append(str(decrypted_ballot_option, encoding=self.encoding))
         

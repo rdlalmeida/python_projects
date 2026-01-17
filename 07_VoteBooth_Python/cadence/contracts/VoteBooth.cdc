@@ -122,7 +122,7 @@ access(all) contract VoteBooth {
             @param electionStoragePath (StoragePath) The path to the private storage area where the Election resource was stored.
             @param electionPublicPath (PublicPath) The path to the public storage area where a public reference to this Election can be retrieved from.
         **/
-        access(account) fun addElectionToIndex(electionId: UInt64, electionStoragePath: StoragePath, electionPublicPath: PublicPath): Void {
+        access(all) fun addElectionToIndex(electionId: UInt64, electionStoragePath: StoragePath, electionPublicPath: PublicPath): Void {
             // Cycle through all the current items in the electionIndex, and check if any has the same StoragePath as the one submitted
             for indexedElectionId in self.electionIndex.keys {
                 if (self.electionIndex[indexedElectionId]!.keys[0] == electionStoragePath) {
@@ -140,7 +140,7 @@ access(all) contract VoteBooth {
 
             @param electionId (UInt64) The electionId of the resource in question.
         **/
-        access(account) fun removeElectionFromIndex(electionId: UInt64): {StoragePath: PublicPath}? {
+        access(all) fun removeElectionFromIndex(electionId: UInt64): {StoragePath: PublicPath}? {
             return self.electionIndex.remove(key: electionId)
         }
 
@@ -151,7 +151,7 @@ access(all) contract VoteBooth {
 
             @return {StoragePath: PublicPath}? If an Election with the provided electionId exists, the function returns the corresponding entry. If the Election does not exists, a nil is returned instead.
         **/
-        access(account) view fun getElectionIndexEntry(electionId: UInt64): {StoragePath: PublicPath}? {
+        access(all) view fun getElectionIndexEntry(electionId: UInt64): {StoragePath: PublicPath}? {
             if (!self.electionExists(electionId: electionId)) {
                 return nil
             }
