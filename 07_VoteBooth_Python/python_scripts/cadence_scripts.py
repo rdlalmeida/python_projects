@@ -669,6 +669,62 @@ class ScriptRunner():
             else:
                 return {}
             
+    
+    async def getBallotReceipts(self, voter_address: str, election_id: int) -> list[int]:
+        """
+        Function to retrieve the list of ballot receipts from the VoteBox in the account with the voter_address provided, stored under the election_id provided as well.
+        
+        :param voter_address (str): The account address of the account to retrieve the VoteBox from. 
+        :param election_id (int): The election identifier for the entry to use to retrieve the list of ballot receipts.
+        :return (list[int]): If the account address provided has a VoteBox stored in it, and the VoteBox has an entry under the election_id provided, this function returns the list of ballot receipts associated. If unsuccessful, this function returns None instead.
+        """
+        name = "24_get_ballot_receipts"
+        arguments = [cadence.Address.from_hex(voter_address), cadence.UInt64(election_id)]
+
+        script_object: Script = self.getScript(script_name=name, script_arguments=arguments)
+
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client:
+            script_result = await client.execute_script(script=script_object)
+
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            ballot_receipts: list[int] = []
+
+            if (len(script_result.value.value) > 0):
+                for result_value in script_result.value.value:
+                    ballot_receipts.append(int(result_value.__str__()))
+
+                return ballot_receipts
+            else:
+                return []
+            
+    
+    async def validateBallotReceipt(self, voter_address: str, election_id: int, ballot_receipt: int) -> bool:
+        """
+        Function to validate if a ballot receipt provided exists in the receipts structure, in a VoteBox resource saved in the account address provided, under the election_id indicated.
+        
+        :param voter_address (str): The account address of the account to retrieve the VoteBox from. 
+        :param election_id (int): The election identifier for the entry to validate the ballot receipt under.
+        :return (bool): If the account address provided has a VoteBox stored in it, and the VoteBox has an entry under the election_id provided, and that list contains the ballot receipt provided, this function returns True. Otherwise returns a False instead.
+        """
+        name = "25_validate_ballot_receipt"
+        arguments = [cadence.Address.from_hex(voter_address), cadence.UInt64(election_id), cadence.UInt64(ballot_receipt)]
+
+        script_object: Script = self.getScript(script_name=name, script_arguments=arguments)
+
+        async with flow_client(
+            host=self.ctx.access_node_host, port=self.ctx.access_node_port
+        ) as client: 
+            script_result = await client.execute_script(script=script_object)
+
+            if (not script_result):
+                raise ScriptError(script_name=name)
+            
+            return bool(script_result.value)
+    
 
     async def profile_all_accounts(self, program_stage: str = None, account: str = None) -> None:
         """

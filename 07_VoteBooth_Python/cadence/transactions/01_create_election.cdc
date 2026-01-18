@@ -44,10 +44,6 @@ transaction(
             newFreeElection: _freeElection,
             deployerAccount: signer
         )
-
-        if (VoteBooth.verbose) {
-            log("Created a new Election with electionId `self.newElectionId.toString()` => `_electionName`")
-        }
     }
 
     execute {}

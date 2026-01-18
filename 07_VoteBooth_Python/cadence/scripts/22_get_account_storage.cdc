@@ -25,16 +25,6 @@ access(all) fun main(recipient: Address): {String: UInt64} {
     account_storage["capacity"] = accountRef.storage.capacity
     account_storage["used"] = accountRef.storage.used
 
-    log(
-        "Account "
-        .concat(recipient.toString())
-        .concat(" storage:\ncapacity = ")
-        .concat(account_storage["capacity"]!.toString())
-        .concat(" bytes.\nused = ")
-        .concat(account_storage["used"]!.toString())
-        .concat(" bytes.")
-    )
-
     return account_storage
 }
 

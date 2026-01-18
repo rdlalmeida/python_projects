@@ -75,7 +75,7 @@ async def process_ballot_account(voter_address: str, election_id: int = None, ro
         raise Exception(f"ERROR: Unable to set a proper election_id...")
     
     # Set the thread to sleep for a random value between 0 and the max value provided
-    time.sleep(random.randint(a=0, b=max_delay))
+    # time.sleep(random.randint(a=0, b=max_delay))
 
     # Use the election_id provided to get a lot of useful parameters from the election in question
     free_election: bool = await script_runner.isElectionFree(election_id=election_id)
@@ -103,7 +103,7 @@ async def process_ballot_account(voter_address: str, election_id: int = None, ro
 
     # Run this in a while loop
     while(rounds > 0):
-        time.sleep(random.randint(a=0, b=max_delay))
+#         time.sleep(random.randint(a=0, b=max_delay))
         
         # Mint a new ballot to the account. This transaction is solely from the service_account's responsibility, therefore this accounts pays for everything.
         await tx_runner.createBallot(election_id=election_id, recipient_address=voter_address, tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
@@ -129,16 +129,22 @@ async def process_ballot_account(voter_address: str, election_id: int = None, ro
         # Cast the new option to the Ballot
         await tx_runner.castBallot(election_id=election_id, new_option=str(base64_option, encoding=option_encoding), tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
         
-        # Set the ballot receipt to the voter account
-        ctx.addReceipt(voter_address=voter_address, election_id=election_id, ballot_receipt=option_salt)
 
         # Submit the Ballot
         await tx_runner.submitBallot(election_id=election_id, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
+        # Set the ballot receipt to the voter account
+        ctx.addReceipt(voter_address=voter_address, election_id=election_id, ballot_receipt=option_salt)
+        # And add the receipt to the VoteBox also
+        await tx_runner.addBallotReceipt(election_id=election_id, ballot_receipt=option_salt, tx_signer_address=None, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
+
+        # Inform the voter.
         log.info(f"Round {rounds}: Account {voter_address} successfully cast a Ballot to Election {election_id}")
 
+        # Decrease the round number and go for another one, if needed.
         rounds -= 1
     
+    # Voting done for this voter!
     log.info(f"Voter {voter_address} is finished for Election {election_id}")
 
 
@@ -149,10 +155,10 @@ async def main():
     ctx = AccountConfig()
 
     # Number of rounds to run this process with. This is the number of Ballots submitted by the account provided
-    rounds: int = 10
+    rounds: int = 25
 
     # Maximum number of seconds that this process can wait between rounds. The actual sleep value is a random one between 0 and the value set in the parameter
-    max_delay: int = 20
+    max_delay: int = 10
     voter_addresses: list[str] = ctx.getAddresses()
     voter_addresses.remove(ctx.service_account["address"].hex())
 
@@ -175,6 +181,9 @@ if __name__ == "__main__":
     :param address (str): The voter account address to proceed with this process. The account must exist is the configured network, otherwise an Exception is raised instead.
     :param election_id (int): If provided, the process retrieves the Election reference to the Election in question, if it exits. If no election_id is provided, or the one provided does not exists, the process lists all current active Elections and selects the first one (index = 0) of the set returned. If not active Election are found, the process raises a proper Exception. 
     """
+
+    asyncio.run(main())
+    exit(0)
 
     ctx = AccountConfig()
     # Validate that a proper address was provided

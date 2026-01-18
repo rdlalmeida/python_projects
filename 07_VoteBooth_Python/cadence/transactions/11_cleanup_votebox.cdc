@@ -47,9 +47,5 @@ transaction() {
                 inactiveBallots = inactiveBallots + 1
             }
         }
-
-        log(
-            "Successfully cleaned VoteBox in account `self.voteboxOwner.toString()`. Deleted `inactiveBallots.toString()` inactive Ballots from it."
-        )
     }
 }

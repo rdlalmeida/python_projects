@@ -23,17 +23,5 @@ access(all) fun main(recipient: Address): {String: UFix64} {
 
     account_balance["default"] = accountRef.balance
     account_balance["available"] = accountRef.availableBalance
-
-    // Log the values as well to make it more practical to analyse
-    log(
-        "Account "
-        .concat(recipient.toString())
-        .concat(" balance:\ndefault = ")
-        .concat(account_balance["default"]!.toString())
-        .concat(" FLOW.\navailable = ")
-        .concat(account_balance["available"]!.toString())
-        .concat(" FLOW.")
-    )
-
     return account_balance
 }

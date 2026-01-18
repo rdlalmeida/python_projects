@@ -37,16 +37,5 @@ transaction(electionId: UInt64, electionResults: {String: Int}, ballotReceipts: 
 
     execute {
         let result: Bool = self.electionRef.finishElection(electionResults: electionResults, ballotReceipts: ballotReceipts)
-
-        if (result) {
-            log(
-                "Election `electionId.toString()` is finished!"
-            )
-        }
-        else {
-            log(
-                "Election `electionId.toString()` did not finished correctly!"
-            )
-        }
     }
 }

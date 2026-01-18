@@ -23,7 +23,7 @@ access(all) contract VoteBoxStandard {
     // This event emits when a VoteBox is burned using the Burner contract. The idea is to reveal only the electionIds that this VoteBox has been used to 
     // submit Ballots (the _electionsVoted array), as well as the list of active Ballots, or better, the electionIds for the Elections that this VoteBox
     // has an active Ballot in it
-    access(all) event VoteBoxBurned(_electionsVoted: [UInt64], _activeBallots: Int, _voterAddress: Address)
+    access(all) event VoteBoxDestroyed(_electionsVoted: [UInt64], _activeBallots: Int, _voterAddress: Address)
     
     access(all) let deployerAddress: Address
 
@@ -42,6 +42,8 @@ access(all) contract VoteBoxStandard {
         access(all) view fun getElectionTotalBallotsSubmitted(electionId: UInt64): UInt?
         access(all) view fun getVote(electionId: UInt64): String?
         access(all) view fun getBallotId(electionId: UInt64): UInt64?
+        access(all) view fun getBallotReceipts(electionId: UInt64): [UInt64]?
+        access(all) view fun validateBallotReceipt(electionId: UInt64, ballotReceipt: UInt64): Bool
     }
     
     access(all) resource VoteBox: Burner.Burnable, VoteBoxPublic {
@@ -60,6 +62,122 @@ access(all) contract VoteBoxStandard {
         // point the address of the account storage differs from the one set with the resource constructor, the voter is prevented from accessing and
         // invoking functions.
         access(self) let voteBoxOwner: Address
+
+        // This parameter is used to store the Ballot receipts when the Ballot options gets encrypted. This ballot receipt is a random integer generated
+        // at an upper layer (the one that encrypts data) and it is recuperated after tallying the Election option. To validate if an Election was accurate,
+        // the VoteBox resource keeps this list for future comparison. An accurate Election is one that produces all the Ballot receipts in this structures, not
+        // one more, not one less.
+        access(self) var ballotReceipts: {UInt64: [UInt64]}
+        
+        /**
+            Function to infer about the validity of a Ballot receipt provided as argument, for the Election identified by the electionId provided as well. This function checks if the ballotReceipt provided exists within the set of Ballot receipts stored currently for the present VoteBox, under the electionId provided.
+
+            @param electionId (UInt64): The election identifier to select the set of Ballot receipts to be analysed for.
+            @param ballotReceipt (UInt64): The ballotReceipt to be validated.
+        **/
+        access(all) view fun validateBallotReceipt(electionId: UInt64, ballotReceipt: UInt64): Bool {
+            // Start by retrieving all the Election that this VoteBox participated to this point
+            let participated_elections: [UInt64] = self.ballotReceipts.keys
+
+            if (participated_elections.contains(electionId)) {
+                // Validate that there is an index returned for the ballotReceipt provided. If there is, the ballotReceipt is valid
+                let ballotReceiptIndex: Int? = self.ballotReceipts[electionId]!.firstIndex(of: ballotReceipt)
+
+                if (ballotReceiptIndex == nil) {
+                    // The ballotReceipt is not among the ones stored. The ballotReceipt is not valid
+                    return false
+                }
+                else {
+                    // All is OK. Return true in this case
+                    return true
+                }
+            }
+            else{
+                // The electionId is not among the ones stored so far. This means that the ballotReceipt is not among the ones in this VoteBox.
+                // Return an immediate False
+                return false
+            }
+        }
+        
+        /**
+            Function to add the ballotReceipt provided to the set of receipt for the Election with the electionId provided as argument as well.
+
+            @param electionId (UInt64): The election identifier to add the new receipt under.
+            @param ballotReceipt (UInt64): The ballotReceipt to add to this VoteBox, under the electionId provided as well.
+        **/
+        access(all) fun addBallotReceipt(electionId: UInt64, ballotReceipt: UInt64): Void {
+            // Grab an array of all electionIds participated so far
+            let participated_elections: [UInt64] = self.ballotReceipts.keys
+
+            // And proceed accordingly if the electionId provided already exits or not
+            if (participated_elections.contains(electionId)) {
+                // The electionId already exists. Append the ballotReceipt received to it
+                self.ballotReceipts[electionId]!.append(ballotReceipt)
+            }
+            else {
+                // Missing an entry for the electionId provided. Create it and append the ballotReceipt provided to it
+                self.ballotReceipts[electionId] = [ballotReceipt]
+            }
+        }
+
+
+        /**
+            Function to remove the ballotReceipt provided as input argument from the entry using the electionId key provided as well, if it exists.
+
+            @param electionId (UInt64): The election identifier from where the receipt is to be removed from.
+            @param ballotReceiptToRemove (UInt64): The ballotReceipt to remove from the internal dictionary, if it exists.
+
+            @return UInt64? If a valid ballotReceipt and electionId was found and removed, this function returns the value removed. Otherwise returns a nil
+        **/
+        access(all) fun removeBallotReceipt(electionId: UInt64, ballotReceiptToRemove: UInt64): UInt64? {
+            // Start by grabbing a list with all the Elections that this VoteBox has participated
+            let elections_participated: [UInt64] = self.ballotReceipts.keys
+
+            // Check if the electionId provided is among the elections participated. Return nil if not
+            if (elections_participated.contains(electionId)) {
+                // Check if the ballotReceipt provided is among the ones saved for the electionId provided
+                if (self.ballotReceipts[electionId]!.contains(ballotReceiptToRemove)) {
+                    let ballotReceiptIndex: Int? = self.ballotReceipts[electionId]!.firstIndex(of: ballotReceiptToRemove)
+
+                    if (ballotReceiptIndex == nil) {
+                        return nil
+                    }
+                    else {
+                        let removedBallotReceipt: UInt64 = self.ballotReceipts[electionId]!.remove(at: ballotReceiptIndex!)
+                        return removedBallotReceipt
+                    }
+                }
+                else {
+                    // The Election exists, but no Ballot receipt found for the one provided
+                    return nil
+                }
+            }
+            else {
+                // Missing the election in question. Return nil
+                return nil
+            }
+        }
+        
+
+        /**
+            Getter function to return the set of Ballot receipts for a given Election with the election_id.
+
+            @param electionId (UInt64): The election identifier for the Election whose Ballot receipt list is to retrieve.
+
+            @returns [UInt64]?: If an entry exists in this VoteBox for the electionId provided, this function returns the array of Ballot receipts associated. Otherwise it returns a nil.
+        **/
+        access(all) view fun getBallotReceipts (electionId: UInt64): [UInt64]? {
+            let elections_participated: [UInt64] = self.ballotReceipts.keys
+
+            if (elections_participated.contains(electionId)) {
+                // If a valid entry in the VoteBox ballotReceipts was found
+                return self.ballotReceipts[electionId]
+            }
+            else {
+                // This VoteBox has not yet participated in the Election in question
+                return nil
+            }
+        }
 
         /**
             Getter function to return the ballotId for the a Ballot stored in this VoteBox under the electionId provided as input argument.
@@ -394,6 +512,7 @@ access(all) contract VoteBoxStandard {
             )
 
             // Got a valid Ballot. Use its PublicElection reference electionCapability to get a reference to the Election to submit this thing to
+            // TODO: Not sure if this shit works... an authorized reference to a public capability? Seems fishy... this needs testing ASAP
             let electionPublicRef: &{ElectionStandard.ElectionPublic} = ballotToSubmit.electionCapability.borrow<&{ElectionStandard.ElectionPublic}>() ??
             panic(
                 "Unable to retrieve a valid &{ElectionStandard.ElectionPublic} from the electionCapability from Ballot `ballotToSubmit.ballotId.toString()` with electionId `electionId.toString()`"
@@ -426,9 +545,9 @@ access(all) contract VoteBoxStandard {
         }
 
         /**
- ""
+            This function is supposed to be exposed publicly by the VoteBoxPublic resource interface and should be used by the ElectionAdministration to deposit newly minted Ballots so that the VoteBox owner can cast them. It is impossible for an ElectionAdministrator to retrieve an authorized reference to a VoteBox resource in storage since the resource is not stored in his/her Administrator account. As such, this function needs to be set as access(all) to have even the slightest hope of working. But this opens it to all sorts of shenanigans from dishonest people. Anyone is able to import the BallotStandard contract, mint a new Ballot and deposit that Ballot into this VoteBox. To prevent this, all I can do at this point is ensuring contract consistency among the contracts that I can "see" from this point.
 
- ""
+            In that regard, I've set a "deployerAddress" parameter at the root of every contract in this project. The idea is, as long as all the contracts that I can see from where I am, i.e., the set of contracts imported at the top of the current contract, have the same deployerAddress, there is a strong chance that I'm getting Ballots and Elections from where I'm supposed to get them. This verification guarantees that all contracts imported from this contract, as well as this contract, were deployed into the same account.
 
             @param ballot (@BallotStandard.Ballot) The Ballot resource to deposit in this VoteBox
         **/
@@ -461,7 +580,7 @@ access(all) contract VoteBoxStandard {
             }
 
             // Emit the respective event before finishing
-            emit VoteBoxBurned(_electionsVoted: self.electionsVoted, _activeBallots: ballotsBurned, _voterAddress: self.voteBoxOwner)
+            emit VoteBoxDestroyed(_electionsVoted: self.electionsVoted, _activeBallots: ballotsBurned, _voterAddress: self.voteBoxOwner)
         }
 
         /**
@@ -475,6 +594,7 @@ access(all) contract VoteBoxStandard {
             self.voteBoxId = self.uuid
             self.activeBallots <- {}
             self.electionsVoted = []
+            self.ballotReceipts = {}
             self.voteBoxOwner = _voteBoxOwner
 
             // Finish by emitting the VoteBoxCreated event

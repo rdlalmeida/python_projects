@@ -16,14 +16,6 @@ access(all) fun main(): {UInt64: String} {
     )
 
     let electionInfo: {UInt64: String} = electionIndexRef.listActiveElections()
-    if (VoteBooth.verbose) {
-        log(
-            "Election Info list returned from listActiveElections: "
-        )
-        log(
-            electionInfo
-        )
-    }
 
     return electionInfo
 }

@@ -22,17 +22,5 @@ transaction(electionId: UInt64) {
     execute {
         // There's a function in place just for these cases
         let burnedBallotId: UInt64? = self.voteboxRef.deleteBallot(electionId: electionId)
-
-        // NOTE: The next logs only matter in the local emulator. For live net tests I need to capture the BallotBurned event instead
-        if (burnedBallotId == nil) {
-            log(
-                "WARNING: The VoteBox in account `self.voteboxOwner.toString()` does not have a Ballot under electionId `electionId.toString()`"
-            )
-        }
-        else {
-            log(
-                "Ballot `burnedBallotId!.toString()` attached to Election `electionId.toString()` destroyed from the VoteBox in account `self.voteboxOwner.toString()`"
-            )
-        }
     }
 }

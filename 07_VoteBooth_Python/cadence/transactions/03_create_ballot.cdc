@@ -23,12 +23,6 @@ transaction(_linkedElectionId: UInt64, _voterAddress: Address) {
         panic(
             "Unable to create a Ballot for Election `_linkedElectionId.toString()` and deposit it to voter account at `_voterAddress.toString()` using the VoteBoothPrinterAdmin at `VoteBooth.voteBoothPrinterAdminStoragePath.toString()` from account `signer.address.toString()`"
         )
-
-        if (VoteBooth.verbose) {
-            log(
-                "Successfully created Ballot with id `newBallotId.toString()` and deposited to the VoteBox in account `_voterAddress.toString()`"
-                )
-        }
     }
 
     execute {

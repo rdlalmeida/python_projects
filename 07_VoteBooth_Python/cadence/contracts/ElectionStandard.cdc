@@ -804,6 +804,9 @@ access(all) contract ElectionStandard {
                 return
             }
 
+            // Clear the internal encryptedOptions array to ensure that nothing is there before moving the encrypted Ballot options into it
+            self.encryptedOptions = []
+
             // Move all the encrypted options from the Ballot resource into the internal String array
             let storedBallotsKeys: [String] = self.storedBallots.keys
 

@@ -135,12 +135,24 @@ async def destroy_election(election_id: int, tx_signer_address: str, gas_results
 
     await tx_runner.deleteElection(election_id=election_id, tx_signer_address=tx_signer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
+async def list_active_elections() -> None:
+    """
+    Simple async function to print a list of all active elections in the network configured.
+    """
+    active_elections: dict[int:str] = await script_runner.getElectionsList()
+
+    log.info(f"Currently active elections in {config.get(section="network", option="current")} network")
+
+    for active_election in active_elections:
+        log.info(f"Election {active_election}: {active_elections[active_election]}")
 
 if __name__ == "__main__":
     """
     Usage: python election_runner <operation> <election_index | election_id> <free_election>
-    :param operation (str): The operation to run, namely, "create", or destroy"
-    :param election_index | election_id (int): If the operation is a 'create' one, this argument expects a election_index value to select which of the test sets is to be used to create the new Election. If the operation is 'destroy' instead, then this argument expects the election_id of the Election to destroy. I'm able to employ this argument duality due only to the fact that argv[2] needs to be an int in both operations considered.
+    :param operation (str): The operation to run, namely, "create", list, or destroy"
+    :param election_index | election_id (int): If the operation is a 'create' one, this argument expects a election_index value to select which of the test sets is to be used to create the new Election. 
+    'list' operation lists all active Elections in the active network.
+    If the operation is 'destroy' instead, then this argument expects the election_id of the Election to destroy. I'm able to employ this argument duality due only to the fact that argv[2] needs to be an int in both operations considered.
     :param free_election (bool): Set this to True to have the service account to pay for all transaction fees, False set the voter to pay those instead.
     """
     # Extract and validate the arguments from the command line
@@ -149,8 +161,8 @@ if __name__ == "__main__":
     
     operation: str = sys.argv[1].lower().strip()
 
-    if (operation != "create" and operation != "destroy"):
-        raise Exception(f"ERROR Invalid operation provided: {operation}. Please provide 'create' or 'destroy' to continue")
+    if (operation != "create" and operation != "destroy" and operation != "list"):
+        raise Exception(f"ERROR Invalid operation provided: {operation}. Please provide 'create', list, or 'destroy' to continue")
     
     if (operation == "create"):
         # Validate the crate exclusive arguments, namely, the election_index and free_election
@@ -168,7 +180,7 @@ if __name__ == "__main__":
             raise Exception("ERROR: Please provide a valid free election flag to continue.")
         
         free_election: bool = bool(sys.argv[3].lower().strip())
-    else:
+    elif (operation == "destroy"):
         if (len(sys.argv) < 3):
             raise Exception("ERROR: Please provide a valid election_id to continue.")
         # In this case, I expect the election_id is the sys.argv[2] positional argument as well
@@ -193,5 +205,7 @@ if __name__ == "__main__":
 
     if (operation == "create"):
         new_loop.run_until_complete(create_election(election_index=election_index, free_election=free_election, tx_signer_address=ctx.service_account["address"].hex(),gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path))
+    elif(operation == "list"):
+        new_loop.run_until_complete(list_active_elections())
     else:
         new_loop.run_until_complete(destroy_election(election_id=election_id, tx_signer_address=ctx.service_account["address"].hex(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path))
