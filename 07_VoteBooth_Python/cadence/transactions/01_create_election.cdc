@@ -7,11 +7,10 @@
     @param _publicKey (String) The public encryption key String. This key is to be used by the frontend to encrypt any options for Ballots submitted to this Election.
     @param _electionStoragePath (StoragePath) A storage path-type element indicating where, in the contract deployer's account, the Election resource should be storage into.
     @param _electionPublicPath (PublicPath) A public path-type element indicating where, in the contract deployer's account, the public interface of the Election resource should be published into.
-    @param _freeElection (Bool) Set this flag to True to have the service account (election administrator) paying all transaction gas costs. Set it to False to have these split between the voter and election administration.
 **/
 
-import ElectionStandard from 0xf8d6e0586b0a20c7
-import VoteBooth from 0xf8d6e0586b0a20c7
+import VoteBooth from 0x287f5c8b0865c516
+import ElectionStandard from 0x287f5c8b0865c516
 
 transaction(
     _electionName: String, 
@@ -19,8 +18,7 @@ transaction(
     _electionOptions: {UInt8: String},
     _publicKey: String,
     _electionStoragePath: StoragePath,
-    _electionPublicPath: PublicPath,
-    _freeElection: Bool
+    _electionPublicPath: PublicPath
     ) {
     let voteBoothPrinterAdminRef: &VoteBooth.VoteBoothPrinterAdmin
     let newElectionId: UInt64
@@ -41,7 +39,6 @@ transaction(
             newPublicKey: _publicKey,
             newElectionStoragePath: _electionStoragePath,
             newElectionPublicPath: _electionPublicPath,
-            newFreeElection: _freeElection,
             deployerAccount: signer
         )
     }

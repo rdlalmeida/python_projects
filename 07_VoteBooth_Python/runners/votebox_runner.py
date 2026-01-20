@@ -49,14 +49,20 @@ if __name__ == "__main__":
     input_addresses: list[str] = []
 
     for i in range(2, len(sys.argv)):
-        input_addresses.append(sys.argv[i])
+        # Remove the '0x' prefix, is one exists
+        input_address: str = sys.argv[i].strip()
+
+        if (input_address[0:2] == "0x"):
+            input_address = input_address[2:]
+
+        input_addresses.append(input_address)
 
     ctx = AccountConfig()
 
-    gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{config.get(section="network", option="current")}_votebox_gas_results.csv"
+    gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{config.get(section="network", option="current")}_votebox_{operation}_gas_results.csv"
     gas_results_file_path: Path = Path(os.getcwd()).joinpath("results", gas_results_file_name)
 
-    storage_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{config.get(section="network", option="current")}_votebox_storage_results.csv"
+    storage_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{config.get(section="network", option="current")}_votebox_{operation}_storage_results.csv"
     storage_results_file_path: Path = Path(os.getcwd()).joinpath("results", storage_results_file_name)
 
     new_loop = asyncio.new_event_loop()

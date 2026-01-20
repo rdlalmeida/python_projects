@@ -3,8 +3,8 @@
 
     The transaction retrieves a list of currently active elections from the ElectionIndex resource from the VoteBooth contract and then validates that each Ballot currently stored in the transaction's signer VoteBox. Any Ballot stored under a deactivated electionId gets destroyed.
 **/
-import VoteBoxStandard from 0xf8d6e0586b0a20c7
-import VoteBooth from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0x287f5c8b0865c516
+import VoteBooth from 0x287f5c8b0865c516
 
 transaction() {
     let voteboxOwner: Address
@@ -42,7 +42,8 @@ transaction() {
                     panic(
                         "Unable to delete Ballot with election id `voteboxElectionId.toString()` from the VoteBox in account `self.voteboxOwner.toString()`"
                     )
-                }
+importVoteBoxStandardfrom0xf8d6e0586b0a20c7
+importVoteBoothfrom0xf8d6e0586b0a20c7
 
                 inactiveBallots = inactiveBallots + 1
             }

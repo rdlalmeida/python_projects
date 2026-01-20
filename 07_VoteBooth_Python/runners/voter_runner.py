@@ -31,7 +31,7 @@ config = configparser.ConfigParser()
 config.read(config_path)
 
 
-async def process_ballot_account(voter_address: str, election_id: int = None, rounds: int = 10, max_delay: int = 10, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
+async def process_ballot_account(voter_address: str, election_id: int = None, rounds: int = 2, max_delay: int = 10, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
     """
     Simple function to abstract the minting, casting, and submission of ballots. The idea is to have this function running on a separate thread, casting ballots continuously from one account. 
     :param voter_address (str): The account address to use for this purpose.
@@ -148,28 +148,26 @@ async def process_ballot_account(voter_address: str, election_id: int = None, ro
     log.info(f"Voter {voter_address} is finished for Election {election_id}")
 
 
-async def main():
+async def main(election_id: int = None):
     """
     This is a simplified version of the "other" main function that simply runs the voting process, sequentially, for each of the test accounts configured in the active network.
     """
     ctx = AccountConfig()
 
     # Number of rounds to run this process with. This is the number of Ballots submitted by the account provided
-    rounds: int = 25
+    rounds: int = 10
 
     # Maximum number of seconds that this process can wait between rounds. The actual sleep value is a random one between 0 and the value set in the parameter
     max_delay: int = 10
     voter_addresses: list[str] = ctx.getAddresses()
     voter_addresses.remove(ctx.service_account["address"].hex())
 
-    election_id: int = None
-
     # Launch the function
     for voter_address in voter_addresses:
-        gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{voter_address}_{config.get(section="network", option="current")}_votebox_gas_results.csv"
+        gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{voter_address}_{config.get(section="network", option="current")}_voter_runner_gas_results.csv"
         gas_results_file_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("results", gas_results_file_name)
 
-        storage_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{voter_address}_{config.get(section="network", option="current")}_votebox_storage_results.csv"
+        storage_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{voter_address}_{config.get(section="network", option="current")}_voter_runner_storage_results.csv"
         storage_results_file_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("results", storage_results_file_name)
 
         await process_ballot_account(voter_address=voter_address, election_id=election_id, rounds=rounds, max_delay=max_delay, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
@@ -181,8 +179,10 @@ if __name__ == "__main__":
     :param address (str): The voter account address to proceed with this process. The account must exist is the configured network, otherwise an Exception is raised instead.
     :param election_id (int): If provided, the process retrieves the Election reference to the Election in question, if it exits. If no election_id is provided, or the one provided does not exists, the process lists all current active Elections and selects the first one (index = 0) of the set returned. If not active Election are found, the process raises a proper Exception. 
     """
+    # Grab the election_id from input arguments
+    election_id: int = int(sys.argv[1].strip())
 
-    asyncio.run(main())
+    asyncio.run(main(election_id=election_id))
     exit(0)
 
     ctx = AccountConfig()
@@ -209,17 +209,17 @@ if __name__ == "__main__":
     if (len(sys.argv) > 4):
         election_id = int(sys.argv[2].lower().strip())
 
-    gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{voter_address}_{config.get(section="network", option="current")}_votebox_gas_results.csv"
+    gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{voter_address}_{config.get(section="network", option="current")}_voter_runner_gas_results.csv"
     gas_results_file_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("results", gas_results_file_name)
 
-    storage_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{voter_address}_{config.get(section="network", option="current")}_votebox_storage_results.csv"
+    storage_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{voter_address}_{config.get(section="network", option="current")}_voter_runner_storage_results.csv"
     storage_results_file_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("results", storage_results_file_name)
 
     # Number of rounds to run this process with. This is the number of Ballots submitted by the account provided
-    rounds: int = 10
+    rounds: int = 2
 
     # Maximum number of seconds that this process can wait between rounds. The actual sleep value is a random one between 0 and the value set in the parameter
-    max_delay: int = 10
+    max_delay: int = 100
 
     # Launch the function
     new_loop = asyncio.new_event_loop()

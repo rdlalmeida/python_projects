@@ -4,7 +4,7 @@
     @param electionId (UInt64): The election identifier to select the internal dictionary entry to where the ballotReceipt is to be removed from.
     @param ballotReceipt (UInt64): The ballotReceipt to remove from the VoteBox stored in the account provided.
 **/
-import VoteBoxStandard from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0x287f5c8b0865c516
 
 transaction(electionId: UInt64, ballotReceipt: UInt64) {
     let voteBoxRef: &VoteBoxStandard.VoteBox

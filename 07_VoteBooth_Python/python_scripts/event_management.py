@@ -36,6 +36,9 @@ class EventRunner():
         self.flow_token_deployer_address: str = None
         self.fungible_token_deployer_address: str = None
 
+        # Fill out the class with proper contract dependency address
+        self.configureDeployerAddress()
+
         
     def configureDeployerAddress(self) -> None:
         """Internal function to retrieve and set the address of the account where the project contracts are currently deployed.

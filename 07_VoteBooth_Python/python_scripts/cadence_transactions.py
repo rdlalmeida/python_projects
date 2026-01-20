@@ -281,7 +281,7 @@ class TransactionRunner():
             raise e
 
 
-    async def createElection(self, election_name: str, election_ballot: str, election_options: dict[int: str], election_public_key: str, election_storage_path: str, election_public_path: str, free_election: bool,  tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> int:
+    async def createElection(self, election_name: str, election_ballot: str, election_options: dict[int: str], election_public_key: str, election_storage_path: str, election_public_path: str,  tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> int:
         """Function to create a new Election in the project environment.
 
         :param election_name (str): The name of election to create
@@ -290,7 +290,6 @@ class TransactionRunner():
         :param public_key (str): The public encryption key associated to the election created.
         :param election_storage_path (str): The storage path to where the election created should be saved to.
         :param election_public_path (str): The public path to where the public election capability should be published to.
-        :param free_election (bool): Set this parameter to True to have all transactions costs associated to this Election paid by the service account. If set to False, the voting costs are split between the voter and the election administration (service account).
         :param gas_results_file_path (pathlib.Path): A valid path to a file to where the gas calculations should be written into. If None is provided, the function skips the gas analysis.
         :param storage_results_file_path (pathlib.Path): A valid path to a file where the storage computations should be written into. If None is provided, the function skips the storage analysis.
         :return (int): If successful, this function returns the electionId of the new resource created
@@ -320,7 +319,6 @@ class TransactionRunner():
         cadence_election_public_key: cadence.String = cadence.String(value=election_public_key)
         cadence_election_storage_path: cadence.Path = cadence.Path(domain="storage", identifier=election_storage_path)
         cadence_election_public_path: cadence.Path = cadence.Path(domain="public", identifier=election_public_path)
-        cadence_free_election: cadence.Bool = cadence.Bool(value=free_election)
 
         tx_arguments: list = [
             cadence_election_name, 
@@ -329,7 +327,6 @@ class TransactionRunner():
             cadence_election_public_key,
             cadence_election_storage_path,
             cadence_election_public_path,
-            cadence_free_election
         ]
 
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
@@ -451,8 +448,8 @@ class TransactionRunner():
         if (gas_results_file_path):
             Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"VoteBox account {voter_address} creation", output_file_path=gas_results_file_path)
 
-        for votebox_created_event in votebox_created_events:
-            log.info(f"VoteBox created for account {votebox_created_event["voter_address"]}")
+
+        log.info(f"VoteBox created for account {voter_address}")
 
         return votebox_created_events
     
@@ -512,8 +509,7 @@ class TransactionRunner():
         if (gas_results_file_path):
             Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"VoteBox account {voter_address} deletion", output_file_path=gas_results_file_path)
 
-        for votebox_destroyed_event in votebox_destroyed_events:
-            log.info(f"VoteBox destroyed for account {votebox_destroyed_event["voter_address"]}")
+        log.info(f"Successfully destroyed the VoteBox from account {voter_address}")
         return votebox_destroyed_events
     
 
@@ -532,6 +528,10 @@ class TransactionRunner():
         }
         """
         tx_name: str = "03_create_ballot"
+        # Test if the recipient address provided is prefixed with the "0x" and add it if not before setting the downstream argument
+        if (recipient_address[0:2] != "0x"):
+            recipient_address = f"0x{recipient_address}"
+            
         tx_arguments: list = [
             cadence.UInt64(election_id),
             cadence.Address.from_hex(recipient_address)
@@ -711,7 +711,7 @@ class TransactionRunner():
         tx_name: str = "06_tally_election"
         tx_arguments: list = [cadence.UInt64(election_id)]
         tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address)
-        tx_object = tx_object.with_gas_limit(100000)
+        tx_object = tx_object.with_gas_limit(gas_limit=int(self.config.get(section="gas", option="limit")))
  
         if (storage_results_file_path):
             await self.script_runner.profile_all_accounts_csv(program_stage=f"Election {election_id} - pre tally", output_file_path=storage_results_file_path, account=tx_signer_address)

@@ -6,36 +6,57 @@
     @param electionId (UInt64) The election identifier for the election to finish.
 **/
 
-import ElectionStandard from 0xf8d6e0586b0a20c7
-import VoteBooth from 0xf8d6e0586b0a20c7
+import ElectionStandard from 0x287f5c8b0865c516
+import VoteBooth from 0x287f5c8b0865c516
 
 transaction(electionId: UInt64, electionResults: {String: Int}, ballotReceipts: [UInt64]) {
-    let electionIndexRef: &{VoteBooth.ElectionIndexPublic}
+    let electionIndexRef: &VoteBooth.ElectionIndex
     let electionRef: auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election
     let deployerAddress: Address
+    let signerAddress: Address
 
-    prepare(signer: auth(ElectionStandard.ElectionAdmin, BorrowValue) &Account) {
+    prepare(signer: auth(Storage, ElectionStandard.ElectionAdmin, BorrowValue) &Account) {
         self.deployerAddress = VoteBooth.deployerAddress
+        self.signerAddress = signer.address
 
         let deployerAccount: &Account = getAccount(self.deployerAddress)
 
-        self.electionIndexRef = deployerAccount.capabilities.borrow<&{VoteBooth.ElectionIndexPublic}>(VoteBooth.electionIndexPublicPath) ??
+        self.electionIndexRef = signer.storage.borrow<&VoteBooth.ElectionIndex>(from: VoteBooth.electionIndexStoragePath) ??
         panic(
-            "Unable to retrieve a valid &{VoteBooth.ElectionIndexPublic} at `VoteBooth.electionIndexPublicPath.toString()` from account `self.deployerAddress.toString()`"
+            "Unable to retrieve a valid &VoteBooth.ElectionIndex at"
+            .concat(VoteBooth.electionIndexStoragePath.toString())
+            .concat(" from account ")
+            .concat(signer.address.toString())
         )
 
         let electionStoragePath: StoragePath = self.electionIndexRef.getElectionStoragePath(electionId: electionId) ??
         panic(
-            "Unable to get a valid StoragePath for Election `electionId.toString()` from the ElectionIndexPublic from account `self.deployerAddress.toString()`"
+            "Unable to get a valid StoragePath for Election "
+            .concat(electionId.toString())
+            .concat(" from the ElectionIndexPublic from account ")
+            .concat(self.deployerAddress.toString())
         )
 
         self.electionRef = signer.storage.borrow<auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election>(from: electionStoragePath) ??
         panic(
-            "Unable to retrieve a valid auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election at `electionStoragePath.toString()` from account `self.deployerAddress.toString()`"
+            "Unable to retrieve a valid auth(ElectionStandard.ElectionAdmin) &ElectionStandard.Election at "
+            .concat(electionStoragePath.toString())
+            .concat(" from account ")
+            .concat(self.deployerAddress.toString())
         )
     }
 
     execute {
         let result: Bool = self.electionRef.finishElection(electionResults: electionResults, ballotReceipts: ballotReceipts)
+
+        // Finish by removing the Election from the ElectionIndex
+        let removalResults: {StoragePath: PublicPath}? = self.electionIndexRef.removeElectionFromIndex(electionId: electionId)
+
+        log(
+            "Removed Election "
+            .concat(electionId.toString())
+            .concat(" from the ElectionIndex in account ")
+            .concat(self.signerAddress.toString())
+        )
     }
 }

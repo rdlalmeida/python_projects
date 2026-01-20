@@ -151,25 +151,11 @@ async def finish_election(election_id: int, election_results: dict, ballot_recei
     # there's no immediate point in capturing the transaction response
     await tx_runner.finishElection(election_id=election_id, election_results=election_results, ballot_receipts=ballot_receipts, tx_signer_address=tx_signer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
 
-    # Check that the election was indeed finished
-    election_finished = await script_runner.isElectionFinished(election_id=election_id)
-
-    if (not election_finished):
-        raise Exception(f"ERROR: Election {election_id} failed to finish. The finished flag was not properly set.")
-    
-    # Retrieve the election winning option
-    winning_options: dict[str:int] = await script_runner.getElectionWinner(election_id=election_id)
-
     log.info(f"\nElection {election_id} is finished.")
     
     log.info("\nResults: ")
     for election_result in election_results:
         log.info(f"{election_result}: {election_results[election_result]} votes")
-
-    log.info("\nWinning option(s): ")
-    for winning_option in winning_options:
-        log.info(f"'{winning_option}' with {winning_options[winning_option]} votes")
-
 
 async def terminate_election(election_id: int, private_encryption_key_name: str, tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
     """
@@ -221,10 +207,10 @@ if __name__ == "__main__":
     ctx = AccountConfig()
 
     # Create the output files. Note that both functions in this module need the service account signature to run
-    gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_election_gas_results.csv"
+    gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_election_{election_id}_finishing_gas_results.csv"
     gas_results_file_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("results", gas_results_file_name)
 
-    storage_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_election_storage_results.csv"
+    storage_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_election_{election_id}_finishing_storage_results.csv"
     storage_results_file_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("results", storage_results_file_name)
 
     new_loop = asyncio.new_event_loop()

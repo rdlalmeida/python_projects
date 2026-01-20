@@ -229,7 +229,7 @@ async def update_contract(contract_name: str, contract_source: str, gas_results_
                 tokens_withdrawn_events: list[dict] = await event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
                 fees_deducted_events: list[dict] = await event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
-                Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_event=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description=f"{contract["name"]} Update", output_file_path=gas_results_file_path)
+                Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description=f"{contract["name"]} Update", output_file_path=gas_results_file_path)
 
             log.info(f"Contract {contract["name"]} updated successfully to network at {ctx.access_node_host}:{ctx.access_node_port} for account {ctx.service_account["address"]}")
             return tx_response
@@ -305,7 +305,7 @@ async def delete_contract(contract_name: str, gas_results_file_path: Path = None
 
             if (gas_results_file_path):
                 tokens_withdrawn_events: list[dict] = await event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
-                fees_deducted_events: list[dict] = await event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+                fees_deducted_events: list[dict] = await event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
 
                 Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(tx_end - tx_start), tx_description=f"{contract_name} Deletion", output_file_path=gas_results_file_path)
         except Exception as e:
@@ -317,23 +317,23 @@ async def delete_contract(contract_name: str, gas_results_file_path: Path = None
 if __name__ == "__main__":
     """
     Usage: python contract_runner <operation>
-    :param operation (str): The operation to execute, namely, "deploy", or "clear"
+    :param operation (str): The operation to execute, namely, "deploy", "update", or "clear"
     """
     # Extract and validate the arguments from the command line
     if (len(sys.argv) < 2):
-        raise Exception("ERROR: Please provide 'deploy' or 'clear' to continue")
+        raise Exception("ERROR: Please provide 'deploy', 'update', or 'clear' to continue")
     
     operation: str = sys.argv[1].lower().strip()
 
-    if (operation != "deploy" and operation != "clear"):
-        raise Exception(f"ERROR: Invalid operation provided '{operation}'. Please provide 'deploy' or 'clear' to continue")
+    if (operation != "deploy" and operation != "clear" and operation != "update"):
+        raise Exception(f"ERROR: Invalid operation provided '{operation}'. Please provide 'deploy', 'update', or 'clear' to continue")
     
     ctx = AccountConfig()
 
-    gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_contract_gas_results.csv"
+    gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_contract_{operation}_gas_results.csv"
     gas_results_file_path: Path = Path(os.getcwd()).joinpath("results", gas_results_file_name)
 
-    storage_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_contract_storage_results.csv"
+    storage_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_contract_{operation}_storage_results.csv"
     storage_results_file_path: Path = Path(os.getcwd()).joinpath("results", storage_results_file_name)
 
     new_loop = asyncio.new_event_loop()
@@ -346,6 +346,13 @@ if __name__ == "__main__":
 
             log.info(f"Deploying {contract_name}...")
             new_loop.run_until_complete(deploy_contract(contract_name=contract_name, contract_source=contract_source.read(), update=True, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path))
+    elif (operation == "update"):
+        for contract_name in project_files:
+            contract_path: Path = Path(config.get(section="project", option=contract_name))
+            contract_source = open(contract_path)
+
+            log.info(f"Updating {contract_name}...")
+            new_loop.run_until_complete(update_contract(contract_name=contract_name, contract_source=contract_source.read(), gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path))
     else:
         # Operation = "clear"
         for contract_name in project_files:

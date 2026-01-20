@@ -6,8 +6,8 @@
     @returns (UFix64) The current balance of the account queried, in FLOW tokens.
 **/
 
-import FlowToken from 0x0ae53cb6e3f42a79
-import FungibleToken from 0xee82856bf20e2aa6
+import FlowToken from 0x7e60df042a9c0868
+import FungibleToken from 0x9a0766d93b6608b7
 
 access(all) fun main(accountAddress: Address): UFix64 {
     let currentAccount: &Account = getAccount(accountAddress)

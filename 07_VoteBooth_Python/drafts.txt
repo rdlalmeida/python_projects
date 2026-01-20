@@ -16,3 +16,6 @@ cfc9328c6b5dc25016f63fdf63dfd6c9dbd639c972ef661d00c3be931084e14a
 
 
 await current_election.create_votebox(tx_signer_address=None, tx_proposer_address=ctx.accounts[1]["address"].hex(), tx_payer_address=ctx.service_account["address"].hex(),tx_authorizer_address=[ctx.accounts[1]["address"].hex()])
+
+Testnet Election Id for election_index = 1
+28587302510354

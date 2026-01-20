@@ -7,9 +7,8 @@
 **/
 
 // Uncomment these lines for remote (testnet) testing, comment for local deploy
-import Burner from 0xf8d6e0586b0a20c7
-import Crypto from 0xf8d6e0586b0a20c7
-
+import Burner from 0x9a0766d93b6608b7
+import Crypto from 0x8c5303eaa26202d6
 access(all) contract BallotStandard {
 // CUSTOM ENTITLEMENTS
     access(all) entitlement BallotAdmin

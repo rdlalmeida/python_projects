@@ -693,7 +693,7 @@ class ScriptRunner():
             
             ballot_receipts: list[int] = []
 
-            if (len(script_result.value.value) > 0):
+            if (script_result.value.value and len(script_result.value.value) > 0):
                 for result_value in script_result.value.value:
                     ballot_receipts.append(int(result_value.__str__()))
 

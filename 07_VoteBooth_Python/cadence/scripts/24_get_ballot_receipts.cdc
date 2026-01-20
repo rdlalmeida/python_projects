@@ -6,7 +6,7 @@
 
     @return [UInt64]?: If the account address provided as a VoteBox resource and the VoteBox has an entry under the electionId provided as argument, this script returns the list of ballotReceipts set to it. Otherwise returns a nil.
 **/
-import VoteBoxStandard from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0x287f5c8b0865c516
 
 access(all) fun main(voterAddress: Address, electionId: UInt64): [UInt64]? {
     // Grab a public reference to the account from the address provided

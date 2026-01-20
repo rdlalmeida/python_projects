@@ -6,8 +6,8 @@
 
     @return Bool The script returns true if the ballot receipt provided is among the ones set in the Election identified by the electionId provided. Otherwise returns false. If the Election in question is not yet finished, or the ballotReceipt array not yet set, the script panics instead.
 **/
-import ElectionStandard from 0xf8d6e0586b0a20c7
-import VoteBooth from 0xf8d6e0586b0a20c7
+import ElectionStandard from 0x287f5c8b0865c516
+import VoteBooth from 0x287f5c8b0865c516
 
 access(all) fun main(electionId: UInt64, ballotReceipt: UInt64): Bool {
     // Grab a public reference to the Election with the electionId provided

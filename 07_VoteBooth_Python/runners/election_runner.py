@@ -87,7 +87,7 @@ election_public_paths: list[str] = [
     "PublicElection03"
 ]
 
-async def create_election(election_index: int, free_election:bool, tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
+async def create_election(election_index: int, tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
     """
     Function to create a new Election into the main project. The new Election is available by retrieving its election_id from a "getActiveElections" script or something of the sort.
 
@@ -97,7 +97,6 @@ async def create_election(election_index: int, free_election:bool, tx_signer_add
     :param election_public_key (str) The public encryption key to be associated with the election
     :param election_storage_path (str) A UNIX-type path to indicate the storage path where the election resource is to be stored.
     :param election_public_path (str) A UNIX-type path to indicate the public path where the public capability for this election is to be stored to.
-    :param free_election (bool): If True, this election is free, i.e., the service account pays for the transaction fees. If false, voters pay for transaction gas fees.
     :param tx_signer_address (str) The address for the account that can sign the transaction to create this election.
     :param gas_results_file_path (pathlib.Path): A valid path to a file to where the gas calculations should be written into. If None is provided, the function skips the gas analysis.
     :param storage_results_file_path (pathlib.Path): A valid path to a file where the storage computations should be written into. If None is provided, the function skips the storage analysis.
@@ -110,7 +109,6 @@ async def create_election(election_index: int, free_election:bool, tx_signer_add
         election_public_key=open(election_public_encryption_keys[election_index]).read(),
         election_storage_path=election_storage_paths[election_index],
         election_public_path=election_public_paths[election_index],
-        free_election=free_election,
         tx_signer_address=tx_signer_address,
         gas_results_file_path=gas_results_file_path,
         storage_results_file_path=storage_results_file_path
@@ -148,12 +146,11 @@ async def list_active_elections() -> None:
 
 if __name__ == "__main__":
     """
-    Usage: python election_runner <operation> <election_index | election_id> <free_election>
+    Usage: python election_runner <operation> <election_index | election_id>
     :param operation (str): The operation to run, namely, "create", list, or destroy"
     :param election_index | election_id (int): If the operation is a 'create' one, this argument expects a election_index value to select which of the test sets is to be used to create the new Election. 
     'list' operation lists all active Elections in the active network.
     If the operation is 'destroy' instead, then this argument expects the election_id of the Election to destroy. I'm able to employ this argument duality due only to the fact that argv[2] needs to be an int in both operations considered.
-    :param free_election (bool): Set this to True to have the service account to pay for all transaction fees, False set the voter to pay those instead.
     """
     # Extract and validate the arguments from the command line
     if (len(sys.argv) < 2):
@@ -176,10 +173,6 @@ if __name__ == "__main__":
         elif(election_index > len(election_names)):
             raise Exception(f"Election create ERROR: Invalid election_index provided: {election_index}. Please provide an index lower than {len(election_names)} to continue!")
         
-        if (len(sys.argv) < 4):
-            raise Exception("ERROR: Please provide a valid free election flag to continue.")
-        
-        free_election: bool = bool(sys.argv[3].lower().strip())
     elif (operation == "destroy"):
         if (len(sys.argv) < 3):
             raise Exception("ERROR: Please provide a valid election_id to continue.")
@@ -193,10 +186,10 @@ if __name__ == "__main__":
     ctx = AccountConfig()
     
     # Create the output files. Note that both functions in this module need the service account signature to run
-    gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_election_gas_results.csv"
+    gas_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_election_{operation}_gas_results.csv"
     gas_results_file_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("results", gas_results_file_name)
 
-    storage_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_election_storage_results.csv"
+    storage_results_file_name: str = f"{datetime.datetime.now().strftime("%d-%m-%yT%H:%M:%S")}_{ctx.service_account["address"].hex()}_{config.get(section="network", option="current")}_election_{operation}_running_storage_results.csv"
     storage_results_file_path: pathlib.Path = pathlib.Path(os.getcwd()).joinpath("results", storage_results_file_name)
 
     # Launch the selected operation
@@ -204,7 +197,7 @@ if __name__ == "__main__":
     asyncio.set_event_loop(new_loop)
 
     if (operation == "create"):
-        new_loop.run_until_complete(create_election(election_index=election_index, free_election=free_election, tx_signer_address=ctx.service_account["address"].hex(),gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path))
+        new_loop.run_until_complete(create_election(election_index=election_index, tx_signer_address=ctx.service_account["address"].hex(),gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path))
     elif(operation == "list"):
         new_loop.run_until_complete(list_active_elections())
     else:

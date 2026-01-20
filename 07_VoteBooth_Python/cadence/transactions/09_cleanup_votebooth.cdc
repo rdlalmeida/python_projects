@@ -1,9 +1,9 @@
 /**
     This transaction deletes every resource from this voting process that it is currently stored in the transaction signer's storage account. This includes all Elections, active and otherwise, BallotPrinterAdmin, ElectionIndex, etc...
 **/
-import Burner from 0xf8d6e0586b0a20c7
-import ElectionStandard from 0xf8d6e0586b0a20c7
-import VoteBooth from 0xf8d6e0586b0a20c7
+import VoteBooth from 0x287f5c8b0865c516
+import ElectionStandard from 0x287f5c8b0865c516
+import Burner from 0x9a0766d93b6608b7
 
 transaction() {
     let electionIndex: @VoteBooth.ElectionIndex

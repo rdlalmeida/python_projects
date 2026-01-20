@@ -1,15 +1,15 @@
 /**
     This transaction loads and destroys a VoteBox resource from the transaction signer's storage account.
 **/
-import Burner from 0xf8d6e0586b0a20c7
-import VoteBoxStandard from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0x287f5c8b0865c516
+import Burner from 0x9a0766d93b6608b7
 
 transaction() {
-    let voteBoxToDestroy: @VoteBoxStandard.VoteBox
+    let voteBoxToDestroy: @AnyResource?
 
     prepare(signer: auth(LoadValue, UnpublishCapability) &Account) {
         // Try to load the VoteBox resource
-        self.voteBoxToDestroy <- signer.storage.load<@VoteBoxStandard.VoteBox>(from: VoteBoxStandard.voteBoxStoragePath) ??
+        self.voteBoxToDestroy <- signer.storage.load<@AnyResource>(from: VoteBoxStandard.voteBoxStoragePath) ??
         panic(
             "ERROR: Account `signer.address.toString()` does not have a VoteBox stored at `VoteBoxStandard.voteBoxStoragePath.toString()`"
         )

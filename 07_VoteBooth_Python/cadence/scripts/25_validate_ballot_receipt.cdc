@@ -5,7 +5,7 @@
     @param electionId (UInt64): The election identifier to use to validate the ballotReceipt upon.
     @param ballotReceipt (UInt64): The ballotReceipt value to validate against the VoteBox and electionId provided.
 **/
-import VoteBoxStandard from 0xf8d6e0586b0a20c7
+import VoteBoxStandard from 0x287f5c8b0865c516
 
 access(all) fun main(voterAddress: Address, electionId: UInt64, ballotReceipt: UInt64): Bool {
     // Grab a public reference to the account for the address provided

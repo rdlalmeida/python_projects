@@ -4,8 +4,8 @@
     @param electionId (UInt64) The election identifier to retrieve the Ballot to delete from the VoteBox.
 **/
 
-import BallotStandard from 0xf8d6e0586b0a20c7
-import VoteBoxStandard from 0xf8d6e0586b0a20c7
+import BallotStandard from 0x287f5c8b0865c516
+import VoteBoxStandard from 0x287f5c8b0865c516
 
 transaction(electionId: UInt64) {
     let voteboxRef: auth(VoteBoxStandard.VoteBoxAdmin, LoadValue) &VoteBoxStandard.VoteBox

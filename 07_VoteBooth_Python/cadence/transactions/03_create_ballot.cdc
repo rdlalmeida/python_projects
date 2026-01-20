@@ -5,9 +5,9 @@
     @param _voterAddress (Address) The account address of the voter account where this Ballot is to be stored into.
 **/
 
-import ElectionStandard from 0xf8d6e0586b0a20c7
-import VoteBoxStandard from 0xf8d6e0586b0a20c7
-import VoteBooth from 0xf8d6e0586b0a20c7
+import VoteBooth from 0x287f5c8b0865c516
+import ElectionStandard from 0x287f5c8b0865c516
+import VoteBoxStandard from 0x287f5c8b0865c516
 
 transaction(_linkedElectionId: UInt64, _voterAddress: Address) {
     let voteBoothPrinterAdminRef: &VoteBooth.VoteBoothPrinterAdmin
@@ -16,12 +16,22 @@ transaction(_linkedElectionId: UInt64, _voterAddress: Address) {
         // Grab an authorized reference to the VoteBoothPrinterAdmin resource using the signer account
         self.voteBoothPrinterAdminRef = signer.storage.borrow<&VoteBooth.VoteBoothPrinterAdmin>(from: VoteBooth.voteBoothPrinterAdminStoragePath) ??
         panic(
-            "Unable to retrieve a valid &VoteBooth.VoteBoothPrinterAdmin at `VoteBooth.voteBoothPrinterAdminStoragePath.toString()` for account `signer.address.toString()`"
+            "Unable to retrieve a valid &VoteBooth.VoteBoothPrinterAdmin at "
+            .concat(VoteBooth.voteBoothPrinterAdminStoragePath.toString())
+            .concat(" for account ")
+            .concat(signer.address.toString())
         )
 
         let newBallotId: UInt64 = self.voteBoothPrinterAdminRef.createBallot(newLinkedElectionId: _linkedElectionId, voterAddress: _voterAddress, deployer: signer) ??
         panic(
-            "Unable to create a Ballot for Election `_linkedElectionId.toString()` and deposit it to voter account at `_voterAddress.toString()` using the VoteBoothPrinterAdmin at `VoteBooth.voteBoothPrinterAdminStoragePath.toString()` from account `signer.address.toString()`"
+            "Unable to create a Ballot for Election"
+            .concat(_linkedElectionId.toString())
+            .concat(" and deposit it to voter account at ")
+            .concat(_voterAddress.toString())
+            .concat(" using the VoteBoothPrinterAdmin at ")
+            .concat(VoteBooth.voteBoothPrinterAdminStoragePath.toString())
+            .concat(" from account ")
+            .concat(signer.address.toString())
         )
     }
 

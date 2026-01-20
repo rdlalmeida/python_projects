@@ -7,8 +7,8 @@
 **/
 
 // Uncomment these lines for remote (testnet) testing, comment for local deploy
-import Burner from 0xf8d6e0586b0a20c7
-import BallotStandard from 0xf8d6e0586b0a20c7
+import Burner from 0x9a0766d93b6608b7
+import BallotStandard from 0x287f5c8b0865c516
 
 access(all) contract ElectionStandard {
     // CUSTOM ENTITLEMENTS
@@ -890,8 +890,6 @@ access(all) contract ElectionStandard {
             @param _publicKey (String) The public encryption key that is to be used to encrypt the Ballot option from the frontend side.
             @param _electionStoragePath (StoragePath) A StoragePath-type item to where this Election resource is going to be stored into the voter's own account.
             @param _electionPublicPath (PublicPath) A PublicPath-type item where the public reference to this Election can be retrieved from.
-            @param _freeElection (Bool): Set this flag to true to have the service account paying for all transaction fees. Set it to false to split these between the voters and service account (election administrator)
-
             @return @ElectionStandard.Election If successful, this function returns the Election resource back to the user.
         **/
         init(
@@ -901,7 +899,6 @@ access(all) contract ElectionStandard {
             _publicKey: String,
             _electionStoragePath: StoragePath,
             _electionPublicPath: PublicPath,
-            _freeElection: Bool
         ) {
             self.electionId = self.uuid
             self.name = _electionName
@@ -945,7 +942,7 @@ access(all) contract ElectionStandard {
             // Set the ballotReceipts to an empty array for now
             self.ballotReceipts = []
 
-            self.freeElection = _freeElection
+            self.freeElection = true
         }
     }
 
@@ -959,7 +956,6 @@ access(all) contract ElectionStandard {
         @param newPublicKey (String) The public encryption key that is to be used to encrypt the Ballot option from the frontend side.
         @param newElectionStoragePath (StoragePath) A StoragePath-type item to where this Election resource is going to be stored into the voter's own account.
         @param newElectionPublicPath (PublicPath) A PublicPath-type item where the public reference to this Election can be retrieved from.
-        param _freeElection (Bool): Set this flag to true to have the service account paying for all transaction fees. Set it to false to split these between the voters and service account (election administrator)
 
         @return @ElectionStandard.Election If successful, this function returns the Election resource back to the user
     **/
@@ -969,17 +965,14 @@ access(all) contract ElectionStandard {
         newElectionOptions: {UInt8: String},
         newPublicKey: String,
         newElectionStoragePath: StoragePath,
-        newElectionPublicPath: PublicPath,
-        newFreeElection: Bool
-    ): @ElectionStandard.Election {
+        newElectionPublicPath: PublicPath): @ElectionStandard.Election {
         let newElection: @ElectionStandard.Election <- create ElectionStandard.Election(
             _electionName: newElectionName,
             _electionBallot: newElectionBallot,
             _electionOptions: newElectionOptions,
             _publicKey: newPublicKey,
             _electionStoragePath: newElectionStoragePath,
-            _electionPublicPath: newElectionPublicPath,
-            _freeElection: newFreeElection
+            _electionPublicPath: newElectionPublicPath
             )
 
             emit ElectionCreated(_electionId: newElection.getElectionId(), _electionName: newElectionName)

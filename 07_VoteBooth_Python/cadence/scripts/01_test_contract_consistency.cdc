@@ -10,10 +10,10 @@
 
     @returns Address? If the project is found consistent, this script returns the address of the account where all the project contracts were deployed into. Otherwise, if an inconsistency is found, the script returns nil.
 **/
-import BallotStandard from 0xf8d6e0586b0a20c7
-import ElectionStandard from 0xf8d6e0586b0a20c7
-import VoteBoxStandard from 0xf8d6e0586b0a20c7
-import VoteBooth from 0xf8d6e0586b0a20c7
+import BallotStandard from 0x287f5c8b0865c516
+import ElectionStandard from 0x287f5c8b0865c516
+import VoteBoxStandard from 0x287f5c8b0865c516
+import VoteBooth from 0x287f5c8b0865c516
 
 access(all) fun main(): Address? {
     let ballotDeployer: Address = BallotStandard.deployerAddress

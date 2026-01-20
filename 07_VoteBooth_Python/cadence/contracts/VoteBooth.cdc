@@ -5,10 +5,12 @@
 
     @author: Ricardo Lopes Almeida - https://github.com/rdlalmeida
 **/
-import Burner from 0xf8d6e0586b0a20c7
-import BallotStandard from 0xf8d6e0586b0a20c7
-import ElectionStandard from 0xf8d6e0586b0a20c7
-import VoteBoxStandard from 0xf8d6e0586b0a20c7
+import Burner from 0x9a0766d93b6608b7
+import BallotStandard from 0x287f5c8b0865c516
+import ElectionStandard from 0x287f5c8b0865c516
+import VoteBoxStandard from 0x287f5c8b0865c516
+
+// TODO: Change the ElectionIndex to have another dictionary for inactive Elections. Move Elections to this one after finishing. Validate paths with this new dictionary as well to maintain uniqueness of Storage and Public Paths.
 
 access(all) contract VoteBooth {
     // CUSTOM PATHS
@@ -338,7 +340,7 @@ access(all) contract VoteBooth {
     // ---------------------------------------------------------------- BALLOT PRINTER ADMIN BEGIN -------------------------------------------------------------
     access(all) resource VoteBoothPrinterAdmin: Burner.Burnable {
         /**
-            This function is the only process to create new Ballots in this context. I've made the BallotStandard contract such that anyone can import it and use the resource in their own version of this election platform. But for this instance in particular, the only entry point to create a new Ballot is through one of these BallotPrinterAdmin resources.
+import resources. from 0x287f5c8b0865c516
 
             @param newLinkedElectionId (UInt64) The electionId to the Election resource that this Ballot can be submitted to.
             @param newElectionCapability (Capability<&{ElectionStandard.ElectionPublic}>) A Capability to retrieve the public reference to the Election associated to this Ballot.
@@ -376,7 +378,10 @@ access(all) contract VoteBooth {
 
             let voteBoxRef: &{VoteBoxStandard.VoteBoxPublic} = voterAccount.capabilities.borrow<&{VoteBoxStandard.VoteBoxPublic}>(VoteBoxStandard.voteBoxPublicPath) ??
             panic(
-                "Unable to retrieve a valid &{VoteBoxStandard.VoteBoxPublic} at `VoteBoxStandard.voteBoxPublicPath.toString()` for account `voterAddress.toString()`"
+                "Unable to retrieve a valid &{VoteBoxStandard.VoteBoxPublic} at "
+                .concat(VoteBoxStandard.voteBoxPublicPath.toString())
+                .concat(" for account ")
+                .concat(voterAddress.toString())
             )
 
             // 4. Use the reference to the Election to get its public capability. Force cast it if needed
@@ -482,27 +487,10 @@ access(all) contract VoteBooth {
 
             @return UInt64 If successful, this function returns the electionId of the Election created with the provided parameters.  
         **/
-        access(all) fun createElection(
-            newElectionName: String,
-            newElectionBallot: String,
-            newElectionOptions: {UInt8: String},
-            newPublicKey: String,
-            newElectionStoragePath: StoragePath,
-            newElectionPublicPath: PublicPath,
-            newFreeElection: Bool,
-            deployerAccount: auth(Storage, Capabilities, ElectionStandard.ElectionAdmin) &Account
-        ): UInt64 {
+        access(all) fun createElection(newElectionName: String, newElectionBallot: String, newElectionOptions: {UInt8: String}, newPublicKey: String, newElectionStoragePath: StoragePath, newElectionPublicPath: PublicPath, deployerAccount: auth(Storage, Capabilities, ElectionStandard.ElectionAdmin) &Account): UInt64 {
             // Start by creating the Election resource
 
-            let newElection: @ElectionStandard.Election <- ElectionStandard.createElection(
-                newElectionName: newElectionName,
-                newElectionBallot: newElectionBallot,
-                newElectionOptions: newElectionOptions,
-                newPublicKey: newPublicKey,
-                newElectionStoragePath: newElectionStoragePath,
-                newElectionPublicPath: newElectionPublicPath,
-                newFreeElection: newFreeElection
-            )
+            let newElection: @ElectionStandard.Election <- ElectionStandard.createElection(newElectionName: newElectionName,newElectionBallot: newElectionBallot, newElectionOptions: newElectionOptions, newPublicKey: newPublicKey, newElectionStoragePath: newElectionStoragePath, newElectionPublicPath: newElectionPublicPath)
 
             let newElectionId: UInt64 = newElection.getElectionId()
 

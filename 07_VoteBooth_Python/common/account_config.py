@@ -25,6 +25,12 @@ class AccountConfig(object):
     def __init__(self) -> None:
         super().__init__()
 
+        # Before anything, check that at least one valid network configuration is present. Stop the process if not.
+        active_network: str = config.get(section="network", option="current").lower().strip()
+
+        if (active_network != "emulator" and active_network != "testnet"):
+            raise Exception(f"The project network configured '{active_network}' is not a valid one. Please set this to 'emulator' or 'testnet' to continue.")
+
         # Set the account access details at the start of the module
         self.access_node_host: str = config.get(network, "host")
         self.access_node_port: int = int(config.get(network, "port"))
@@ -45,21 +51,21 @@ class AccountConfig(object):
 
         for account in data["accounts"]:
             # Check which network is being used
-            if (config.get(section="network", option="current") == "emulator"):
+            if (active_network == "emulator"):
                 # Pre select the emulator exclusive accounts. All testnet bound accounts are prefixed with "flow_test". Use this to filter them out
                 if (account == "emulator-account" or not account.__contains__("flow_test")):
                     # Load the required parameters while testing the formatting of the JSON file
-                    if (data["accounts"][account]["key"]["hashAlgorithm"]):
+                    if ("hashAlgorithm" in data["accounts"][account]["key"]):
                         hash_algorithm = HashAlgo.from_string(data["accounts"][account]["key"]["hashAlgorithm"])
                     else: 
-                        hash_algorithm = HashAlgo.from_string("SHA_256")
+                        hash_algorithm = HashAlgo.from_string("SHA3_256")
 
-                    if (data["accounts"][account]["key"]["signatureAlgorithm"]):
+                    if ("signatureAlgorithm" in data["accounts"][account]["key"]):
                         signature_algorithm = SignAlgo.from_string(data["accounts"][account]["key"]["signatureAlgorithm"])
                     else:
                         signature_algorithm = SignAlgo.from_string("ECDSA_P256")
 
-                    if (data["accounts"][account]["key"]["location"]):
+                    if ("location" in data["accounts"][account]["key"]):
                         private_key = open(data["accounts"][account]["key"]["location"]).readline()
                     else:
                         private_key = data["accounts"][account]["key"]
@@ -77,7 +83,7 @@ class AccountConfig(object):
                         account_address = account_address[2:]
 
                     # The service account needs a special treatment
-                    if (account == "emulator-account"):
+                    if (account_address == config.get(section=active_network, option="service_account")):
                         # If the account in question is the emulator-bound account, set this one apart from the rest as the service account
                         self.service_account = {
                             "name": account,
@@ -110,21 +116,21 @@ class AccountConfig(object):
                                 "receipts": {}
                             }
                         )
-            elif(config.get(section="network", option="current") == "testnet"):
+            elif(active_network == "testnet"):
                 # Filter out for the testnet-bound accounts, which are named as "flow_test_account..."
                 if (account.__contains__("flow_test")):
                     # Save all the common parameters to their own variables for now
-                    if (data["accounts"][account]["key"]["hashAlgorithm"]):
+                    if ("hashAlgorithm" in data["accounts"][account]["key"]):
                         hash_algorithm = HashAlgo.from_string(data["accounts"][account]["key"]["hashAlgorithm"])
                     else:
-                        hash_algorithm = HashAlgo.from_string("SHA_256")
+                        hash_algorithm = HashAlgo.from_string("SHA3_256")
 
-                    if (data["accounts"][account]["key"]["signatureAlgorithm"]):
+                    if ("signatureAlgorithm" in data["accounts"][account]["key"]):
                         signature_algorithm = SignAlgo.from_string(data["accounts"][account]["key"]["signatureAlgorithm"])
                     else:
                         signature_algorithm = SignAlgo.from_string("ECDSA_P256")
 
-                    if (data["accounts"][account]["key"]["location"]):
+                    if ("location" in data["accounts"][account]["key"]):
                         private_key = open(data["accounts"][account]["key"]["location"]).readline()
                     else:
                         private_key = data["accounts"][account]["key"]
@@ -140,7 +146,7 @@ class AccountConfig(object):
                         account_address = account_address[2:]
 
                     # In this case, flow_test_account10 was selected to work as the service account. Set this up
-                    if (account == "flow_test_account10"):
+                    if (account_address == config.get(section=active_network, option="service_account")):
                         self.service_account = {
                             "name": "service_account",
                             "address": Address.from_hex(account_address),
@@ -167,7 +173,7 @@ class AccountConfig(object):
                             }
                         )
             else:
-                raise Exception(f"ERROR: Unable to configure accounts for unrecognisable network {config.get(section="network", option="current")}.")
+                raise Exception(f"ERROR: Unable to configure accounts for unrecognisable network {active_network}.")
     
     def addReceipt(self, voter_address: str, election_id: int, ballot_receipt: int) -> None:
         """This function adds a ballot receipt, which is the random value used as salt for encrypting the Ballot option, to the entry of the voter that cast the ballot in the first place. This function detects if the current user entry already has a key for the election_id provided or not. If so, it appends the provided ballot_receipt to it. Otherwise it creates a new one. If the voter_address provided does not exists in the current account list, this function raises and exception.
