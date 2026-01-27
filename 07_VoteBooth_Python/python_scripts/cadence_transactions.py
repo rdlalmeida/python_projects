@@ -353,18 +353,13 @@ class TransactionRunner():
         
         return election_created_events[0]["election_id"]
 
-    async def deleteElection(self, election_id: int, tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> int:
+    async def deleteElection(self, election_id: int, tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
         """Function to delete an election identified by the id provided from the current environment.
 
         :param election_id (int): The identifier for the election to delete
         :param tx_signer_address (str): The account address to use to digitally sign the transaction.
         :param gas_results_file_path (pathlib.Path): A valid path to a file to where the gas calculations should be written into. If None is provided, the function skips the gas analysis.
         :param storage_results_file_path (pathlib.Path): A valid path to a file where the storage computations should be written into. If None is provided, the function skips the storage analysis.
-        :return (dict[str:int]): Returns the ElectionStandard.ElectionDestroyed event parameters in the format
-        {
-            "election_id": int,
-            "ballots_stored": int
-        }
         """
         tx_name: str = "07_destroy_election"
 
@@ -599,6 +594,7 @@ class TransactionRunner():
         voter_address = (tx_signer_address or tx_proposer_address)
         if (storage_results_file_path):
             await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot from {voter_address} - pre cast", output_file_path=storage_results_file_path, account=voter_address)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot from {voter_address} - pre cast", output_file_path=storage_results_file_path, account=tx_payer_address)
 
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
@@ -606,6 +602,7 @@ class TransactionRunner():
 
         if (storage_results_file_path):
             await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot from {voter_address} - post cast", output_file_path=storage_results_file_path, account=voter_address)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot from {voter_address} - post cast", output_file_path=storage_results_file_path, account=tx_payer_address)
 
         tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
@@ -618,7 +615,7 @@ class TransactionRunner():
         """Function to submit a ballot in votebox from  the transaction signer address to the election with the id provided as argument.
 
         :param election_id (int): The election identifier to select the ballot to submit.
-        :tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
+        :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
         :param tx_proposer_address (str): The address of the account that proposes the transaction.
         :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
         :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
@@ -698,7 +695,7 @@ class TransactionRunner():
             raise Exception(f"ERROR: Ballot submission for account {tx_signer_address} failed!")
         
     
-    async def tallyElection(self, election_id: int, tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
+    async def tallyElection(self, election_id: int, tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> list[dict]:
         """
         Function to trigger the end of a running Election, the withdrawal of all submitted Ballots, and the computation of results.
 
@@ -791,13 +788,12 @@ class TransactionRunner():
 
         :param election_id (int): The election identifier to select the ballot to submit.
         :param ballot_receipt (int): The ballot receipt to add to the VoteBox internal receipt dictionary.
-        :tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
+        :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
         :param tx_proposer_address (str): The address of the account that proposes the transaction.
         :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
         :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
         :param gas_results_file_path (pathlib.Path): A valid path to a file to where the gas calculations should be written into. If None is provided, the function skips the gas analysis.
         :param storage_results_file_path (pathlib.Path): A valid path to a file where the storage computations should be written into. If None is provided, the function skips the storage analysis.
-        :return (list[dict]): If successful, this function returns either the BallotSubmitted or the BallotReplaced events, depending which operation was triggered.
         """
         tx_name: str = "13_add_ballot_receipt"
         tx_arguments: list = [cadence.UInt64(election_id), cadence.UInt64(ballot_receipt)]
@@ -807,6 +803,7 @@ class TransactionRunner():
         voter_address: str = (tx_signer_address or tx_proposer_address)
         if (storage_results_file_path):
             await self.script_runner.profile_all_accounts_csv(program_stage=f"{voter_address} ballot receipt - pre addition", output_file_path=storage_results_file_path, account=voter_address)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"{voter_address} ballot receipt - pre addition", output_file_path=storage_results_file_path, account=tx_payer_address)
 
         self.tx_start = time.time_ns()
         tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
@@ -814,6 +811,7 @@ class TransactionRunner():
 
         if (storage_results_file_path):
             await self.script_runner.profile_all_accounts_csv(program_stage=f"{voter_address} ballot receipt - post addition", output_file_path=storage_results_file_path, account=voter_address)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"{voter_address} ballot receipt - post addition", output_file_path=storage_results_file_path, account=tx_payer_address)
 
         tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
         fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
@@ -828,18 +826,17 @@ class TransactionRunner():
 
         :param election_id (int): The election identifier to select the ballot to submit.
         :param ballot_receipt (int): The ballot receipt to remove from the VoteBox internal receipt dictionary.
-        :tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
+        :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
         :param tx_proposer_address (str): The address of the account that proposes the transaction.
         :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
         :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
         :param gas_results_file_path (pathlib.Path): A valid path to a file to where the gas calculations should be written into. If None is provided, the function skips the gas analysis.
         :param storage_results_file_path (pathlib.Path): A valid path to a file where the storage computations should be written into. If None is provided, the function skips the storage analysis.
-        :return (list[dict]): If successful, this function returns either the BallotSubmitted or the BallotReplaced events, depending which operation was triggered.
         """
         tx_name: str = "14_remove_ballot_receipt"
         tx_arguments: list = [cadence.UInt64(election_id), cadence.UInt64(ballot_receipt)]
 
-        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizers=tx_authorizer_address, gas_results_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path)
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizers=tx_authorizer_address)
 
         voter_address: str = (tx_signer_address or tx_proposer_address)
 
@@ -858,6 +855,53 @@ class TransactionRunner():
 
         if (gas_results_file_path):
             Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Account {voter_address} removed ballot receipt", output_file_path=gas_results_file_path)
+
+
+    async def delegateBallot(self, election_id: int, recipient_address: str, tx_signer_address: str, tx_proposer_address: str, tx_payer_address: str, tx_authorizer_address: list[str], gas_results_file_path: pathlib.Path, storage_results_file_path: pathlib.Path) -> None:
+        """
+        Function to delegate a Ballot previously minted to the VoteBox in the account abstracted by the tx_signer | tx_proposer address, and delivers it to a VoteBox in the account identified by the recipient address
+
+        :param election_id (int): The election identifier to select the ballot to delegate.
+
+        :param recipient_address (str): The account address to retrieve the VoteBox reference to where the Ballot should be delegated, i.e., delivered, to.
+        :param tx_signer_address (str): The address of the account that can authorize this transaction with a digital signature.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
+        :param gas_results_file_path (pathlib.Path): A valid path to a file to where the gas calculations should be written into. If None is provided, the function skips the gas analysis.
+        :param storage_results_file_path (pathlib.Path): A valid path to a file where the storage computations should be written into. If None is provided, the function skips the storage analysis.
+        """
+        tx_name: str = "15_delegate_ballot"
+        tx_arguments: list = [cadence.UInt64(election_id), cadence.Address.from_hex(recipient_address)]
+
+        tx_object: Tx = await self.getTransaction(tx_name=tx_name, tx_arguments=tx_arguments, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizers=tx_authorizer_address)
+
+        tx_proposer_address: str = (tx_signer_address or tx_proposer_address)
+        tx_payer_address: str = (tx_signer_address or tx_payer_address)
+
+        if (storage_results_file_path):
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot Delegation to {recipient_address} - pre delegation", output_file_path=storage_results_file_path, account=tx_payer_address)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot Delegation to {recipient_address} - pre delegation", output_file_path=storage_results_file_path, account=recipient_address)
+
+        self.tx_start = time.time_ns()
+        tx_response: entities.TransactionResultResponse = await self.submitTransaction(tx_object=tx_object)
+        self.tx_end = time.time_ns()
+        
+        if (storage_results_file_path):
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot Delegation to {recipient_address} - post delegation", output_file_path=storage_results_file_path, account=tx_payer_address)
+            await self.script_runner.profile_all_accounts_csv(program_stage=f"Ballot Delegation to {recipient_address} - post delegation", output_file_path=storage_results_file_path, account=recipient_address)
+
+            # Grab all the events
+            ballot_delegated_events: list[dict] = await self.event_runner.getBallotDelegatedEvents(tx_response=tx_response)
+            fees_deducted_events: list[dict] = await self.event_runner.getFlowFeesFeesDeductedEvents(tx_response=tx_response)
+            tokens_withdrawn_events: list[dict] = await self.event_runner.getFungibleTokenWithdrawnEvents(tx_response=tx_response)
+
+            if (gas_results_file_path):
+                Utils.processTransactionData(fees_deducted_events=fees_deducted_events, tokens_withdrawn_events=tokens_withdrawn_events, elapsed_time=(self.tx_end - self.tx_start), tx_description=f"Ballot Delegation from {tx_payer_address} to {recipient_address}", output_file_path=gas_results_file_path)
+
+            # Print out the results
+            for ballot_delegated_event in ballot_delegated_events:
+                log.info(f"Ballot for election {ballot_delegated_event["election_id"]} delegated successfully from account {ballot_delegated_event["delegator_address"]} to account {ballot_delegated_event["recipient_address"]}")
 
     
     async def cleanupVoteBooth(self, tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
@@ -1010,7 +1054,6 @@ class TransactionRunner():
         :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
         :param gas_results_file_path (pathlib.Path): A valid path to a file to where the gas calculations should be written into. If None is provided, the function skips the gas analysis.
         :param storage_results_file_path (pathlib.Path): A valid path to a file where the storage computations should be written into. If None is provided, the function skips the storage analysis.
-        :return list[dict]: If successful, this function returns the array of BallotBurned events resulting from the VoteBox cleanup
         """
         # Validate signature inputs
         if (tx_signer_address == None and (tx_proposer_address == None or tx_payer_address == None or len(tx_authorizer_address) == 0)):

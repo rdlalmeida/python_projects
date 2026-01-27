@@ -549,4 +549,32 @@ class EventRunner():
 
                 fees_deducted_events.append(fees_deducted_event)
         
-        return fees_deducted_events            
+        return fees_deducted_events
+    
+
+    async def getBallotDelegatedEvents(self, tx_response: entities.TransactionResultResponse) -> dict:
+        """Function to return the latest VoteBoxStandard.BallotDelegated events from the transaction response.
+        
+        :param tx_response (entities.TransactionResultResponse): The transaction result object as returned as the result of the transaction whose events are to be retrieved from.
+        :return (dict): Returns the event parameters in the format
+        {
+            "election_id": int,
+            "delegator_address": str,
+            "recipient_address": str
+        }
+        """
+
+        event_name: str = f"A.{self.deployer_address}.VoteBoxStandard.BallotDelegated"
+
+        ballot_delegated_events: list[dict] = []
+
+        for event in tx_response.events:
+            if (event.type == event_name):
+                ballot_delegated_event: dict = {}
+                ballot_delegated_event["election_id"] = event.value.fields["_electionId"].__str__()
+                ballot_delegated_event["delegator_address"] = event.value.fields["_delegatorAddress"].__str__()
+                ballot_delegated_event["recipient_address"] = event.value.fields["_recipientAddress"].__str__()
+
+                ballot_delegated_events.append(ballot_delegated_event)
+            
+        return ballot_delegated_events

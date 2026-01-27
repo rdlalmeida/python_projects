@@ -275,6 +275,27 @@
                 "type": "file",
                 "location": "./keys/testnet/flow_test_account10.pkey"
             }
+        },
+        "flow_test_account11": {
+            "address": "e47edd74cfb2db72",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account11.pkey"
+            }
+        },
+        "flow_test_account12": {
+            "address": "164d019a474cd1cc",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account12.pkey"
+            }
+        },
+        "flow_test_account13": {
+            "address": "f22ab84756b6d113",
+            "key": {
+                "type": "file",
+                "location": "./keys/testnet/flow_test_account13.pkey"
+            }
         }
     },
     "deployments": {

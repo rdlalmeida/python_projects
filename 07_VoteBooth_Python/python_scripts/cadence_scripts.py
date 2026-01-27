@@ -688,17 +688,20 @@ class ScriptRunner():
         ) as client:
             script_result = await client.execute_script(script=script_object)
 
-            if (not script_result):
-                raise ScriptError(script_name=name)
+            if (script_result == None):
+                raise ScriptError(script_name=name) 
             
             ballot_receipts: list[int] = []
 
-            if (script_result.value.value and len(script_result.value.value) > 0):
-                for result_value in script_result.value.value:
-                    ballot_receipts.append(int(result_value.__str__()))
+            try:
+                if (script_result.value.value and len(script_result.value.value) > 0):
+                    for result_value in script_result.value.value:
+                        ballot_receipts.append(int(result_value.__str__()))
 
-                return ballot_receipts
-            else:
+                    return ballot_receipts
+                else:
+                    return []
+            except AttributeError:
                 return []
             
     

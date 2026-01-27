@@ -5,6 +5,7 @@
 
     # Author: Ricardo Lopes Almeida - https://github.com/rdlalmeida
 **/
+
 import Burner from 0x9a0766d93b6608b7
 import BallotStandard from 0x287f5c8b0865c516
 import ElectionStandard from 0x287f5c8b0865c516
@@ -24,6 +25,9 @@ access(all) contract VoteBoxStandard {
     // submit Ballots (the _electionsVoted array), as well as the list of active Ballots, or better, the electionIds for the Elections that this VoteBox
     // has an active Ballot in it
     access(all) event VoteBoxDestroyed(_electionsVoted: [UInt64], _activeBallots: Int, _voterAddress: Address)
+
+    // Event to inform the delegation of a Ballot
+    access(all) event BallotDelegated(_electionId: UInt64, _delegatorAddress: Address, _recipientAddress: Address)
     
     access(all) let deployerAddress: Address
 
@@ -68,6 +72,68 @@ access(all) contract VoteBoxStandard {
         // the VoteBox resource keeps this list for future comparison. An accurate Election is one that produces all the Ballot receipts in this structures, not
         // one more, not one less.
         access(self) var ballotReceipts: {UInt64: [UInt64]}
+
+
+        /**
+            Function to delegate a Ballot currently stored in this VoteBox instance to another VoteBox from an account retrieved from the address provided as input.
+
+            @param electionId (UInt64): The electionId for the Ballot to delegate.
+            @param recipientAddress (Address): The account address for the VoteBox where the Ballot is to be delivered, i.e., delegated to.
+        **/
+        access(VoteBoxStandard.VoteBoxAdmin) fun delegateBallot(electionId: UInt64, recipientAddress: Address): Void {
+            // Validate that the electionId provided is able to retrieve a Ballot from this VoteBox storage
+            let currentActiveBallots: [UInt64] = self.getActiveElectionIds()
+
+            if (!currentActiveBallots.contains(electionId)) {
+                panic(
+                    "ERROR: VoteBox from account "
+                    .concat(self.owner!.address.toString())
+                    .concat(" does not have any Ballots for Election ")
+                    .concat(electionId.toString())
+                    .concat(". Cannot continue!")
+                )
+            }
+
+            // Get the recipient Account, validate that it has a VoteBox in it and that the VoteBox does not contains a Ballot with the electionId provided yet
+            let recipientAccount: &Account = getAccount(recipientAddress)
+
+            let recipientVoteBoxRef: &{VoteBoxStandard.VoteBoxPublic} = recipientAccount.capabilities.borrow<&{VoteBoxStandard.VoteBoxPublic}>(VoteBoxStandard.voteBoxPublicPath) ??
+                panic(
+                    "Unable to retrieve a valid &{VoteBoxStandard.VoteBoxPublic} at "
+                    .concat(VoteBoxStandard.voteBoxPublicPath.toString())
+                    .concat(" from account ")
+                    .concat(recipientAddress.toString())
+                )
+
+            let recipientActiveBallots: [UInt64] = recipientVoteBoxRef.getActiveElectionIds()
+
+            if (recipientActiveBallots.contains(electionId)) {
+                panic(
+                    "ERROR: VoteBox from account "
+                    .concat(recipientAddress.toString())
+                    .concat(" already contains a Ballot for Election ")
+                    .concat(electionId.toString())
+                    .concat(". Cannot continue!")
+                )
+            }
+
+            // All good. Transfer the Ballot between VoteBoxes
+            let ballotToDelegate: @BallotStandard.Ballot? <- self.activeBallots.remove(key: electionId)
+
+            if (ballotToDelegate == nil) {
+                panic(
+                    "ERROR: Unable to load a Ballot for electionId "
+                    .concat(electionId.toString())
+                    .concat(" from the VoteBox in account ")
+                    .concat(self.owner!.address.toString())
+                )
+            }
+
+            recipientVoteBoxRef.depositBallot(ballot: <- ballotToDelegate!)
+
+            // Done. Emit the respective event to finish this
+            emit BallotDelegated(_electionId: electionId, _delegatorAddress: self.owner!.address, _recipientAddress: recipientAddress)
+        }
         
         /**
             Function to infer about the validity of a Ballot receipt provided as argument, for the Election identified by the electionId provided as well. This function checks if the ballotReceipt provided exists within the set of Ballot receipts stored currently for the present VoteBox, under the electionId provided.
@@ -545,9 +611,9 @@ access(all) contract VoteBoxStandard {
         }
 
         /**
-            This function is supposed to be exposed publicly by the VoteBoxPublic resource interface and should be used by the ElectionAdministration to deposit newly minted Ballots so that the VoteBox owner can cast them. It is impossible for an ElectionAdministrator to retrieve an authorized reference to a VoteBox resource in storage since the resource is not stored in his/her Administrator account. As such, this function needs to be set as access(all) to have even the slightest hope of working. But this opens it to all sorts of shenanigans from dishonest people. Anyone is able to retrieve the BallotStandard contract, mint a new Ballot and deposit that Ballot into this VoteBox. To prevent this, all I can do at this point is ensuring contract consistency among the contracts that I can "see" from this point.
+            This function is supposed to be exposed publicly by the VoteBoxPublic resource interface and should be used by the ElectionAdministration to deposit newly minted Ballots so that the VoteBox owner can cast them. It is impossible for an ElectionAdministrator to retrieve an authorized reference to a VoteBox resource in storage since the resource is not stored in his/her Administrator account. As such, this function needs to be set as access(all) to have even the slightest hope of working. But this opens it to all sorts of shenanigans from dishonest people. Anyone is able to import the BallotStandard contract, mint a new Ballot and deposit that Ballot into this VoteBox. To prevent this, all I can do at this point is ensuring contract consistency among the contracts that I can "see" from this point.
 
-            In that regard, I've set a "deployerAddress" parameter at the root of every contract in this project. The idea is, as long as all the contracts that I can see from where I am, i.e., the set of contracts retrieved at the top of the current contract, have the same deployerAddress, there is a strong chance that I'm getting Ballots and Elections from where I'm supposed to get them. This verification guarantees that all contracts retrieved from this contract, as well as this contract, were deployed into the same account.
+            In that regard, I've set a "deployerAddress" parameter at the root of every contract in this project. The idea is, as long as all the contracts that I can see from where I am, i.e., the set of contracts imported at the top of the current contract, have the same deployerAddress, there is a strong chance that I'm getting Ballots and Elections from where I'm supposed to get them. This verification guarantees that all contracts imported from this contract, as well as this contract, were deployed into the same account.
 
             @param ballot (@BallotStandard.Ballot) The Ballot resource to deposit in this VoteBox
         **/

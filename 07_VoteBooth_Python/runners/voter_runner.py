@@ -155,7 +155,7 @@ async def main(election_id: int = None):
     ctx = AccountConfig()
 
     # Number of rounds to run this process with. This is the number of Ballots submitted by the account provided
-    rounds: int = 10
+    rounds: int = 20
 
     # Maximum number of seconds that this process can wait between rounds. The actual sleep value is a random one between 0 and the value set in the parameter
     max_delay: int = 10

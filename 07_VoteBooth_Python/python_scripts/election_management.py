@@ -361,6 +361,22 @@ class Election(object):
 
         # Done. Return the results
         return election_options_tally
+
+
+    async def delegate_ballot(self, election_id: int, recipient_address: str, tx_signer_address: str = None, tx_proposer_address: str = None, tx_payer_address: str = None, tx_authorizers: list[str] = [], gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
+        """Function to delegate a ballot from a VoteBox stored in the account represented by the tx_signer_address | tx_proposer_address, to a VoteBox in the account identified by the recipient_address provided as input. The parameter validation happens at the contract level.
+        
+        :param election_id (int): The election identifier to identify the ballot to be delegated.
+        :param recipient_address (str): The account address to where the Ballot identified with the election_id provided is to be delegated, i.e., deposited, to.
+        :param tx_signer_address (str): The account address to use to digitally sign the transaction.
+        :param tx_proposer_address (str): The address of the account that proposes the transaction.
+        :param tx_payer_address (str): The address of the account that pays for the network and gas fees for the transaction.
+        :param tx_authorizer_address (list[str]): The list of addresses for the accounts that provide the authorizations defined in the "prepare" block of the transaction.
+        :param gas_results_file_path (pathlib.Path): A valid path to a file to where the gas calculations should be written into. If None is provided, the function skips the gas analysis.
+        :param storage_results_file_path (pathlib.Path): A valid path to a file where the storage computations should be written into. If None is provided, the function skips the storage analysis.
+        """
+        # All the input validations occur at the contract level. Run the transaction and move on
+        await self.tx_runner.delegateBallot(election_id=election_id, recipient_address=recipient_address, tx_signer_address=tx_signer_address, tx_proposer_address=tx_proposer_address, tx_payer_address=tx_payer_address, tx_authorizer_address=tx_authorizers, gas_result_file_path=gas_results_file_path, storage_results_file_path=storage_results_file_path) 
     
 
     async def finish_election(self, tx_signer_address: str, gas_results_file_path: pathlib.Path = None, storage_results_file_path: pathlib.Path = None) -> None:
